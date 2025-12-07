@@ -95,6 +95,7 @@ app.get('/settings', async (req, res) => {
             loginBackgroundImage: settings?.loginBackgroundImage || '',
             logoSize: settings?.logoSize || 48,
             bgColor: settings?.bgColor || '#0c0229',
+            pterodactylUrl: settings?.pterodactyl?.apiUrl || '',
             theme: {
                 primaryColor: settings?.theme?.primaryColor || '#7c3aed',
                 secondaryColor: settings?.theme?.secondaryColor || '#3b82f6',

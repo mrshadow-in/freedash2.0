@@ -133,7 +133,7 @@ const ManageServer = () => {
                     isPowerPending={powerMutation.isPending}
                     onOpenShop={() => setIsShopOpen(true)}
                     onDelete={handleDelete}
-                    panelUrl={settings?.pterodactyl?.apiUrl || ''}
+                    panelUrl={settings?.pterodactylUrl || ''}
                 />
 
                 <motion.div
