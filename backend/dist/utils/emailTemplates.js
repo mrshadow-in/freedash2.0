@@ -2,13 +2,13 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createServerDeployedTemplate = exports.createWelcomeTemplate = void 0;
 // Beautiful HTML email template with modern design
-const createWelcomeTemplate = (username, email) => `
+const createWelcomeTemplate = (username, email, panelName = 'Panel', supportEmail = '') => `
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to LordCloud</title>
+    <title>Welcome to ${panelName}</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
     <table width="100%" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px;">
@@ -18,19 +18,19 @@ const createWelcomeTemplate = (username, email) => `
                     <!-- Header -->
                     <tr>
                         <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px; text-align: center;">
-                            <h1 style="margin: 0; color: #ffffff; font-size: 32px; font-weight: bold;">🎉 Welcome to LordCloud!</h1>
+                            <h1 style="margin: 0; color: #ffffff; font-size: 32px; font-weight: bold;">🎉 Welcome to ${panelName}!</h1>
                         </td>
                     </tr>
                     
                     <!-- Body -->
                     <tr>
                         <td style="padding: 40px;">
-                            <h2 style="color: #333333; margin: 0 0 20px 0; font-size: 24px;">Hello, {{username}}! 👋</h2>
+                            <h2 style="color: #333333; margin: 0 0 20px 0; font-size: 24px;">Hello, ${username}! 👋</h2>
                             <p style="color: #666666; line-height: 1.6; margin: 0 0 20px 0; font-size: 16px;">
-                                Thank you for joining <strong>LordCloud</strong>! We're excited to have you on board.
+                                Thank you for joining <strong>${panelName}</strong>! We're excited to have you on board.
                             </p>
                             <p style="color: #666666; line-height: 1.6; margin: 0 0 30px 0; font-size: 16px;">
-                                Your account has been successfully created with the email: <strong>{{email}}</strong>
+                                Your account has been successfully created with the email: <strong>${email}</strong>
                             </p>
                             
                             <!-- CTA Button -->
@@ -66,11 +66,11 @@ const createWelcomeTemplate = (username, email) => `
                     <!-- Footer -->
                     <tr>
                         <td style="background: #f8f9ff; padding: 30px; text-align: center; border-top: 1px solid #e0e0e0;">
-                            <p style="margin: 0 0 10px 0; color: #999999; font-size: 14px;">
-                                Need help? Contact us at <a href="mailto:support@lordcloud.in" style="color: #667eea; text-decoration: none;">support@lordcloud.in</a>
-                            </p>
+                            ${supportEmail ? `<p style="margin: 0 0 10px 0; color: #999999; font-size: 14px;">
+                                Need help? Contact us at <a href="mailto:${supportEmail}" style="color: #667eea; text-decoration: none;">${supportEmail}</a>
+                            </p>` : ''}
                             <p style="margin: 0; color: #cccccc; font-size: 12px;">
-                                © 2024 LordCloud. All rights reserved.
+                                © ${new Date().getFullYear()} ${panelName}. All rights reserved.
                             </p>
                         </td>
                     </tr>
@@ -82,7 +82,7 @@ const createWelcomeTemplate = (username, email) => `
 </html>
 `;
 exports.createWelcomeTemplate = createWelcomeTemplate;
-const createServerDeployedTemplate = () => `
+const createServerDeployedTemplate = (panelName = 'Panel') => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -127,7 +127,7 @@ const createServerDeployedTemplate = () => `
                     <tr>
                         <td style="background: #f8f9ff; padding: 30px; text-align: center; border-top: 1px solid #e0e0e0;">
                             <p style="margin: 0; color: #999999; font-size: 14px;">
-                                © 2024 LordCloud. All rights reserved.
+                                © ${new Date().getFullYear()} ${panelName}. All rights reserved.
                             </p>
                         </td>
                     </tr>

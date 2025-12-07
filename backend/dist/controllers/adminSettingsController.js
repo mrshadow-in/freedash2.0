@@ -61,7 +61,7 @@ exports.getSettings = getSettings;
 // Update panel settings
 const updatePanelSettings = async (req, res) => {
     try {
-        const { panelName, panelLogo, backgroundImage, loginBackgroundImage, logoSize, bgColor } = req.body;
+        const { panelName, panelLogo, backgroundImage, loginBackgroundImage, logoSize, bgColor, supportEmail } = req.body;
         let settings = await Settings_1.default.findOne();
         if (!settings) {
             settings = await Settings_1.default.create({});
@@ -70,6 +70,8 @@ const updatePanelSettings = async (req, res) => {
             settings.panelName = panelName;
         if (panelLogo !== undefined)
             settings.panelLogo = panelLogo;
+        if (supportEmail !== undefined)
+            settings.supportEmail = supportEmail;
         if (backgroundImage !== undefined)
             settings.backgroundImage = backgroundImage;
         if (loginBackgroundImage !== undefined)
@@ -267,8 +269,11 @@ const sendTestEmail = async (req, res) => {
         if (!testEmail) {
             return res.status(400).json({ message: 'Test email address is required' });
         }
+        // Get panel name for branding
+        const settings = await Settings_1.default.findOne();
+        const panelName = settings?.panelName || 'Panel';
         const { sendEmail } = await Promise.resolve().then(() => __importStar(require('../services/emailService')));
-        await sendEmail(testEmail, 'Test Email from LordCloud', '<h1>Test Email</h1><p>This is a test email from your LordCloud panel. If you received this, your SMTP configuration is working correctly!</p>', 'Test Email - This is a test email from your LordCloud panel.');
+        await sendEmail(testEmail, `Test Email from ${panelName}`, `<h1>Test Email</h1><p>This is a test email from your ${panelName} panel. If you received this, your SMTP configuration is working correctly!</p>`, `Test Email - This is a test email from your ${panelName} panel.`);
         res.json({ message: 'Test email sent successfully' });
     }
     catch (error) {

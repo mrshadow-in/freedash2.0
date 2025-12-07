@@ -28,7 +28,7 @@ exports.ENV = {
     MONGODB_URI: process.env.MONGODB_URI || "mongodb+srv://lord:lord@ptro-free.3kyncba.mongodb.net/?appName=ptro-free",
     JWT_SECRET: process.env.JWT_SECRET || 'dev_secret',
     JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || 'dev_refresh_secret',
-    PTERODACTYL_URL: process.env.PTERODACTYL_URL || 'https://panel.lordcloud.in',
+    PTERODACTYL_URL: process.env.PTERODACTYL_URL || '',
     PTERODACTYL_API_KEY: process.env.PTERODACTYL_API_KEY || 'ptla',
     REDIS_HOST: process.env.REDIS_HOST || 'localhost',
     REDIS_PORT: parseInt(process.env.REDIS_PORT || '6379'),
