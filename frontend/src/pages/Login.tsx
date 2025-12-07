@@ -94,7 +94,7 @@ const Login = () => {
                                 </div>
                             )}
                             <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-                                {settings?.panelName || 'LordCloud'}
+                                {settings?.panelName || 'Panel'}
                             </h2>
                         </div>
                         <h1 className="text-2xl font-semibold text-white mb-2">

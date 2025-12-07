@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface ISettings extends Document {
     panelName: string;
     panelLogo?: string;
+    supportEmail?: string;
     backgroundImage?: string;
     loginBackgroundImage?: string;
     logoSize?: number;
@@ -68,8 +69,9 @@ export interface ISettings extends Document {
 }
 
 const SettingsSchema: Schema = new Schema({
-    panelName: { type: String, default: 'LordCloud' },
+    panelName: { type: String, default: 'Panel' },
     panelLogo: { type: String, default: '' },
+    supportEmail: { type: String, default: '' },
     backgroundImage: { type: String, default: '' },
     loginBackgroundImage: { type: String, default: '' },
     logoSize: { type: Number, default: 48 },
@@ -108,7 +110,7 @@ const SettingsSchema: Schema = new Schema({
         username: { type: String, default: '' },
         password: { type: String, default: '' },
         fromEmail: { type: String, default: '' },
-        fromName: { type: String, default: 'LordCloud' }
+        fromName: { type: String, default: 'Panel' }
     },
     discordWebhooks: { type: [String], default: [] },
     botApiKey: { type: String, default: '' },

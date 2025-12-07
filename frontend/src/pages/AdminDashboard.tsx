@@ -191,7 +191,7 @@ const SettingsTab = ({ settings, setSettings, fetchSettings }: any) => {
         smtpUsername: '',
         smtpPassword: '',
         smtpFromEmail: '',
-        smtpFromName: 'LordCloud'
+        smtpFromName: 'Panel'
     });
 
     useEffect(() => {
@@ -221,7 +221,7 @@ const SettingsTab = ({ settings, setSettings, fetchSettings }: any) => {
                 smtpUsername: settings.smtp?.username || '',
                 smtpPassword: settings.smtp?.password || '',
                 smtpFromEmail: settings.smtp?.fromEmail || '',
-                smtpFromName: settings.smtp?.fromName || 'LordCloud',
+                smtpFromName: settings.smtp?.fromName || 'Panel',
                 webhook: ''
             });
         }
@@ -403,10 +403,10 @@ const SettingsTab = ({ settings, setSettings, fetchSettings }: any) => {
                             <label className="block text-sm text-gray-400 mb-2">From Name</label>
                             <input
                                 type="text"
-                                value={formData.smtpFromName || 'LordCloud'}
+                                value={formData.smtpFromName || 'Panel'}
                                 onChange={(e) => setFormData({ ...formData, smtpFromName: e.target.value })}
                                 className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
-                                placeholder="LordCloud"
+                                placeholder="Your Panel Name"
                             />
                         </div>
                     </div>
@@ -1792,6 +1792,7 @@ const CustomizeTab = () => {
         panelName: '',
         panelLogo: '',
         logoSize: 48,
+        supportEmail: '',
         backgroundImage: '',
         loginBackgroundImage: ''
     });
@@ -1815,6 +1816,7 @@ const CustomizeTab = () => {
                     panelName: res.data.panelName || '',
                     panelLogo: res.data.panelLogo || '',
                     logoSize: res.data.logoSize || 48,
+                    supportEmail: res.data.supportEmail || '',
                     backgroundImage: res.data.backgroundImage || '',
                     loginBackgroundImage: res.data.loginBackgroundImage || ''
                 });
@@ -1892,8 +1894,19 @@ const CustomizeTab = () => {
                             value={panelSettings.panelName}
                             onChange={(e) => setPanelSettings({ ...panelSettings, panelName: e.target.value })}
                             className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
-                            placeholder="LordCloud"
+                            placeholder="Your Panel Name"
                         />
+                    </div>
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-2">Support Email</label>
+                        <input
+                            type="email"
+                            value={panelSettings.supportEmail}
+                            onChange={(e) => setPanelSettings({ ...panelSettings, supportEmail: e.target.value })}
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                            placeholder="support@example.com"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Shown in email footers</p>
                     </div>
                     <div>
                         <label className="block text-sm text-gray-400 mb-2">Panel Logo URL</label>

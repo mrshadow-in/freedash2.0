@@ -23,7 +23,7 @@ export const getSettings = async (req: Request, res: Response) => {
 // Update panel settings
 export const updatePanelSettings = async (req: Request, res: Response) => {
     try {
-        const { panelName, panelLogo, backgroundImage, loginBackgroundImage, logoSize, bgColor } = req.body;
+        const { panelName, panelLogo, backgroundImage, loginBackgroundImage, logoSize, bgColor, supportEmail } = req.body;
         let settings = await Settings.findOne();
         if (!settings) {
             settings = await Settings.create({});
@@ -31,6 +31,7 @@ export const updatePanelSettings = async (req: Request, res: Response) => {
 
         if (panelName) settings.panelName = panelName;
         if (panelLogo !== undefined) settings.panelLogo = panelLogo;
+        if (supportEmail !== undefined) settings.supportEmail = supportEmail;
         if (backgroundImage !== undefined) settings.backgroundImage = backgroundImage;
         if (loginBackgroundImage !== undefined) settings.loginBackgroundImage = loginBackgroundImage;
         if (logoSize !== undefined) settings.logoSize = logoSize;
@@ -42,6 +43,7 @@ export const updatePanelSettings = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Failed to update settings' });
     }
 };
+
 
 // Update theme settings
 export const updateThemeSettings = async (req: Request, res: Response) => {
@@ -221,12 +223,16 @@ export const sendTestEmail = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Test email address is required' });
         }
 
+        // Get panel name for branding
+        const settings = await Settings.findOne();
+        const panelName = settings?.panelName || 'Panel';
+
         const { sendEmail } = await import('../services/emailService');
         await sendEmail(
             testEmail,
-            'Test Email from LordCloud',
-            '<h1>Test Email</h1><p>This is a test email from your LordCloud panel. If you received this, your SMTP configuration is working correctly!</p>',
-            'Test Email - This is a test email from your LordCloud panel.'
+            `Test Email from ${panelName}`,
+            `<h1>Test Email</h1><p>This is a test email from your ${panelName} panel. If you received this, your SMTP configuration is working correctly!</p>`,
+            `Test Email - This is a test email from your ${panelName} panel.`
         );
 
         res.json({ message: 'Test email sent successfully' });
@@ -234,6 +240,7 @@ export const sendTestEmail = async (req: Request, res: Response) => {
         res.status(500).json({ message: error.message });
     }
 };
+
 
 // Update AFK settings
 export const updateAFKSettings = async (req: Request, res: Response) => {

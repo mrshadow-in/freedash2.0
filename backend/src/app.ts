@@ -58,8 +58,9 @@ app.get('/settings', async (req, res) => {
 
         // Return only public branding information
         res.json({
-            panelName: settings?.panelName || 'LordCloud',
+            panelName: settings?.panelName || 'Panel',
             panelLogo: settings?.panelLogo || '',
+            supportEmail: settings?.supportEmail || '',
             backgroundImage: settings?.backgroundImage || '',
             loginBackgroundImage: settings?.loginBackgroundImage || '',
             logoSize: settings?.logoSize || 48,

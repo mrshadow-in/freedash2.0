@@ -43,6 +43,10 @@ export const sendServerCreatedWebhook = async (serverData: {
     diskMb: number;
     cpuCores: number;
 }) => {
+    // Fetch panel name for branding
+    const settings = await Settings.findOne();
+    const panelName = settings?.panelName || 'Panel';
+
     const embed: WebhookEmbed = {
         title: '🎮 New Server Created',
         color: 0x7e57c2, // Purple color
@@ -52,9 +56,10 @@ export const sendServerCreatedWebhook = async (serverData: {
             { name: '📦 Plan', value: serverData.planName, inline: true },
             { name: '🔧 Resources', value: `${serverData.ramMb}MB RAM | ${serverData.diskMb}MB Disk | ${serverData.cpuCores} CPU`, inline: false }
         ],
-        footer: { text: 'LordCloud Panel' },
+        footer: { text: panelName },
         timestamp: new Date().toISOString()
     };
 
     await sendDiscordWebhook(embed);
 };
+

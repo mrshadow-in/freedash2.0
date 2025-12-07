@@ -164,7 +164,7 @@ const Dashboard = () => {
                             </div>
                         )}
                         <h1 className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-                            {settings?.panelName || 'LordCloud'}
+                            {settings?.panelName || 'Panel'}
                         </h1>
                     </div>
 

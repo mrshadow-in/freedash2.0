@@ -34,7 +34,7 @@ router.post('/forgot-password', async (req, res) => {
         });
 
         const settings = await Settings.findOne();
-        const panelName = settings?.panelName || 'LordCloud';
+        const panelName = settings?.panelName || 'Panel';
         const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
 
         // Dark themed email with reset button

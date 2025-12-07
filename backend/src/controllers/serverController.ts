@@ -129,7 +129,7 @@ export const createServer = async (req: AuthRequest, res: Response) => {
             try {
                 const { sendEmail } = await import('../services/emailService');
                 const settings = await Settings.findOne();
-                const panelName = settings?.panelName || 'LordCloud';
+                const panelName = settings?.panelName || 'Panel';
 
                 await sendEmail(
                     user.email,

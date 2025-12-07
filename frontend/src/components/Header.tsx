@@ -30,7 +30,7 @@ const Header = () => {
     });
 
     const user = userData || authUser;
-    const panelName = settings?.panelName || 'LordCloud';
+    const panelName = settings?.panelName || 'Panel';
     const panelLogo = settings?.panelLogo;
 
     return (
