@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const BotController_1 = require("../controllers/BotController");
+const botAuth_1 = require("../middleware/botAuth");
+const router = (0, express_1.Router)();
+router.use(botAuth_1.verifyBotKey);
+router.post('/claim', BotController_1.claimInviteReward);
+router.get('/tiers', BotController_1.getRewardTiers);
+exports.default = router;

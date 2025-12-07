@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-color: #0c0229;
+  --primary-color: #7c3aed;
+  --secondary-color: #3b82f6;
+  --card-bg-color: rgba(255, 255, 255, 0.05);
+  --text-color: #ffffff;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --gradient-start: #7c3aed;
+  --gradient-end: #3b82f6;
+}
+
+@layer base {
+  body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    @apply min-h-screen font-sans antialiased;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+/* Dynamic theme utility classes */
+.bg-theme {
+  background-color: var(--bg-color);
+}
+
+.text-theme {
+  color: var(--text-color);
+}
+
+.gradient-theme {
+  background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+}
+
+.border-theme {
+  border-color: var(--border-color);
+}
+
+.card-bg-theme {
+  background-color: var(--card-bg-color);
+}
