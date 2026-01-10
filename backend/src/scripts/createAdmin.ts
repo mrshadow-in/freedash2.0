@@ -30,25 +30,28 @@ const createAdmin = async () => {
             where: { OR: [{ email }, { username }] }
         });
 
+        const hashedPassword = await bcrypt.hash(password, 10);
+
         if (existingUser) {
-            console.log('User with this email or username already exists. Updating role to ADMIN...');
+            console.log('User with this email or username already exists. Updating role and password...');
             await prisma.user.update({
                 where: { id: existingUser.id },
-                data: { role: 'admin' }
+                data: {
+                    role: 'admin',
+                    password: hashedPassword
+                }
             });
-            console.log(`User ${username} is now an ADMIN.`);
+            console.log(`User ${username} is now an ADMIN with updated credentials.`);
         } else {
             console.log('Creating new admin user...');
-            const password_hash = await bcrypt.hash(password, 10);
-
             await prisma.user.create({
                 data: {
                     username,
                     email,
-                    password: password_hash,
+                    password: hashedPassword,
                     role: 'admin',
-                    coins: 1000, // Bonus for admin
-                    pteroUserId: 0 // Placeholder or managed by Pterodactyl hook
+                    coins: 1000,
+                    pteroUserId: 0
                 }
             });
             console.log(`Admin user ${username} created successfully.`);
