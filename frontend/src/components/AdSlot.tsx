@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+
 import { Plus, ExternalLink } from 'lucide-react';
 
 export type AdSlotSize = 'leaderboard' | 'banner' | 'square';

@@ -4,7 +4,7 @@ import api from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { Link } from 'react-router-dom';
 import ServerCard from '../components/ServerCard';
-import { Server, Plus, Coins, Menu, Activity, LogOut, Loader2, Info } from 'lucide-react';
+import { Server, Plus, Coins, Menu, Activity, LogOut, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import SocialLinks from '../components/SocialLinks';
