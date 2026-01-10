@@ -9,11 +9,14 @@ RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Copy Prisma schema (needed before npm install so postinstall can run)
+COPY prisma ./prisma
+
+# Install dependencies (postinstall will auto-generate Prisma client)
 RUN npm install -g typescript
 RUN npm install
 
-# Copy source code and Prisma schema
+# Copy rest of source code
 COPY . .
 
 # Build TypeScript
