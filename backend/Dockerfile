@@ -3,8 +3,8 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Install system dependencies (openssl is required for Prisma)
-RUN apk add --no-cache openssl
+# Install system dependencies (openssl and libc6-compat are required for Prisma)
+RUN apk add --no-cache openssl libc6-compat
 
 # Copy package files
 COPY package*.json ./
