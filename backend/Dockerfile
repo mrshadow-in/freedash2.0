@@ -16,6 +16,10 @@ COPY prisma ./prisma
 RUN npm install -g typescript
 RUN npm install
 
+# Fix Prisma binary permissions
+RUN chmod +x /app/node_modules/.bin/prisma || true
+RUN chmod +x /app/node_modules/prisma/build/index.js || true
+
 # Copy rest of source code
 COPY . .
 
