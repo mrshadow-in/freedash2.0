@@ -1,10 +1,10 @@
 # Backend Dockerfile
-FROM node:18-alpine
+FROM node:18-slim
 
 WORKDIR /app
 
-# Install system dependencies (openssl and libc6-compat are required for Prisma)
-RUN apk add --no-cache openssl libc6-compat
+# Install system dependencies (openssl is required for Prisma)
+RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package*.json ./
