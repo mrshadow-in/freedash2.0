@@ -123,7 +123,7 @@ const AdminDashboard = () => {
             <div className="relative z-10 bg-white/5 backdrop-blur-md border-b border-white/10">
                 <div className="container mx-auto px-6">
                     <div className="flex gap-2">
-                        {['settings', 'users', 'servers', 'plans', 'codes', 'customize', 'bot', 'social'].map((tab) => (
+                        {['settings', 'users', 'servers', 'plans', 'codes', 'ads', 'customize', 'bot', 'social'].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
@@ -152,6 +152,7 @@ const AdminDashboard = () => {
                     {activeTab === 'servers' && <ServersTab servers={servers} fetchServers={fetchServers} loading={loading} />}
                     {activeTab === 'plans' && <PlansTab plans={plans} fetchPlans={fetchPlans} loading={loading} />}
                     {activeTab === 'codes' && <CodesTab codes={codes} fetchCodes={fetchCodes} loading={loading} />}
+                    {activeTab === 'ads' && <AdsTab />}
                     {activeTab === 'customize' && <CustomizeTab refreshTheme={refreshTheme} />}
                     {activeTab === 'bot' && <BotTab settings={settings} fetchSettings={fetchSettings} />}
                     {activeTab === 'social' && <SocialTab settings={settings} fetchSettings={fetchSettings} />}
@@ -2566,4 +2567,175 @@ function SocialTab({ settings, fetchSettings }: any) {
     );
 }
 
+// Ads Management Tab
+function AdsTab() {
+    const [ads, setAds] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [prices, setPrices] = useState({
+        leaderboard: 50,
+        banner: 25,
+        square: 10
+    });
+
+    useEffect(() => {
+        // Mocking ad data for demonstration
+        const mockAds = [
+            {
+                _id: '1',
+                slotId: 'top-leaderboard',
+                title: 'Premium Hosting',
+                imageUrl: 'https://images.unsplash.com/photo-1558494949-ef010ca63628?w=728&h=90&fit=crop',
+                targetUrl: 'https://example.com',
+                status: 'active',
+                owner: 'Kiran',
+                clicks: 124,
+                expiry: new Date(Date.now() + 86400000 * 5).toLocaleDateString()
+            },
+            {
+                _id: '2',
+                slotId: 'middle-banner',
+                title: 'Join Our Discord',
+                imageUrl: 'https://images.unsplash.com/photo-1614680376593-902f74cf0d41?w=468&h=60&fit=crop',
+                targetUrl: 'https://discord.gg/example',
+                status: 'pending',
+                owner: 'User123',
+                clicks: 0,
+                expiry: 'N/A'
+            }
+        ];
+
+        setTimeout(() => {
+            setAds(mockAds);
+            setLoading(false);
+        }, 800);
+    }, []);
+
+    const handleApprove = (id: string) => {
+        setAds(ads.map(ad => ad._id === id ? { ...ad, status: 'active', expiry: new Date(Date.now() + 86400000 * 7).toLocaleDateString() } : ad));
+        toast.success('Ad approved!');
+    };
+
+    const handleReject = (id: string) => {
+        setAds(ads.filter(ad => ad._id !== id));
+        toast.error('Ad rejected');
+    };
+
+    const handlePriceChange = (slot: keyof typeof prices, value: string) => {
+        setPrices({ ...prices, [slot]: parseInt(value) || 0 });
+    };
+
+    const savePrices = () => {
+        toast.success('Ad prices updated!');
+    };
+
+    return (
+        <div className="space-y-8">
+            <div className="flex justify-between items-center">
+                <div>
+                    <h2 className="text-2xl font-bold text-white">Ad Marketplace Manager</h2>
+                    <p className="text-gray-400">Manage sponsored content and marketplace pricing</p>
+                </div>
+            </div>
+
+            {/* Pricing Controls */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {(Object.entries(prices) as [keyof typeof prices, number][]).map(([slot, price]) => (
+                    <div key={slot} className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                        <label className="block text-sm font-medium text-gray-400 mb-2 capitalize">{slot} Price (Coins/Week)</label>
+                        <div className="flex gap-3">
+                            <input
+                                type="number"
+                                value={price}
+                                onChange={(e) => handlePriceChange(slot, e.target.value)}
+                                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white font-mono"
+                            />
+                            <button
+                                onClick={savePrices}
+                                className="px-4 py-2 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 rounded-lg transition border border-purple-500/30"
+                            >
+                                Update
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Active/Pending Ads Table */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+                <div className="p-6 border-b border-white/10">
+                    <h3 className="text-lg font-bold text-white">Recent Ad Submissions</h3>
+                </div>
+                {loading ? (
+                    <div className="p-12 text-center text-gray-500">Loading ads...</div>
+                ) : (
+                    <table className="w-full">
+                        <thead className="bg-black/30 text-xs text-gray-400 uppercase tracking-wider">
+                            <tr>
+                                <th className="text-left p-4">Ad Preview</th>
+                                <th className="text-left p-4">Slot</th>
+                                <th className="text-left p-4">Owner</th>
+                                <th className="text-left p-4">Stats</th>
+                                <th className="text-left p-4">Status</th>
+                                <th className="text-left p-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                            {ads.map(ad => (
+                                <tr key={ad._id} className="hover:bg-white/5 transition">
+                                    <td className="p-4">
+                                        <div className="flex items-center gap-3">
+                                            <img src={ad.imageUrl} alt="" className="h-10 w-20 object-cover rounded border border-white/10" />
+                                            <div>
+                                                <div className="text-sm font-bold text-white">{ad.title}</div>
+                                                <div className="text-xs text-blue-400 truncate max-w-[150px]">{ad.targetUrl}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="p-4">
+                                        <span className="text-xs font-mono bg-white/10 px-2 py-1 rounded text-gray-300">
+                                            {ad.slotId}
+                                        </span>
+                                    </td>
+                                    <td className="p-4 text-sm text-gray-400">{ad.owner}</td>
+                                    <td className="p-4">
+                                        <div className="text-sm text-white">{ad.clicks} Clicks</div>
+                                        <div className="text-xs text-gray-500">Exp: {ad.expiry}</div>
+                                    </td>
+                                    <td className="p-4">
+                                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter ${ad.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+                                            }`}>
+                                            {ad.status}
+                                        </span>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="flex gap-2">
+                                            {ad.status === 'pending' && (
+                                                <button
+                                                    onClick={() => handleApprove(ad._id)}
+                                                    className="p-2 bg-green-500/20 hover:bg-green-500/40 text-green-400 rounded-lg transition"
+                                                    title="Approve"
+                                                >
+                                                    ✅
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => handleReject(ad._id)}
+                                                className="p-2 bg-red-500/20 hover:bg-red-500/40 text-red-400 rounded-lg transition"
+                                                title="Reject/Delete"
+                                            >
+                                                🗑️
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
+            </div>
+        </div>
+    );
+}
+
 export default AdminDashboard;
+

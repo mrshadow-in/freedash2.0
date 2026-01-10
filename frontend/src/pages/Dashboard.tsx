@@ -4,24 +4,41 @@ import api from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { Link } from 'react-router-dom';
 import ServerCard from '../components/ServerCard';
-import { Plus, Coins, LogOut, Server, Activity, Loader2, Clock, Menu } from 'lucide-react';
+import { Server, Plus, Coins, Menu, Activity, LogOut, Loader2, Info } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import SocialLinks from '../components/SocialLinks';
 import ConfirmDialog from '../components/ConfirmDialog';
 import MobileMenu from '../components/MobileMenu';
+import AdSlot from '../components/AdSlot';
+import AdPurchaseModal from '../components/AdPurchaseModal';
 
 const Dashboard = () => {
     const { user: authUser, logout, setUser } = useAuthStore();
     const queryClient = useQueryClient();
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showRedeemModal, setShowRedeemModal] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [serverName, setServerName] = useState('');
     const [redeemCode, setRedeemCode] = useState('');
     const [selectedPlanId, setSelectedPlanId] = useState<string>('');
-    const [showAllServers, setShowAllServers] = useState(false); // Admin toggle
     const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; serverId: string; serverName: string }>({ show: false, serverId: '', serverName: '' });
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [showAdModal, setShowAdModal] = useState(false);
+    const [selectedAdSlot, setSelectedAdSlot] = useState<string | undefined>(undefined);
+
+    const openAdPurchase = (slotId?: string) => {
+        setSelectedAdSlot(slotId);
+        setShowAdModal(true);
+    };
+
+    // Mock Ad Data - In a real app, this would come from an API
+    const activeAds = {
+        'top-leaderboard': {
+            imageUrl: 'https://img.freepik.com/free-vector/modern-gaming-banner-template_23-2148705291.jpg',
+            redirectUrl: 'https://discord.gg/yourserver',
+            title: 'Join our Gaming Community!'
+        }
+    };
 
 
     // Fetch User Data (with polling for real-time updates)
@@ -67,16 +84,6 @@ const Dashboard = () => {
         }
     });
 
-    // Fetch All Servers (admin only)
-    const { data: allServers } = useQuery({
-        queryKey: ['allServers'],
-        queryFn: async () => {
-            const res = await api.get('/admin/servers');
-            return res.data?.servers || []; // API returns { servers, total, page, pages }
-        },
-        enabled: user?.role === 'admin' // Only fetch if user is admin
-    });
-
     // Create Server Mutation
     const createServerMutation = useMutation({
         mutationFn: async (data: { name: string, planId: string }) => {
@@ -116,7 +123,7 @@ const Dashboard = () => {
             queryClient.invalidateQueries({ queryKey: ['user'] });
             setShowRedeemModal(false);
             setRedeemCode('');
-            toast.success(`Code redeemed! +${response.data.added} coins 🎉`);
+            toast.success(`Code redeemed! + ${response.data.added} coins 🎉`);
         },
         onError: (error: any) => {
             toast.error(error.response?.data?.message || 'Invalid code');
@@ -185,13 +192,13 @@ const Dashboard = () => {
                                 <div className="text-xs text-purple-300 font-medium bg-purple-500/10 px-2 py-0.5 rounded-full inline-block mt-0.5 capitalize border border-purple-500/20">{user?.role}</div>
                             </div>
                             {user?.role === 'admin' && (
-                                <a href="/admin" className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg text-sm font-bold hover:opacity-90 transition">
+                                <Link to="/admin" className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg text-sm font-bold hover:opacity-90 transition">
                                     Admin Panel
-                                </a>
+                                </Link>
                             )}
-                            <a href="/account" className="px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 rounded-lg text-sm font-bold transition">
+                            <Link to="/account" className="px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 rounded-lg text-sm font-bold transition">
                                 My Account
-                            </a>
+                            </Link>
                             <button onClick={logout} className="p-2.5 hover:bg-red-500/10 hover:text-red-400 rounded-xl text-gray-400 transition">
                                 <LogOut size={20} />
                             </button>
@@ -200,16 +207,13 @@ const Dashboard = () => {
 
                     {/* Mobile: Balance + Hamburger */}
                     <div className="flex lg:hidden items-center gap-3">
-                        {/* Mobile Balance */}
-                        <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg">
+                        <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-xl backdrop-blur-md mr-2">
                             <Coins size={14} className="text-yellow-400" />
                             <span className="font-bold text-white text-sm">{user?.coins || 0}</span>
                         </div>
-
-                        {/* Hamburger Button */}
                         <button
                             onClick={() => setMobileMenuOpen(true)}
-                            className="p-2 hover:bg-white/10 rounded-lg transition"
+                            className="p-2 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition shadow-lg"
                         >
                             <Menu size={24} className="text-white" />
                         </button>
@@ -225,267 +229,211 @@ const Dashboard = () => {
                 logout={logout}
             />
 
-            <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
-                <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
-                    <div>
-                        <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">My Overview</h2>
-                        <p className="text-sm sm:text-base text-gray-400">Manage your high-performance game servers</p>
-                    </div>
-                    <div className="flex gap-3 w-full md:w-auto">
-                        <Link to="/afk" className="flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white px-6 py-3 rounded-xl font-bold transition w-full md:w-auto">
-                            <Clock size={20} className="text-green-400" />
-                            AFK Zone
-                        </Link>
-                        <button
-                            onClick={() => setShowRedeemModal(true)}
-                            className="flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-bold transition shadow-lg shadow-green-500/25 transform hover:scale-[1.02] active:scale-[0.98] w-full md:w-auto"
-                        >
-                            <Coins size={20} />
-                            Redeem Code
-                        </button>
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+                {/* Top Ad Slot */}
+                <div className="flex justify-center mb-10">
+                    <AdSlot
+                        id="top-leaderboard"
+                        size="leaderboard"
+                        activeAd={activeAds['top-leaderboard']}
+                        onBuyClick={openAdPurchase}
+                    />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-white/5 backdrop-blur-xl p-6 rounded-3xl border border-white/10 shadow-xl group hover:border-purple-500/30 transition-all"
+                    >
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-3 bg-purple-500/20 rounded-2xl group-hover:scale-110 transition-transform">
+                                <Server className="text-purple-400" size={24} />
+                            </div>
+                            <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Servers</div>
+                        </div>
+                        <div className="text-3xl font-bold font-mono text-white mb-1">{servers?.length || 0}</div>
+                        <div className="text-sm text-gray-500">Active Worlds</div>
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="bg-white/5 backdrop-blur-xl p-6 rounded-3xl border border-white/10 shadow-xl group hover:border-blue-500/30 transition-all"
+                    >
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-3 bg-blue-500/20 rounded-2xl group-hover:scale-110 transition-transform">
+                                <Activity className="text-blue-400" size={24} />
+                            </div>
+                            <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Global Status</div>
+                        </div>
+                        <div className="text-xl font-bold text-green-400 mb-1 flex items-center gap-2">
+                            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                            Operational
+                        </div>
+                        <div className="text-sm text-gray-500">All systems online</div>
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="bg-white/5 backdrop-blur-xl p-6 rounded-3xl border border-white/10 shadow-xl group hover:border-yellow-500/30 transition-all"
+                    >
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-3 bg-yellow-500/20 rounded-2xl group-hover:scale-110 transition-transform">
+                                <Coins className="text-yellow-400" size={24} />
+                            </div>
+                            <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Coins</div>
+                        </div>
+                        <div className="text-3xl font-bold font-mono text-white mb-1">{user?.coins || 0}</div>
+                        <div className="text-sm text-gray-500">Available Balance</div>
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                        className="bg-white/5 backdrop-blur-xl p-6 rounded-3xl border border-white/10 shadow-xl group hover:border-green-500/30 transition-all"
+                    >
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-3 bg-green-500/20 rounded-2xl group-hover:scale-110 transition-transform">
+                                <Plus className="text-green-400" size={24} />
+                            </div>
+                            <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Quick Actions</div>
+                        </div>
                         <button
                             onClick={() => setShowCreateModal(true)}
-                            className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white px-6 py-3 rounded-xl font-bold transition shadow-lg shadow-purple-500/25 transform hover:scale-[1.02] active:scale-[0.98] w-full md:w-auto"
+                            className="w-full py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/30 rounded-xl font-bold transition"
                         >
-                            <Plus size={20} />
-                            Deploy Server
+                            Create Server
                         </button>
+                    </motion.div>
+                </div>
+
+                {/* Middle Ad Slot */}
+                <div className="flex justify-center mb-12">
+                    <AdSlot
+                        id="middle-banner"
+                        size="banner"
+                        onBuyClick={openAdPurchase}
+                    />
+                </div>
+
+                {/* Servers Section Header */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4 sm:gap-0">
+                    <div>
+                        <h2 className="text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
+                            Your Servers
+                            {isLoading && <Loader2 className="animate-spin text-purple-400" size={24} />}
+                        </h2>
+                        <p className="text-gray-400 font-medium mt-1">Manage and monitor your deployments</p>
                     </div>
                 </div>
 
-                {/* Stats Overview */}
-                {!isLoading && (
-                    <div className="grid grid-cols-1 gap-6 mb-10">
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 }}
-                            className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col backdrop-blur-sm"
-                        >
-                            <div className="flex items-center gap-3 mb-4 text-gray-400">
-                                <div className="p-2 bg-green-500/10 rounded-lg text-green-400">
-                                    <Activity size={18} />
-                                </div>
-                                <span className="text-sm font-medium">Active Servers</span>
+                {/* Servers Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-8">
+                    {isLoading ? (
+                        [1, 2, 3].map((i) => (
+                            <div key={i} className="bg-white/5 border border-white/10 rounded-3xl h-[280px] animate-pulse shadow-lg" />
+                        ))
+                    ) : servers?.length === 0 ? (
+                        <div className="col-span-full bg-white/5 border border-white/10 rounded-3xl p-12 text-center backdrop-blur-md">
+                            <div className="w-20 h-20 bg-purple-500/10 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                                <Server className="text-purple-400" size={40} />
                             </div>
-                            <span className="text-4xl font-bold text-white">{servers?.length || 0}</span>
-                        </motion.div>
-                    </div>
-                )}
-
-                {/* Server Grid */}
-                <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                        <Server size={20} className="text-purple-400" />
-                        {showAllServers ? "All Users' Servers" : "Your Instances"}
-                    </h3>
-                    {user?.role === 'admin' && (
-                        <button
-                            onClick={() => setShowAllServers(!showAllServers)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${showAllServers
-                                ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30'
-                                : 'bg-purple-500/20 text-purple-400 hover:bg-purple-500/30'
-                                }`}
-                        >
-                            {showAllServers ? '← My Servers' : 'See All Servers →'}
-                        </button>
+                            <h3 className="text-2xl font-bold text-white mb-3">No servers found</h3>
+                            <p className="text-gray-400 mb-8 max-w-md mx-auto">You haven't deployed any servers yet. Get started by creating your first world!</p>
+                            <button
+                                onClick={() => setShowCreateModal(true)}
+                                className="px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl font-extrabold text-white shadow-xl shadow-purple-500/25 hover:opacity-90 transition-all scale-105 active:scale-100"
+                            >
+                                Deploy Server Now
+                            </button>
+                        </div>
+                    ) : (
+                        servers?.map((server: any) => (
+                            <ServerCard
+                                key={server._id}
+                                id={server._id}
+                                name={server.name}
+                                status={server.status}
+                                planName={server.planId?.name || 'Standard Plan'}
+                                serverIp={server.serverIp}
+                                ramMb={server.ramMb || server.planId?.ramMb}
+                                diskMb={server.diskMb || server.planId?.diskMb}
+                                cpuCores={server.cpuCores || server.planId?.cpuCores}
+                                eggImage={server.planId?.eggImage}
+                                onDelete={(id) => deleteServerMutation.mutate(id)}
+                            />
+                        ))
                     )}
                 </div>
 
-                {isLoading ? (
-                    <div className="flex items-center justify-center py-20">
-                        <Loader2 className="animate-spin text-purple-500" size={40} />
-                    </div>
-                ) : showAllServers && user?.role === 'admin' ? (
-                    // All Servers Table for Admin
-                    <div className="border border-white/10 rounded-2xl overflow-hidden bg-white/5 backdrop-blur-xl">
-                        <table className="w-full">
-                            <thead className="bg-black/30">
-                                <tr className="text-gray-400 text-sm">
-                                    <th className="text-left p-4">Server Name</th>
-                                    <th className="text-left p-4">Owner</th>
-                                    <th className="text-left p-4">Status</th>
-                                    <th className="text-left p-4">RAM</th>
-                                    <th className="text-left p-4">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {allServers && allServers.length > 0 ? (
-                                    allServers.map((server: any) => (
-                                        <tr key={server._id} className="border-t border-white/5 hover:bg-white/5 transition">
-                                            <td className="p-4 font-medium text-white">{server.name}</td>
-                                            <td className="p-4 text-gray-400">{server.ownerId?.username || 'Unknown'}</td>
-                                            <td className="p-4">
-                                                <span className={`px-2 py-1 rounded text-xs font-medium ${server.status === 'active' && !server.isSuspended ? 'bg-green-500/20 text-green-400' :
-                                                    server.isSuspended ? 'bg-red-500/20 text-red-400' :
-                                                        'bg-yellow-500/20 text-yellow-400'
-                                                    }`}>
-                                                    {server.isSuspended ? 'Suspended' : server.status}
-                                                </span>
-                                            </td>
-                                            <td className="p-4 text-gray-400">{server.ramMb} MB</td>
-                                            <td className="p-4 flex gap-2">
-                                                <Link
-                                                    to={`/server/${server._id}`}
-                                                    className="px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 rounded text-sm text-blue-400 transition"
-                                                >
-                                                    Manage
-                                                </Link>
-                                                <button
-                                                    onClick={() => setDeleteConfirm({ show: true, serverId: server._id, serverName: server.name })}
-                                                    className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 rounded text-sm text-red-400 transition"
-                                                >
-                                                    Delete
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan={5} className="p-8 text-center text-gray-400">
-                                            No servers found
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <AnimatePresence>
-                            {servers?.map((srv: any) => (
-                                <motion.div
-                                    key={srv._id}
-                                    initial={{ opacity: 0, scale: 0.95 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.9 }}
-                                >
-                                    <ServerCard
-                                        id={srv._id}
-                                        name={srv.name}
-                                        status={srv.status}
-                                        planName={srv.planId?.name || 'Standard Plan'}
-                                        serverIp={srv.serverIp || 'Fetching...'}
-                                        ramMb={srv.ramMb || srv.planId?.ramMb || 1024}
-                                        diskMb={srv.diskMb || srv.planId?.diskMb || 5120}
-                                        cpuCores={srv.cpuCores || srv.planId?.cpuCores || 1}
-                                        eggImage={srv.planId?.eggImage || ''}
-                                        onDelete={(id) => deleteServerMutation.mutate(id)}
-                                    />
-                                </motion.div>
-                            ))}
-                        </AnimatePresence>
-
-                        {servers?.length === 0 && (
-                            <div className="col-span-full py-24 rounded-3xl border-2 border-dashed border-white/10 bg-white/5 flex flex-col items-center justify-center text-center backdrop-blur-sm">
-                                <div className="w-20 h-20 bg-gradient-to-tr from-purple-500/20 to-blue-500/20 rounded-full flex items-center justify-center mb-6 ring-1 ring-white/10">
-                                    <Server size={32} className="text-purple-400" />
-                                </div>
-                                <h3 className="text-xl font-bold text-white mb-2">No active servers</h3>
-                                <p className="text-gray-400 max-w-sm mb-8">You haven't deployed any game servers yet. Use your coins to start playing!</p>
-                                <button
-                                    onClick={() => setShowCreateModal(true)}
-                                    className="text-purple-400 font-semibold hover:text-purple-300 transition flex items-center gap-2"
-                                >
-                                    Deploy your first server <Plus size={16} />
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-
-            {/* Create Modal */}
-            {showCreateModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div
-                        className="absolute inset-0 bg-black/70 backdrop-blur-md"
-                        onClick={() => setShowCreateModal(false)}
-                    />
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9, rotateX: -10 }}
-                        animate={{ opacity: 1, scale: 1, rotateX: 0 }}
-                        className="relative w-full max-w-lg overflow-hidden"
-                        style={{ perspective: '1000px' }}
+                <div className="mt-12 group">
+                    <button
+                        onClick={() => setShowRedeemModal(true)}
+                        className="bg-white/5 border border-white/10 rounded-3xl p-8 block w-full hover:bg-white/[0.07] transition-all hover:border-yellow-500/30 group-hover:translate-y-[-4px]"
                     >
-                        {/* Minecraft Block Background */}
-                        <div className="relative bg-gradient-to-br from-[#2d5016] via-[#1a3010] to-[#0f1f08] border-4 border-[#8B4513] rounded-lg shadow-2xl p-8">
-                            {/* Minecraft Grass Block Top Border */}
-                            <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-green-600 to-emerald-700" />
-
-                            {/* Dirt Pattern Background */}
-                            <div
-                                className="absolute inset-0 opacity-10 pointer-events-none"
-                                style={{
-                                    backgroundImage: `
-                                        repeating-linear-gradient(0deg, #8B4513 0px, #8B4513 2px, transparent 2px, transparent 8px),
-                                        repeating-linear-gradient(90deg, #8B4513 0px, #8B4513 2px, transparent 2px, transparent 8px)
-                                    `,
-                                    backgroundSize: '8px 8px'
-                                }}
-                            />
-
-                            {/* Animated Floating Blocks */}
-                            {[...Array(6)].map((_, i) => (
-                                <motion.div
-                                    key={i}
-                                    className="absolute w-4 h-4 bg-green-500/30 border border-green-600/50"
-                                    initial={{
-                                        x: `${Math.random() * 100}%`,
-                                        y: '110%',
-                                        rotate: 0
-                                    }}
-                                    animate={{
-                                        y: '-10%',
-                                        rotate: 360,
-                                        opacity: [0, 0.8, 0]
-                                    }}
-                                    transition={{
-                                        duration: 3 + Math.random() * 2,
-                                        repeat: Infinity,
-                                        delay: Math.random() * 2,
-                                        ease: 'linear'
-                                    }}
-                                />
-                            ))}
-
-                            {/* Header with Pickaxe Icon */}
-                            <div className="flex justify-between items-center mb-6 relative">
-                                <div className="flex items-center gap-3">
-                                    <div className="text-3xl">⛏️</div>
-                                    <h3 className="text-2xl font-bold text-green-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-wide" style={{ textShadow: '2px 2px 0 #1a3010' }}>
-                                        Craft Server
-                                    </h3>
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+                            <div className="flex items-center gap-6">
+                                <div className="w-16 h-16 bg-yellow-500/10 rounded-3xl flex items-center justify-center text-yellow-500 ring-4 ring-yellow-500/10">
+                                    <Plus size={32} />
                                 </div>
-                                <button
-                                    onClick={() => setShowCreateModal(false)}
-                                    className="text-red-400 hover:text-red-300 transition bg-red-900/30 hover:bg-red-900/50 p-2 rounded border-2 border-red-700/50"
-                                >
-                                    <Plus className="rotate-45" size={20} />
-                                </button>
+                                <div className="text-left">
+                                    <h3 className="text-2xl font-bold text-white mb-2 underline decoration-yellow-500/30 underline-offset-8">Redeem World Code</h3>
+                                    <p className="text-gray-400 font-medium">Have a gift code? Redeem it here for coins or special rewards</p>
+                                </div>
                             </div>
+                            <span className="px-8 py-3 bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 rounded-2xl font-bold shadow-lg shadow-yellow-500/5 group-hover:bg-yellow-500/20 transition-all">
+                                Redeem Now
+                            </span>
+                        </div>
+                    </button>
+                </div>
 
-                            {/* Content */}
-                            <div className="space-y-6 relative">
-                                {/* Server Name Input */}
-                                <div>
-                                    <label className="block text-sm font-bold text-yellow-300 mb-2 flex items-center gap-2" style={{ textShadow: '1px 1px 0 #1a3010' }}>
-                                        <span>📝</span> World Name
-                                    </label>
+                {/* Bottom Ad Slot */}
+                <div className="flex justify-center mt-20 mb-10">
+                    <AdSlot
+                        id="sidebar-square"
+                        size="square"
+                        onBuyClick={openAdPurchase}
+                    />
+                </div>
+            </main>
+
+            {/* Create Server Modal */}
+            <AnimatePresence>
+                {showCreateModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/80 backdrop-blur-xl"
+                            onClick={() => setShowCreateModal(false)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 30 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 30 }}
+                            className="relative bg-[#130b2e] border border-white/10 w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden"
+                        >
+                            <div className="p-10">
+                                <div className="flex justify-between items-center mb-10">
+                                    <h3 className="text-3xl font-extrabold text-white tracking-tight">Create New World</h3>
+                                    <button onClick={() => setShowCreateModal(false)} className="text-gray-500 hover:text-white transition bg-white/5 p-3 rounded-full hover:bg-white/10">
+                                        <Plus className="rotate-45" size={24} />
+                                    </button>
+                                </div>
+                                <div className="space-y-8">
                                     <input
                                         value={serverName}
                                         onChange={(e) => setServerName(e.target.value)}
-                                        className="w-full bg-black/40 border-4 border-[#654321] rounded-lg p-3 text-white font-bold outline-none focus:border-yellow-600 transition placeholder-gray-500 shadow-inner"
-                                        placeholder="My Survival World"
-                                        style={{ textShadow: '1px 1px 0 black' }}
+                                        className="w-full bg-black/40 border border-white/10 rounded-2xl p-5 text-white outline-none focus:border-purple-500 transition shadow-inner font-medium text-lg placeholder:text-gray-600"
+                                        placeholder="My Awesome Server..."
                                     />
-                                </div>
-
-                                {/* Plan Selection */}
-                                <div>
-                                    <label className="block text-sm font-bold text-yellow-300 mb-3 flex items-center gap-2" style={{ textShadow: '1px 1px 0 #1a3010' }}>
-                                        <span>💎</span> Choose Resources
-                                    </label>
                                     <div className="space-y-3">
                                         {plans && plans.length > 0 ? plans.map((plan: any, index: number) => (
                                             <motion.div
@@ -493,10 +441,10 @@ const Dashboard = () => {
                                                 whileHover={{ scale: 1.02, x: 5 }}
                                                 whileTap={{ scale: 0.98 }}
                                                 onClick={() => setSelectedPlanId(plan._id)}
-                                                className={`border-4 p-4 rounded-lg flex justify-between items-center cursor-pointer relative overflow-hidden transition ${selectedPlanId === plan._id
+                                                className={`border - 4 p - 4 rounded - lg flex justify - between items - center cursor - pointer relative overflow - hidden transition ${selectedPlanId === plan._id
                                                     ? 'border-yellow-500 bg-gradient-to-r from-yellow-900/40 to-amber-900/40 shadow-lg shadow-yellow-500/50'
                                                     : 'border-[#654321] bg-gradient-to-r from-[#3d2817]/60 to-[#2d1f12]/60 hover:border-yellow-700'
-                                                    }`}
+                                                    } `}
                                             >
                                                 {/* Pickaxe Icon for selected */}
                                                 {selectedPlanId === plan._id && (
@@ -531,7 +479,7 @@ const Dashboard = () => {
                                                 <div className="text-right relative flex flex-col items-end">
                                                     <div className="flex items-center gap-1">
                                                         <span className="text-yellow-400 text-xl">🪙</span>
-                                                        <span className={`font-extrabold text-2xl ${selectedPlanId === plan._id ? 'text-yellow-300' : 'text-yellow-500'}`} style={{ textShadow: '2px 2px 0 rgba(0,0,0,0.5)' }}>
+                                                        <span className={`font - extrabold text - 2xl ${selectedPlanId === plan._id ? 'text-yellow-300' : 'text-yellow-500'} `} style={{ textShadow: '2px 2px 0 rgba(0,0,0,0.5)' }}>
                                                             {plan.priceCoins}
                                                         </span>
                                                     </div>
@@ -544,103 +492,85 @@ const Dashboard = () => {
                                             </div>
                                         )}
                                     </div>
-                                </div>
-
-                                {/* Action Buttons */}
-                                <div className="pt-4 flex gap-3">
-                                    <button
-                                        onClick={() => setShowCreateModal(false)}
-                                        className="flex-1 py-3 text-sm font-bold text-red-200 bg-red-900/40 hover:bg-red-900/60 border-4 border-red-800/50 rounded-lg transition shadow-lg"
-                                        style={{ textShadow: '1px 1px 0 black' }}
-                                    >
-                                        ❌ Cancel
-                                    </button>
-                                    <motion.button
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                        onClick={() => createServerMutation.mutate({
-                                            name: serverName,
-                                            planId: selectedPlanId
-                                        })}
-                                        disabled={!serverName || !selectedPlanId || createServerMutation.isPending}
-                                        className="flex-[2] py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-lg text-sm font-extrabold shadow-lg border-4 border-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 relative overflow-hidden"
-                                        style={{ textShadow: '2px 2px 0 rgba(0,0,0,0.6)' }}
-                                    >
-                                        {createServerMutation.isPending ? (
-                                            <>
-                                                {/* Animated Minecart */}
-                                                <motion.div
-                                                    animate={{ x: [-100, 400] }}
-                                                    transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                                                    className="absolute text-2xl"
-                                                >
-                                                    🛤️
-                                                </motion.div>
-                                                <span className="relative z-10">DEPLOYING...</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                🚀 Deploy World
-                                            </>
-                                        )}
-                                    </motion.button>
+                                    <div className="pt-4 flex gap-3">
+                                        <button onClick={() => setShowCreateModal(false)} className="flex-1 py-3 text-sm font-bold text-red-200 bg-red-900/40 hover:bg-red-900/60 border-4 border-red-800/50 rounded-lg transition shadow-lg">❌ Cancel</button>
+                                        <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={() => createServerMutation.mutate({ name: serverName, planId: selectedPlanId })}
+                                            disabled={!serverName || !selectedPlanId || createServerMutation.isPending}
+                                            className="flex-[2] py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-lg text-sm font-extrabold shadow-lg border-4 border-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 relative overflow-hidden"
+                                            style={{ textShadow: '2px 2px 0 rgba(0,0,0,0.6)' }}
+                                        >
+                                            {createServerMutation.isPending ? (
+                                                <>
+                                                    {/* Animated Minecart */}
+                                                    <motion.div
+                                                        animate={{ x: [-100, 400] }}
+                                                        transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                                                        className="absolute text-2xl"
+                                                    >
+                                                        🛤️
+                                                    </motion.div>
+                                                    <span className="relative z-10">DEPLOYING...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    🚀 Deploy World
+                                                </>
+                                            )}
+                                        </motion.button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </motion.div>
-                </div>
-            )}
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             {/* Redeem Code Modal */}
-            {showRedeemModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div
-                        className="absolute inset-0 bg-black/60 backdrop-blur-md"
-                        onClick={() => setShowRedeemModal(false)}
-                    />
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        className="relative bg-[#130b2e] border border-white/10 w-full max-w-md p-8 rounded-2xl shadow-2xl overflow-hidden"
-                    >
-                        {/* Modal Glow */}
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/20 rounded-full blur-[60px] pointer-events-none -mt-10 -mr-10" />
-
-                        <div className="flex justify-between items-center mb-6 relative">
-                            <h3 className="text-2xl font-bold text-white">Redeem Code</h3>
-                            <button onClick={() => setShowRedeemModal(false)} className="text-gray-400 hover:text-white transition bg-white/5 p-1 rounded-full"><Plus className="rotate-45" size={20} /></button>
-                        </div>
-
-                        <div className="space-y-6 relative">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">Enter Code</label>
+            <AnimatePresence>
+                {showRedeemModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-md"
+                            onClick={() => setShowRedeemModal(false)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="relative bg-[#130b2e] border border-white/10 w-full max-w-md p-8 rounded-2xl shadow-2xl overflow-hidden"
+                        >
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-2xl font-bold text-white">Redeem Code</h3>
+                                <button onClick={() => setShowRedeemModal(false)} className="text-gray-500 hover:text-white transition bg-white/5 p-1 rounded-full"><Plus className="rotate-45" size={20} /></button>
+                            </div>
+                            <div className="space-y-6">
                                 <input
                                     value={redeemCode}
                                     onChange={(e) => setRedeemCode(e.target.value)}
-                                    className="w-full bg-black/30 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500/50 transition placeholder-gray-600 uppercase tracking-wider font-mono"
+                                    className="w-full bg-black/30 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-green-500 transition placeholder-gray-600 uppercase tracking-wider font-mono"
                                     placeholder="ENTER-CODE-HERE"
                                 />
+                                <div className="pt-4 flex gap-3">
+                                    <button onClick={() => setShowRedeemModal(false)} className="flex-1 py-3 text-sm font-semibold text-gray-400 hover:bg-white/5 rounded-xl transition">Cancel</button>
+                                    <button
+                                        onClick={() => redeemMutation.mutate(redeemCode)}
+                                        disabled={!redeemCode || redeemMutation.isPending}
+                                        className="flex-[2] py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-green-500/25 transition"
+                                    >
+                                        {redeemMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : 'Redeem'}
+                                    </button>
+                                </div>
                             </div>
-
-                            <div className="pt-4 flex gap-3">
-                                <button
-                                    onClick={() => setShowRedeemModal(false)}
-                                    className="flex-1 py-3 text-sm font-semibold text-gray-400 hover:bg-white/5 rounded-xl transition"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={() => redeemMutation.mutate(redeemCode)}
-                                    disabled={!redeemCode || redeemMutation.isPending}
-                                    className="flex-[2] py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-green-500/25 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                >
-                                    {redeemMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : 'Redeem'}
-                                </button>
-                            </div>
-                        </div>
-                    </motion.div>
-                </div>
-            )}
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             {/* Delete Confirmation Dialog */}
             <ConfirmDialog
@@ -648,10 +578,17 @@ const Dashboard = () => {
                 onClose={() => setDeleteConfirm({ show: false, serverId: '', serverName: '' })}
                 onConfirm={() => handleAdminDeleteServer(deleteConfirm.serverId)}
                 title="Delete Server?"
-                message={`Are you sure you want to delete the server "${deleteConfirm.serverName}"? This action cannot be undone and all data will be permanently lost.`}
+                message={`Are you sure you want to delete the server "${deleteConfirm.serverName}" ? This action cannot be undone and all data will be permanently lost.`}
                 confirmText="Delete Server"
                 cancelText="Cancel"
                 type="danger"
+            />
+
+            {/* Ad Purchase Modal */}
+            <AdPurchaseModal
+                isOpen={showAdModal}
+                onClose={() => setShowAdModal(false)}
+                initialSlotId={selectedAdSlot}
             />
         </div>
     );
