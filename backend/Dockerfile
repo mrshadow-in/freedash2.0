@@ -16,9 +16,6 @@ RUN npm install
 # Copy source code and Prisma schema
 COPY . .
 
-# Generate Prisma Client (after schema is copied)
-RUN npx --yes prisma generate
-
 # Build TypeScript
 RUN npm run build
 
