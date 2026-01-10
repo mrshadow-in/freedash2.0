@@ -6,7 +6,6 @@ import api from '../api/client';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useTheme } from '../context/ThemeContext';
-import PremiumParallax from '../components/PremiumParallax';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -87,76 +86,78 @@ const AdminDashboard = () => {
     }, [activeTab]);
 
     return (
-        <PremiumParallax>
-            <div className="min-h-screen text-white">
-                {/* Parallax handles background now */}
+        <div className="min-h-screen text-white bg-[#0c0229]">
+            {/* Ambient Background Elements */}
+            <div className="fixed inset-0 pointer-events-none overflow-hidden">
+                <div className="absolute top-[10%] left-[-10%] w-[40%] h-[40%] bg-purple-600/10 rounded-full blur-[120px]" />
+                <div className="absolute bottom-[10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px]" />
+            </div>
 
-                {/* Header */}
-                <div className="relative z-10 bg-white/5 backdrop-blur-md border-b border-white/10">
-                    <div className="container mx-auto px-6 py-4">
-                        <div className="flex items-center justify-between">
-                            <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-blue-500 bg-clip-text text-transparent">
-                                Admin Panel
-                            </h1>
-                            <div className="flex items-center gap-4">
-                                <span className="text-gray-400">Welcome, {user?.username}</span>
-                                <button
-                                    onClick={() => navigate('/')}
-                                    className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition"
-                                >
-                                    Back to Dashboard
-                                </button>
-                                <button
-                                    onClick={logout}
-                                    className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition"
-                                >
-                                    Logout
-                                </button>
-                            </div>
+            {/* Header */}
+            <div className="relative z-10 bg-white/5 backdrop-blur-md border-b border-white/10">
+                <div className="container mx-auto px-6 py-4">
+                    <div className="flex items-center justify-between">
+                        <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-blue-500 bg-clip-text text-transparent">
+                            Admin Panel
+                        </h1>
+                        <div className="flex items-center gap-4">
+                            <span className="text-gray-400">Welcome, {user?.username}</span>
+                            <button
+                                onClick={() => navigate('/')}
+                                className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition"
+                            >
+                                Back to Dashboard
+                            </button>
+                            <button
+                                onClick={logout}
+                                className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition"
+                            >
+                                Logout
+                            </button>
                         </div>
                     </div>
-                </div>
-
-                {/* Tabs */}
-                <div className="relative z-10 bg-white/5 backdrop-blur-md border-b border-white/10">
-                    <div className="container mx-auto px-6">
-                        <div className="flex gap-2">
-                            {['settings', 'users', 'servers', 'plans', 'codes', 'customize', 'bot', 'social'].map((tab) => (
-                                <button
-                                    key={tab}
-                                    onClick={() => setActiveTab(tab)}
-                                    className={`px-6 py-3 capitalize transition ${activeTab === tab
-                                        ? 'border-b-2 border-purple-500 text-white'
-                                        : 'text-gray-400 hover:text-white'
-                                        }`}
-                                >
-                                    {tab}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Content */}
-                <div className="relative z-10 container mx-auto px-6 py-8">
-                    <motion.div
-                        key={activeTab}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-6"
-                    >
-                        {activeTab === 'settings' && <SettingsTab settings={settings} fetchSettings={fetchSettings} refreshTheme={refreshTheme} />}
-                        {activeTab === 'users' && <UsersTab users={users} fetchUsers={fetchUsers} loading={loading} />}
-                        {activeTab === 'servers' && <ServersTab servers={servers} fetchServers={fetchServers} loading={loading} />}
-                        {activeTab === 'plans' && <PlansTab plans={plans} fetchPlans={fetchPlans} loading={loading} />}
-                        {activeTab === 'codes' && <CodesTab codes={codes} fetchCodes={fetchCodes} loading={loading} />}
-                        {activeTab === 'customize' && <CustomizeTab refreshTheme={refreshTheme} />}
-                        {activeTab === 'bot' && <BotTab settings={settings} fetchSettings={fetchSettings} />}
-                        {activeTab === 'social' && <SocialTab settings={settings} fetchSettings={fetchSettings} />}
-                    </motion.div>
                 </div>
             </div>
-        </PremiumParallax>
+
+            {/* Tabs */}
+            <div className="relative z-10 bg-white/5 backdrop-blur-md border-b border-white/10">
+                <div className="container mx-auto px-6">
+                    <div className="flex gap-2">
+                        {['settings', 'users', 'servers', 'plans', 'codes', 'customize', 'bot', 'social'].map((tab) => (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                className={`px-6 py-3 capitalize transition ${activeTab === tab
+                                    ? 'border-b-2 border-purple-500 text-white'
+                                    : 'text-gray-400 hover:text-white'
+                                    }`}
+                            >
+                                {tab}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* Content */}
+            <div className="relative z-10 container mx-auto px-6 py-8">
+                <motion.div
+                    key={activeTab}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-6"
+                >
+                    {activeTab === 'settings' && <SettingsTab settings={settings} fetchSettings={fetchSettings} refreshTheme={refreshTheme} />}
+                    {activeTab === 'users' && <UsersTab users={users} fetchUsers={fetchUsers} loading={loading} />}
+                    {activeTab === 'servers' && <ServersTab servers={servers} fetchServers={fetchServers} loading={loading} />}
+                    {activeTab === 'plans' && <PlansTab plans={plans} fetchPlans={fetchPlans} loading={loading} />}
+                    {activeTab === 'codes' && <CodesTab codes={codes} fetchCodes={fetchCodes} loading={loading} />}
+                    {activeTab === 'customize' && <CustomizeTab refreshTheme={refreshTheme} />}
+                    {activeTab === 'bot' && <BotTab settings={settings} fetchSettings={fetchSettings} />}
+                    {activeTab === 'social' && <SocialTab settings={settings} fetchSettings={fetchSettings} />}
+                </motion.div>
+            </div>
+        </div>
     );
 };
 
