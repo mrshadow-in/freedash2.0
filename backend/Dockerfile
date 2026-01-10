@@ -1,24 +1,23 @@
 # Backend Dockerfile
-FROM node:18-slim
+FROM node:18-alpine
 
 WORKDIR /app
 
-# Install system dependencies (openssl is required for Prisma)
-RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+# Install system dependencies (openssl and libc6-compat are required for Prisma on Alpine)
+RUN apk add --no-cache openssl libc6-compat
 
 # Copy package files
 COPY package*.json ./
 
-# Copy Prisma schema (needed before npm install so postinstall can run)
+# Copy Prisma schema (needed before npm install for postinstall)
 COPY prisma ./prisma
 
-# Install dependencies (postinstall will auto-generate Prisma client)
-RUN npm install -g typescript
+# Install dependencies (Triggers postinstall: prisma generate)
 RUN npm install
 
-# Fix Prisma binary permissions
-RUN chmod +x /app/node_modules/.bin/prisma || true
-RUN chmod +x /app/node_modules/prisma/build/index.js || true
+# FIX: Ensure Prisma binary has execute permissions
+RUN chmod +x node_modules/.bin/prisma && \
+    find node_modules/prisma -name "query-engine*" -exec chmod +x {} +
 
 # Copy rest of source code
 COPY . .
