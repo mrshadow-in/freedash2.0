@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import api from '../api/client';
 import { toast } from 'react-hot-toast';
-import { Mail, Lock, Shield, User } from 'lucide-react';
+import { Mail, Lock, Shield } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+
+import Header from '../components/Header';
 
 const Account = () => {
     const { user, setUser } = useAuthStore();
-    const navigate = useNavigate();
 
     // Email Update
     const [newEmail, setNewEmail] = useState('');
@@ -71,23 +71,8 @@ const Account = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-[#0c0229] via-[#1a0b2e] to-[#16213e] text-white">
-            {/* Header */}
-            <div className="bg-white/5 backdrop-blur-md border-b border-white/10 sticky top-0 z-50">
-                <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-                    <button
-                        onClick={() => navigate('/dashboard')}
-                        className="text-gray-400 hover:text-white transition"
-                    >
-                        ← Back to Dashboard
-                    </button>
-                    <h1 className="text-xl font-bold">
-                        <User className="inline mr-2" size={24} />
-                        My Account
-                    </h1>
-                    <div className="w-32"></div>
-                </div>
-            </div>
+        <div className="min-h-screen bg-theme text-white">
+            <Header />
 
             <div className="max-w-4xl mx-auto px-6 py-10">
                 {/* Update Email */}

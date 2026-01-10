@@ -54,6 +54,8 @@ model User {
   bannedUsers    User[]    @relation("BannedBy")
   bannedByUser   User?     @relation("BannedBy", fields: [bannedId], references: [id])
   bannedId       String?
+
+  ads            Ad[]
 }
 
 model Server {
@@ -210,4 +212,26 @@ model AuditLog {
   details   String
   ipAddress String?
   createdAt DateTime @default(now())
+}
+
+model Ad {
+  id            String    @id @default(uuid())
+  title         String
+  imageUrl      String?
+  redirectUrl   String?
+  rawCode       String?   // New: for paste-in ad network codes
+  isAFK         Boolean   @default(false) // New: specifically for AFK page ads
+  position      String    // e.g., "top", "header-after", "server-list-before", "afk-top", etc.
+  positionIndex Int       @default(0)
+  priority      Int       @default(0)
+  type          String    // "leaderboard", "banner", "gif", "promo-strip", "raw"
+  status        String    @default("active")
+  ownerId       String?
+  owner         User?     @relation(fields: [ownerId], references: [id])
+  startDate     DateTime  @default(now())
+  endDate       DateTime?
+  clicks        Int       @default(0)
+  views         Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }

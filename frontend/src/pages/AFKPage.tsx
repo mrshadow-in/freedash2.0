@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Clock, Play, Pause, Coins, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Header from '../components/Header';
+import AdZone from '../components/AdZone';
 
 const AFKPage = () => {
     const queryClient = useQueryClient();
@@ -101,18 +102,36 @@ const AFKPage = () => {
 
             <Header />
 
-            <div className="max-w-4xl mx-auto px-6 py-12">
+            <div className="max-w-4xl mx-auto px-6 py-8">
+                {/* Top Ad Zone - Rotating */}
+                <AdZone
+                    position="afk-top"
+                    isAFK={true}
+                    rotate={true}
+                    rotationInterval={settings?.rotationInterval || 30}
+                    className="mb-10"
+                />
+
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="text-center mb-12"
+                    className="text-center mb-10"
                 >
                     <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">AFK Earning Zone</h1>
                     <p className="text-gray-400 text-lg">Keep this tab open to earn free coins automatically.</p>
                 </motion.div>
 
+                {/* Middle Ad Zone - Rotating */}
+                <AdZone
+                    position="afk-middle"
+                    isAFK={true}
+                    rotate={true}
+                    rotationInterval={settings?.rotationInterval || 30}
+                    className="mb-10"
+                />
+
                 {/* Status Card */}
-                <div className="bg-[#1a1b26] border border-white/5 rounded-3xl p-8 md:p-12 relative overflow-hidden relative shadow-2xl">
+                <div className="bg-[#1a1b26] border border-white/5 rounded-3xl p-8 md:p-12 relative overflow-hidden shadow-2xl">
                     <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
                         <Clock size={200} />
                     </div>
@@ -140,35 +159,43 @@ const AFKPage = () => {
                         </div>
 
                         {/* Stats Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-2xl">
-                            <div className="bg-black/20 p-4 rounded-xl border border-white/5 text-center">
-                                <span className="text-gray-400 text-xs uppercase tracking-wider block mb-1">Session Earned</span>
-                                <div className="text-2xl font-bold text-yellow-400 flex justify-center items-center gap-2">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 w-full max-w-2xl">
+                            <div className="bg-black/40 backdrop-blur-md p-4 rounded-2xl border border-white/10 text-center">
+                                <span className="text-gray-400 text-[10px] sm:text-xs uppercase tracking-wider block mb-1 font-bold">Session Earned</span>
+                                <div className="text-xl sm:text-2xl font-bold text-yellow-400 flex justify-center items-center gap-2">
                                     <Coins size={18} />
                                     {Math.floor(session?.coinsEarned || 0)}
                                 </div>
                             </div>
-                            <div className="bg-black/20 p-4 rounded-xl border border-white/5 text-center">
-                                <span className="text-gray-400 text-xs uppercase tracking-wider block mb-1">Earning Rate</span>
-                                <div className="text-2xl font-bold text-blue-400">
+                            <div className="bg-black/40 backdrop-blur-md p-4 rounded-2xl border border-white/10 text-center">
+                                <span className="text-gray-400 text-[10px] sm:text-xs uppercase tracking-wider block mb-1 font-bold">Earning Rate</span>
+                                <div className="text-xl sm:text-2xl font-bold text-blue-400">
                                     {settings?.coinsPerMinute || 0} <span className="text-sm text-gray-500">/ min</span>
                                 </div>
                             </div>
-                            <div className="bg-black/20 p-4 rounded-xl border border-white/5 text-center">
-                                <span className="text-gray-400 text-xs uppercase tracking-wider block mb-1">Daily Limit</span>
-                                <div className="text-2xl font-bold text-white">
+                            <div className="bg-black/40 backdrop-blur-md p-4 rounded-2xl border border-white/10 text-center">
+                                <span className="text-gray-400 text-[10px] sm:text-xs uppercase tracking-wider block mb-1 font-bold">Daily Limit</span>
+                                <div className="text-xl sm:text-2xl font-bold text-white">
                                     {Math.floor(session?.dailyCoinsEarned || 0)} <span className="text-sm text-gray-500">/ {settings?.maxCoinsPerDay}</span>
+                                </div>
+                                <div className="w-full bg-white/5 h-1.5 rounded-full mt-3 overflow-hidden border border-white/5">
+                                    <motion.div
+                                        className="h-full bg-gradient-to-r from-purple-500 to-blue-500"
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${Math.min(100, ((session?.dailyCoinsEarned || 0) / (settings?.maxCoinsPerDay || 1000)) * 100)}%` }}
+                                        transition={{ duration: 1 }}
+                                    />
                                 </div>
                             </div>
                         </div>
 
                         {/* Controls */}
-                        <div className="flex justify-center gap-4 mt-4">
+                        <div className="flex justify-center gap-4 mt-2">
                             {!session?.isActive ? (
                                 <button
                                     onClick={() => startMutation.mutate()}
                                     disabled={startMutation.isPending}
-                                    className="px-8 py-4 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold text-lg flex items-center gap-3 transition shadow-lg shadow-green-600/20"
+                                    className="px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-2xl font-bold text-lg flex items-center gap-3 transition shadow-xl shadow-green-900/40 border border-green-400/20"
                                 >
                                     <Play size={24} fill="currentColor" /> Start Earning
                                 </button>
@@ -176,7 +203,7 @@ const AFKPage = () => {
                                 <button
                                     onClick={() => stopMutation.mutate()}
                                     disabled={stopMutation.isPending}
-                                    className="px-8 py-4 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-lg flex items-center gap-3 transition shadow-lg shadow-red-600/20"
+                                    className="px-8 py-4 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white rounded-2xl font-bold text-lg flex items-center gap-3 transition shadow-xl shadow-red-900/40 border border-red-400/20"
                                 >
                                     <Pause size={24} fill="currentColor" /> Stop & Claim
                                 </button>
@@ -186,14 +213,24 @@ const AFKPage = () => {
                     </div>
                 </div>
 
-                <div className="mt-8 bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 flex items-start gap-4">
-                    <AlertCircle className="text-blue-400 shrink-0 mt-1" size={20} />
+                {/* Bottom Ad Zone - Rotating */}
+                <AdZone
+                    position="afk-bottom"
+                    isAFK={true}
+                    rotate={true}
+                    rotationInterval={settings?.rotationInterval || 30}
+                    className="mt-12"
+                />
+
+                <div className="mt-8 bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6 flex items-start gap-4 backdrop-blur-md">
+                    <div className="bg-blue-500/20 p-2 rounded-xl">
+                        <AlertCircle className="text-blue-400 shrink-0" size={24} />
+                    </div>
                     <div className="text-sm text-blue-200">
-                        <p className="font-bold mb-1">How it works:</p>
-                        <p>Keep this tab open and active to generate coins. Coins are automatically added to your balance every minute. If you close the tab or switch away, earning will pause. Click "Stop" to end the session.</p>
+                        <p className="font-bold text-lg mb-2">How it works:</p>
+                        <p className="leading-relaxed opacity-80">Keep this tab open and active to generate coins. Coins are automatically added to your balance every minute. If you close the tab or switch away, earning will pause. Click "Stop" to end the session and ensure all progress is saved.</p>
                     </div>
                 </div>
-
             </div>
         </div>
     );

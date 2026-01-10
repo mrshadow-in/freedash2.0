@@ -1,5 +1,6 @@
-import { X, LogOut, User, Coins, Shield } from 'lucide-react';
+import { X, LogOut, User, Coins, Shield, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import SocialLinks from './SocialLinks';
 
 interface MobileMenuProps {
@@ -72,25 +73,34 @@ const MobileMenu = ({ isOpen, onClose, user, logout }: MobileMenuProps) => {
 
                         {/* Navigation Links */}
                         <div className="p-6 space-y-3">
+                            <Link
+                                to="/afk"
+                                className="flex items-center gap-3 w-full px-4 py-3 bg-green-600/10 border border-green-600/20 hover:bg-green-600/20 rounded-lg text-green-400 font-bold transition"
+                                onClick={onClose}
+                            >
+                                <Clock size={20} />
+                                AFK Zone
+                            </Link>
+
                             {user?.role === 'admin' && (
-                                <a
-                                    href="/admin"
+                                <Link
+                                    to="/admin"
                                     className="flex items-center gap-3 w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 rounded-lg text-white font-bold transition"
                                     onClick={onClose}
                                 >
                                     <Shield size={20} />
                                     Admin Panel
-                                </a>
+                                </Link>
                             )}
 
-                            <a
-                                href="/account"
+                            <Link
+                                to="/account"
                                 className="flex items-center gap-3 w-full px-4 py-3 bg-white/5 border border-white/10 hover:bg-white/10 rounded-lg text-white font-bold transition"
                                 onClick={onClose}
                             >
                                 <User size={20} />
                                 My Account
-                            </a>
+                            </Link>
 
                             <button
                                 onClick={() => {

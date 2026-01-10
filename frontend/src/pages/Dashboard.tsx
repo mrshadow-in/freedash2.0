@@ -2,23 +2,20 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import { useAuthStore } from '../store/authStore';
-import { Link } from 'react-router-dom';
 import ServerCard from '../components/ServerCard';
-import { Server, Plus, Coins, Menu, Activity, LogOut, Loader2 } from 'lucide-react';
+import { Server, Plus, Coins, Activity, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import SocialLinks from '../components/SocialLinks';
 import ConfirmDialog from '../components/ConfirmDialog';
-import MobileMenu from '../components/MobileMenu';
-import AdSlot from '../components/AdSlot';
+import AdZone from '../components/AdZone';
 import AdPurchaseModal from '../components/AdPurchaseModal';
+import Header from '../components/Header';
 
 const Dashboard = () => {
-    const { user: authUser, logout, setUser } = useAuthStore();
+    const { user: authUser, setUser } = useAuthStore();
     const queryClient = useQueryClient();
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showRedeemModal, setShowRedeemModal] = useState(false);
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [serverName, setServerName] = useState('');
     const [redeemCode, setRedeemCode] = useState('');
     const [selectedPlanId, setSelectedPlanId] = useState<string>('');
@@ -29,15 +26,6 @@ const Dashboard = () => {
     const openAdPurchase = (slotId?: string) => {
         setSelectedAdSlot(slotId);
         setShowAdModal(true);
-    };
-
-    // Mock Ad Data - In a real app, this would come from an API
-    const activeAds = {
-        'top-leaderboard': {
-            imageUrl: 'https://img.freepik.com/free-vector/modern-gaming-banner-template_23-2148705291.jpg',
-            redirectUrl: 'https://discord.gg/yourserver',
-            title: 'Join our Gaming Community!'
-        }
     };
 
 
@@ -55,16 +43,6 @@ const Dashboard = () => {
         initialData: authUser
     });
 
-    // Fetch panel settings for branding
-    const { data: settings } = useQuery({
-        queryKey: ['panelSettings'],
-        queryFn: async () => {
-            const res = await api.get('/settings');
-            return res.data;
-        },
-        staleTime: 0,
-        refetchOnMount: true
-    });
 
     // Fetch Servers
     const { data: servers, isLoading } = useQuery({
@@ -150,95 +128,16 @@ const Dashboard = () => {
                 <div className="absolute bottom-[10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px]" />
             </div>
 
-            {/* Topbar */}
-            <div className="relative z-10 border-b border-white/5 bg-black/20 backdrop-blur-xl sticky top-0">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between">
-                    {/* Logo */}
-                    <div className="flex items-center gap-2 sm:gap-3">
-                        {settings?.panelLogo ? (
-                            <img
-                                src={settings.panelLogo}
-                                alt={settings.panelName || 'Panel Logo'}
-                                className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl object-cover shadow-lg"
-                            />
-                        ) : (
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-tr from-purple-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20">
-                                <Server className="text-white" size={18} />
-                            </div>
-                        )}
-                        <h1 className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-                            {settings?.panelName || 'Panel'}
-                        </h1>
-                    </div>
+            {/* Navigation Header */}
+            <Header />
 
-                    {/* Desktop Navigation */}
-                    <div className="hidden lg:flex items-center gap-6">
-                        {/* Balance */}
-                        <div className="flex items-center gap-3 bg-white/5 border border-white/10 px-4 py-2 rounded-xl backdrop-blur-md">
-                            <div className="bg-yellow-500/20 p-1.5 rounded-full ring-1 ring-yellow-500/30">
-                                <Coins size={16} className="text-yellow-400" />
-                            </div>
-                            <div>
-                                <div className="text-[10px] text-gray-400 font-bold tracking-wider uppercase">Balance</div>
-                                <div className="font-bold text-white text-lg leading-none">{user?.coins || 0}</div>
-                            </div>
-                        </div>
-
-                        <SocialLinks />
-
-                        <div className="flex items-center gap-4 pl-6 border-l border-white/10">
-                            <div className="text-right">
-                                <div className="font-bold text-white text-sm">{user?.username}</div>
-                                <div className="text-xs text-purple-300 font-medium bg-purple-500/10 px-2 py-0.5 rounded-full inline-block mt-0.5 capitalize border border-purple-500/20">{user?.role}</div>
-                            </div>
-                            {user?.role === 'admin' && (
-                                <Link to="/admin" className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg text-sm font-bold hover:opacity-90 transition">
-                                    Admin Panel
-                                </Link>
-                            )}
-                            <Link to="/account" className="px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 rounded-lg text-sm font-bold transition">
-                                My Account
-                            </Link>
-                            <button onClick={logout} className="p-2.5 hover:bg-red-500/10 hover:text-red-400 rounded-xl text-gray-400 transition">
-                                <LogOut size={20} />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Mobile: Balance + Hamburger */}
-                    <div className="flex lg:hidden items-center gap-3">
-                        <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-xl backdrop-blur-md mr-2">
-                            <Coins size={14} className="text-yellow-400" />
-                            <span className="font-bold text-white text-sm">{user?.coins || 0}</span>
-                        </div>
-                        <button
-                            onClick={() => setMobileMenuOpen(true)}
-                            className="p-2 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition shadow-lg"
-                        >
-                            <Menu size={24} className="text-white" />
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Mobile Menu */}
-            <MobileMenu
-                isOpen={mobileMenuOpen}
-                onClose={() => setMobileMenuOpen(false)}
-                user={user}
-                logout={logout}
-            />
-
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-                {/* Top Ad Slot */}
-                <div className="flex justify-center mb-10">
-                    <AdSlot
-                        id="top-leaderboard"
-                        size="leaderboard"
-                        activeAd={activeAds['top-leaderboard']}
-                        onBuyClick={openAdPurchase}
-                    />
-                </div>
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 relative z-10">
+                {/* Top Ad Zone */}
+                <AdZone
+                    position="top"
+                    onBuyClick={() => openAdPurchase('top')}
+                    className="mb-10"
+                />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
                     <motion.div
@@ -312,14 +211,12 @@ const Dashboard = () => {
                     </motion.div>
                 </div>
 
-                {/* Middle Ad Slot */}
-                <div className="flex justify-center mb-12">
-                    <AdSlot
-                        id="middle-banner"
-                        size="banner"
-                        onBuyClick={openAdPurchase}
-                    />
-                </div>
+                {/* Middle Ad Zone */}
+                <AdZone
+                    position="after-header"
+                    onBuyClick={() => openAdPurchase('after-header')}
+                    className="mb-12"
+                />
 
                 {/* Servers Section Header */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4 sm:gap-0">
@@ -393,14 +290,12 @@ const Dashboard = () => {
                     </button>
                 </div>
 
-                {/* Bottom Ad Slot */}
-                <div className="flex justify-center mt-20 mb-10">
-                    <AdSlot
-                        id="sidebar-square"
-                        size="square"
-                        onBuyClick={openAdPurchase}
-                    />
-                </div>
+                {/* Bottom Ad Zone */}
+                <AdZone
+                    position="footer"
+                    onBuyClick={() => openAdPurchase('footer')}
+                    className="mt-20 mb-10"
+                />
             </main>
 
             {/* Create Server Modal */}

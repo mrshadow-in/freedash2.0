@@ -11,12 +11,14 @@ import NotFound from './pages/NotFound';
 import PrivateRoute from './components/PrivateRoute';
 import AdminRoute from './components/AdminRoute';
 import BrandingLoader from './components/BrandingLoader';
+import SessionHeartbeat from './components/SessionHeartbeat';
 
 
 function App() {
   return (
     <Router>
       <BrandingLoader />
+      <SessionHeartbeat />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />

@@ -6,6 +6,7 @@ import api from '../api/client';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useTheme } from '../context/ThemeContext';
+import { Plus, Loader2 } from 'lucide-react';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -193,7 +194,9 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
         smtpUsername: '',
         smtpPassword: '',
         smtpFromEmail: '',
-        smtpFromName: 'Panel'
+        smtpFromName: 'Panel',
+        afkRotationInterval: 30,
+        afkSaturationMode: false
     });
 
     useEffect(() => {
@@ -224,6 +227,8 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                 smtpPassword: settings.smtp?.password || '',
                 smtpFromEmail: settings.smtp?.fromEmail || '',
                 smtpFromName: settings.smtp?.fromName || 'Panel',
+                afkRotationInterval: settings.afk?.rotationInterval || 30,
+                afkSaturationMode: settings.afk?.saturationMode || false,
                 webhook: ''
             });
         }
@@ -244,7 +249,9 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                 await api.put('/admin/settings/afk', {
                     enabled: formData.afkEnabled,
                     coinsPerMinute: formData.coinsPerMinute,
-                    maxCoinsPerDay: formData.maxCoinsPerDay
+                    maxCoinsPerDay: formData.maxCoinsPerDay,
+                    rotationInterval: formData.afkRotationInterval,
+                    saturationMode: formData.afkSaturationMode
                 });
             } else if (type === 'pricing') {
                 await api.put('/admin/settings/pricing', {
@@ -318,13 +325,36 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                         />
                     </div>
                     <div>
-                        <label className="block text-sm text-gray-400 mb-2">Max Coins Per Day</label>
                         <input
                             type="number"
                             value={formData.maxCoinsPerDay}
                             onChange={(e) => setFormData({ ...formData, maxCoinsPerDay: parseInt(e.target.value) })}
                             className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
                         />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-2">Ad Rotation Interval (seconds)</label>
+                            <input
+                                type="number"
+                                value={formData.afkRotationInterval}
+                                onChange={(e) => setFormData({ ...formData, afkRotationInterval: parseInt(e.target.value) })}
+                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                                placeholder="30"
+                            />
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <input
+                                type="checkbox"
+                                id="saturationMode"
+                                checked={formData.afkSaturationMode}
+                                onChange={(e) => setFormData({ ...formData, afkSaturationMode: e.target.checked })}
+                                className="w-5 h-5 rounded border-white/10 bg-white/5 text-purple-600 focus:ring-purple-500"
+                            />
+                            <label htmlFor="saturationMode" className="text-sm font-medium text-gray-300">
+                                Saturation Mode (Full-Page Ads)
+                            </label>
+                        </div>
                     </div>
                     <button
                         onClick={() => saveSettings('afk')}
@@ -2571,168 +2601,386 @@ function SocialTab({ settings, fetchSettings }: any) {
 function AdsTab() {
     const [ads, setAds] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [prices, setPrices] = useState({
-        leaderboard: 50,
-        banner: 25,
-        square: 10
+    const [filterPosition, setFilterPosition] = useState('all');
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editForm, setEditForm] = useState({ positionIndex: 0, priority: 0 });
+    const [showCreate, setShowCreate] = useState(false);
+    const [newAd, setNewAd] = useState({
+        title: '',
+        imageUrl: '',
+        redirectUrl: '',
+        rawCode: '',
+        type: 'leaderboard',
+        position: 'top',
+        priority: 1,
+        isAFK: false
     });
+    const [creating, setCreating] = useState(false);
+
+    const fetchAds = async () => {
+        setLoading(true);
+        try {
+            const res = await api.get('/ads/admin/all');
+            setAds(res.data);
+        } catch (error) {
+            toast.error('Failed to fetch ads');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCreateAd = async () => {
+        if (!newAd.title || (!newAd.imageUrl && !newAd.rawCode)) {
+            return toast.error('Title and either Image or Raw Code are required');
+        }
+        setCreating(true);
+        try {
+            await api.post('/ads/admin/create', newAd);
+            toast.success('Advertisement created successfully!');
+            setShowCreate(false);
+            setNewAd({
+                title: '',
+                imageUrl: '',
+                redirectUrl: '',
+                rawCode: '',
+                type: 'leaderboard',
+                position: 'top',
+                priority: 1,
+                isAFK: false
+            });
+            fetchAds();
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Failed to create ad');
+        } finally {
+            setCreating(false);
+        }
+    };
 
     useEffect(() => {
-        // Mocking ad data for demonstration
-        const mockAds = [
-            {
-                _id: '1',
-                slotId: 'top-leaderboard',
-                title: 'Premium Hosting',
-                imageUrl: 'https://images.unsplash.com/photo-1558494949-ef010ca63628?w=728&h=90&fit=crop',
-                targetUrl: 'https://example.com',
-                status: 'active',
-                owner: 'Kiran',
-                clicks: 124,
-                expiry: new Date(Date.now() + 86400000 * 5).toLocaleDateString()
-            },
-            {
-                _id: '2',
-                slotId: 'middle-banner',
-                title: 'Join Our Discord',
-                imageUrl: 'https://images.unsplash.com/photo-1614680376593-902f74cf0d41?w=468&h=60&fit=crop',
-                targetUrl: 'https://discord.gg/example',
-                status: 'pending',
-                owner: 'User123',
-                clicks: 0,
-                expiry: 'N/A'
-            }
-        ];
-
-        setTimeout(() => {
-            setAds(mockAds);
-            setLoading(false);
-        }, 800);
+        fetchAds();
     }, []);
 
-    const handleApprove = (id: string) => {
-        setAds(ads.map(ad => ad._id === id ? { ...ad, status: 'active', expiry: new Date(Date.now() + 86400000 * 7).toLocaleDateString() } : ad));
-        toast.success('Ad approved!');
+    const handleSaveEdit = async (id: string) => {
+        try {
+            await api.put(`/ads/admin/update/${id}`, editForm);
+            toast.success('Ad updated');
+            setEditingId(null);
+            fetchAds();
+        } catch (error) {
+            toast.error('Update failed');
+        }
     };
 
-    const handleReject = (id: string) => {
-        setAds(ads.filter(ad => ad._id !== id));
-        toast.error('Ad rejected');
+    const handleDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this ad?')) return;
+        try {
+            await api.delete(`/ads/admin/delete/${id}`);
+            toast.success('Ad deleted');
+            fetchAds();
+        } catch (error) {
+            toast.error('Delete failed');
+        }
     };
 
-    const handlePriceChange = (slot: keyof typeof prices, value: string) => {
-        setPrices({ ...prices, [slot]: parseInt(value) || 0 });
+    const handleUpdateStatus = async (id: string, status: string) => {
+        try {
+            await api.put(`/ads/admin/update/${id}`, { status });
+            toast.success(`Ad marked as ${status}`);
+            fetchAds();
+        } catch (error) {
+            toast.error('Update failed');
+        }
     };
 
-    const savePrices = () => {
-        toast.success('Ad prices updated!');
-    };
+    const adPositions = [
+        { id: 'all', label: 'All Positions' },
+        { id: 'top', label: 'Dashboard Top' },
+        { id: 'after-header', label: 'After Header' },
+        { id: 'before-servers', label: 'Before Server List' },
+        { id: 'after-servers', label: 'After Server List' },
+        { id: 'footer', label: 'Global Footer' },
+        { id: 'afk-top', label: 'AFK Zone Top' },
+        { id: 'afk-middle', label: 'AFK Zone Middle' },
+        { id: 'afk-bottom', label: 'AFK Zone Bottom' }
+    ];
+
+    const filteredAds = filterPosition === 'all'
+        ? ads
+        : ads.filter(ad => ad.position === filterPosition);
 
     return (
         <div className="space-y-8">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-white">Ad Marketplace Manager</h2>
-                    <p className="text-gray-400">Manage sponsored content and marketplace pricing</p>
+                    <h2 className="text-2xl font-bold bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
+                        🎯 Unlimited Ads Engine
+                    </h2>
+                    <p className="text-gray-400 mt-1">Manage positions, priorities, and unlimited dashboard ad zones</p>
                 </div>
+                <button
+                    onClick={() => setShowCreate(true)}
+                    className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-purple-500/20"
+                >
+                    <Plus size={18} /> Create New Ad
+                </button>
             </div>
 
-            {/* Pricing Controls */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {(Object.entries(prices) as [keyof typeof prices, number][]).map(([slot, price]) => (
-                    <div key={slot} className="bg-white/5 border border-white/10 rounded-2xl p-6">
-                        <label className="block text-sm font-medium text-gray-400 mb-2 capitalize">{slot} Price (Coins/Week)</label>
-                        <div className="flex gap-3">
-                            <input
-                                type="number"
-                                value={price}
-                                onChange={(e) => handlePriceChange(slot, e.target.value)}
-                                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white font-mono"
-                            />
+            {/* Create Ad Modal */}
+            {showCreate && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowCreate(false)} />
+                    <div className="relative w-full max-w-2xl bg-gray-900 border border-white/10 rounded-3xl p-8 shadow-2xl">
+                        <h3 className="text-2xl font-bold mb-6">📢 Create New Advertisement</h3>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-1">Ad Title</label>
+                                    <input
+                                        type="text"
+                                        value={newAd.title}
+                                        onChange={e => setNewAd({ ...newAd, title: e.target.value })}
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+                                        placeholder="Epic Network Sale"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-1">Type / Size</label>
+                                    <select
+                                        value={newAd.type}
+                                        onChange={e => setNewAd({ ...newAd, type: e.target.value })}
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+                                    >
+                                        <option value="leaderboard">Leaderboard (728x90)</option>
+                                        <option value="banner">Banner (468x60)</option>
+                                        <option value="square">Square / Sidebar</option>
+                                        <option value="full-width">Full Width Native</option>
+                                        <option value="promo-strip">Promo Strip (Small)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-1">Position</label>
+                                    <select
+                                        value={newAd.position}
+                                        onChange={e => setNewAd({ ...newAd, position: e.target.value })}
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+                                    >
+                                        {adPositions.filter(p => p.id !== 'all').map(p => (
+                                            <option key={p.id} value={p.id}>{p.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="flex items-center gap-3 py-2">
+                                    <input
+                                        type="checkbox"
+                                        id="isAFK"
+                                        checked={newAd.isAFK}
+                                        onChange={e => setNewAd({ ...newAd, isAFK: e.target.checked })}
+                                        className="w-5 h-5 rounded border-white/10 bg-white/5 text-purple-600"
+                                    />
+                                    <label htmlFor="isAFK" className="text-sm font-medium text-gray-300">Target AFK Zone Specifically</label>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-1">Priority Weight (1-100)</label>
+                                    <input
+                                        type="number"
+                                        value={newAd.priority}
+                                        onChange={e => setNewAd({ ...newAd, priority: parseInt(e.target.value) })}
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-1">Redirect URL</label>
+                                    <input
+                                        type="text"
+                                        value={newAd.redirectUrl}
+                                        onChange={e => setNewAd({ ...newAd, redirectUrl: e.target.value })}
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+                                        placeholder="https://google.com"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-1">Image URL (Optional if Raw Code used)</label>
+                                    <input
+                                        type="text"
+                                        value={newAd.imageUrl}
+                                        onChange={e => setNewAd({ ...newAd, imageUrl: e.target.value })}
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+                                        placeholder="https://imgur.com/xyz.png"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-1">Raw Ad Code (HTML/JS - Optional)</label>
+                                    <textarea
+                                        value={newAd.rawCode}
+                                        onChange={e => setNewAd({ ...newAd, rawCode: e.target.value })}
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white h-24 text-xs font-mono"
+                                        placeholder="<script>...</script> or <iframe>..."
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4 mt-8">
                             <button
-                                onClick={savePrices}
-                                className="px-4 py-2 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 rounded-lg transition border border-purple-500/30"
+                                onClick={() => setShowCreate(false)}
+                                className="flex-1 py-4 bg-white/5 hover:bg-white/10 text-gray-400 rounded-2xl font-bold transition"
                             >
-                                Update
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleCreateAd}
+                                disabled={creating}
+                                className="flex-[2] py-4 bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl font-bold text-lg hover:opacity-90 transition disabled:opacity-50"
+                            >
+                                {creating ? 'Creating Ad...' : '🚀 Launch Advertisement'}
                             </button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Filter Bar */}
+            <div className="flex gap-2 pb-2 overflow-x-auto">
+                {adPositions.map(pos => (
+                    <button
+                        key={pos.id}
+                        onClick={() => setFilterPosition(pos.id)}
+                        className={`px-4 py-2 rounded-full text-xs font-bold transition whitespace-nowrap ${filterPosition === pos.id ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
+                    >
+                        {pos.label}
+                    </button>
                 ))}
             </div>
 
-            {/* Active/Pending Ads Table */}
-            <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-                <div className="p-6 border-b border-white/10">
-                    <h3 className="text-lg font-bold text-white">Recent Ad Submissions</h3>
+            {loading ? (
+                <div className="flex flex-col items-center justify-center p-20 bg-white/5 rounded-3xl border border-white/10 border-dashed">
+                    <Loader2 className="animate-spin text-purple-500 mb-4" size={40} />
+                    <p className="text-gray-400 font-medium">Syncing with global ad positions...</p>
                 </div>
-                {loading ? (
-                    <div className="p-12 text-center text-gray-500">Loading ads...</div>
-                ) : (
-                    <table className="w-full">
-                        <thead className="bg-black/30 text-xs text-gray-400 uppercase tracking-wider">
-                            <tr>
-                                <th className="text-left p-4">Ad Preview</th>
-                                <th className="text-left p-4">Slot</th>
-                                <th className="text-left p-4">Owner</th>
-                                <th className="text-left p-4">Stats</th>
-                                <th className="text-left p-4">Status</th>
-                                <th className="text-left p-4">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/5">
-                            {ads.map(ad => (
-                                <tr key={ad._id} className="hover:bg-white/5 transition">
-                                    <td className="p-4">
-                                        <div className="flex items-center gap-3">
-                                            <img src={ad.imageUrl} alt="" className="h-10 w-20 object-cover rounded border border-white/10" />
-                                            <div>
-                                                <div className="text-sm font-bold text-white">{ad.title}</div>
-                                                <div className="text-xs text-blue-400 truncate max-w-[150px]">{ad.targetUrl}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="p-4">
-                                        <span className="text-xs font-mono bg-white/10 px-2 py-1 rounded text-gray-300">
-                                            {ad.slotId}
-                                        </span>
-                                    </td>
-                                    <td className="p-4 text-sm text-gray-400">{ad.owner}</td>
-                                    <td className="p-4">
-                                        <div className="text-sm text-white">{ad.clicks} Clicks</div>
-                                        <div className="text-xs text-gray-500">Exp: {ad.expiry}</div>
-                                    </td>
-                                    <td className="p-4">
-                                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter ${ad.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
-                                            }`}>
-                                            {ad.status}
-                                        </span>
-                                    </td>
-                                    <td className="p-4">
-                                        <div className="flex gap-2">
-                                            {ad.status === 'pending' && (
+            ) : filteredAds.length === 0 ? (
+                <div className="p-20 text-center bg-white/5 rounded-3xl border border-white/10 border-dashed">
+                    <div className="text-4xl mb-4">📭</div>
+                    <h3 className="text-white font-bold text-lg">No ads in this position</h3>
+                    <p className="text-gray-500 mt-1">Ready to be filled with unlimited sponsored content</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    {filteredAds.map((ad) => (
+                        <div key={ad.id} className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden group hover:border-purple-500/30 transition-all flex flex-col md:flex-row">
+                            <div className="w-full md:w-64 h-32 md:h-auto bg-black/40 relative flex items-center justify-center overflow-hidden">
+                                <img src={ad.imageUrl} alt={ad.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                                <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-[10px] font-bold text-white border border-white/10">
+                                    {ad.type.toUpperCase()}
+                                </div>
+                            </div>
+
+                            <div className="flex-1 p-6 relative">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div>
+                                        <h3 className="font-bold text-white text-lg">{ad.title}</h3>
+                                        <p className="text-blue-400 text-xs font-medium truncate max-w-[200px] mt-1">{ad.redirectUrl}</p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => handleDelete(ad.id)}
+                                            className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg transition"
+                                        >
+                                            🗑️
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                                    <div>
+                                        <span className="block text-gray-600 mb-1">Position & Index</span>
+                                        {editingId === ad.id ? (
+                                            <input
+                                                type="number"
+                                                value={editForm.positionIndex}
+                                                onChange={e => setEditForm({ ...editForm, positionIndex: parseInt(e.target.value) })}
+                                                className="w-16 bg-white/10 border border-white/20 rounded px-1 py-0.5 text-purple-400 outline-none"
+                                            />
+                                        ) : (
+                                            <span className="text-purple-400">{ad.position} ({ad.positionIndex})</span>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <span className="block text-gray-600 mb-1">Priority (Weight)</span>
+                                        {editingId === ad.id ? (
+                                            <input
+                                                type="number"
+                                                value={editForm.priority}
+                                                onChange={e => setEditForm({ ...editForm, priority: parseInt(e.target.value) })}
+                                                className="w-16 bg-white/10 border border-white/20 rounded px-1 py-0.5 text-yellow-500 outline-none"
+                                            />
+                                        ) : (
+                                            <span className="text-yellow-500">Weight: {ad.priority}</span>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <span className="block text-gray-600 mb-1">Status</span>
+                                        <span className={ad.status === 'active' ? 'text-green-500' : 'text-gray-400'}>{ad.status}</span>
+                                    </div>
+                                    <div>
+                                        <span className="block text-gray-600 mb-1">Clicks</span>
+                                        <span className="text-white">{ad.clicks}</span>
+                                    </div>
+                                </div>
+
+                                <div className="mt-6 flex gap-2">
+                                    {editingId === ad.id ? (
+                                        <>
+                                            <button
+                                                onClick={() => handleSaveEdit(ad.id)}
+                                                className="flex-1 py-2 bg-purple-600 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-purple-500/20"
+                                            >
+                                                💾 Save
+                                            </button>
+                                            <button
+                                                onClick={() => setEditingId(null)}
+                                                className="flex-1 py-2 bg-white/5 text-gray-400 rounded-xl text-xs font-bold transition"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            {ad.status === 'active' ? (
                                                 <button
-                                                    onClick={() => handleApprove(ad._id)}
-                                                    className="p-2 bg-green-500/20 hover:bg-green-500/40 text-green-400 rounded-lg transition"
-                                                    title="Approve"
+                                                    onClick={() => handleUpdateStatus(ad.id, 'paused')}
+                                                    className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl text-xs font-bold transition"
                                                 >
-                                                    ✅
+                                                    ⏸️ Pause
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => handleUpdateStatus(ad.id, 'active')}
+                                                    className="flex-1 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-xl text-xs font-bold transition"
+                                                >
+                                                    ▶️ Resume
                                                 </button>
                                             )}
                                             <button
-                                                onClick={() => handleReject(ad._id)}
-                                                className="p-2 bg-red-500/20 hover:bg-red-500/40 text-red-400 rounded-lg transition"
-                                                title="Reject/Delete"
+                                                onClick={() => {
+                                                    setEditingId(ad.id);
+                                                    setEditForm({ positionIndex: ad.positionIndex, priority: ad.priority });
+                                                }}
+                                                className="flex-1 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 rounded-xl text-xs font-bold transition"
                                             >
-                                                🗑️
+                                                ✏️ Reorder
                                             </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

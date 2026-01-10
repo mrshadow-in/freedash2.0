@@ -247,15 +247,17 @@ export const sendTestEmail = async (req: Request, res: Response) => {
 // Update AFK settings
 export const updateAFKSettings = async (req: Request, res: Response) => {
     try {
-        const { enabled, coinsPerMinute, maxCoinsPerDay } = req.body;
+        const { enabled, coinsPerMinute, maxCoinsPerDay, rotationInterval, saturationMode } = req.body;
         const currentSettings = await getSettingsOrCreate();
 
-        const currentAFK = (currentSettings.afk as any) || { enabled: false, coinsPerMinute: 1, maxCoinsPerDay: 100 };
+        const currentAFK = (currentSettings.afk as any) || { enabled: false, coinsPerMinute: 1, maxCoinsPerDay: 100, rotationInterval: 30, saturationMode: false };
         const newAFK = {
             ...currentAFK,
             enabled: enabled ?? currentAFK.enabled,
             coinsPerMinute: coinsPerMinute ?? currentAFK.coinsPerMinute,
-            maxCoinsPerDay: maxCoinsPerDay ?? currentAFK.maxCoinsPerDay
+            maxCoinsPerDay: maxCoinsPerDay ?? currentAFK.maxCoinsPerDay,
+            rotationInterval: rotationInterval ?? currentAFK.rotationInterval,
+            saturationMode: saturationMode ?? currentAFK.saturationMode
         };
 
         const settings = await prisma.settings.update({
