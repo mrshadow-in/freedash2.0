@@ -5,10 +5,13 @@ import { useAuthStore } from '../store/authStore';
 import api from '../api/client';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { useTheme } from '../context/ThemeContext';
+import PremiumParallax from '../components/PremiumParallax';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
     const { user, logout } = useAuthStore();
+    const { refreshTheme } = useTheme();
     const [activeTab, setActiveTab] = useState('settings');
     const [settings, setSettings] = useState<any>(null);
     const [users, setUsers] = useState<any[]>([]);
@@ -84,86 +87,82 @@ const AdminDashboard = () => {
     }, [activeTab]);
 
     return (
-        <div className="min-h-screen bg-theme text-white">
-            {/* Ambient Background */}
-            <div className="fixed inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-0 -left-4 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
-                <div className="absolute top-0 -right-4 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-                <div className="absolute -bottom-8 left-20 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
-            </div>
+        <PremiumParallax>
+            <div className="min-h-screen text-white">
+                {/* Parallax handles background now */}
 
-            {/* Header */}
-            <div className="relative z-10 bg-white/5 backdrop-blur-md border-b border-white/10">
-                <div className="container mx-auto px-6 py-4">
-                    <div className="flex items-center justify-between">
-                        <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-blue-500 bg-clip-text text-transparent">
-                            Admin Panel
-                        </h1>
-                        <div className="flex items-center gap-4">
-                            <span className="text-gray-400">Welcome, {user?.username}</span>
-                            <button
-                                onClick={() => navigate('/')}
-                                className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition"
-                            >
-                                Back to Dashboard
-                            </button>
-                            <button
-                                onClick={logout}
-                                className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition"
-                            >
-                                Logout
-                            </button>
+                {/* Header */}
+                <div className="relative z-10 bg-white/5 backdrop-blur-md border-b border-white/10">
+                    <div className="container mx-auto px-6 py-4">
+                        <div className="flex items-center justify-between">
+                            <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-blue-500 bg-clip-text text-transparent">
+                                Admin Panel
+                            </h1>
+                            <div className="flex items-center gap-4">
+                                <span className="text-gray-400">Welcome, {user?.username}</span>
+                                <button
+                                    onClick={() => navigate('/')}
+                                    className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition"
+                                >
+                                    Back to Dashboard
+                                </button>
+                                <button
+                                    onClick={logout}
+                                    className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition"
+                                >
+                                    Logout
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Tabs */}
-            <div className="relative z-10 bg-white/5 backdrop-blur-md border-b border-white/10">
-                <div className="container mx-auto px-6">
-                    <div className="flex gap-2">
-                        {['settings', 'users', 'servers', 'plans', 'codes', 'customize', 'bot', 'social'].map((tab) => (
-                            <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                className={`px-6 py-3 capitalize transition ${activeTab === tab
-                                    ? 'border-b-2 border-purple-500 text-white'
-                                    : 'text-gray-400 hover:text-white'
-                                    }`}
-                            >
-                                {tab}
-                            </button>
-                        ))}
+                {/* Tabs */}
+                <div className="relative z-10 bg-white/5 backdrop-blur-md border-b border-white/10">
+                    <div className="container mx-auto px-6">
+                        <div className="flex gap-2">
+                            {['settings', 'users', 'servers', 'plans', 'codes', 'customize', 'bot', 'social'].map((tab) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setActiveTab(tab)}
+                                    className={`px-6 py-3 capitalize transition ${activeTab === tab
+                                        ? 'border-b-2 border-purple-500 text-white'
+                                        : 'text-gray-400 hover:text-white'
+                                        }`}
+                                >
+                                    {tab}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Content */}
-            <div className="relative z-10 container mx-auto px-6 py-8">
-                <motion.div
-                    key={activeTab}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-6"
-                >
-                    {activeTab === 'settings' && <SettingsTab settings={settings} setSettings={setSettings} />}
-                    {activeTab === 'users' && <UsersTab users={users} fetchUsers={fetchUsers} loading={loading} />}
-                    {activeTab === 'servers' && <ServersTab servers={servers} fetchServers={fetchServers} loading={loading} />}
-                    {activeTab === 'plans' && <PlansTab plans={plans} fetchPlans={fetchPlans} loading={loading} />}
-                    {activeTab === 'codes' && <CodesTab codes={codes} fetchCodes={fetchCodes} loading={loading} />}
-                    {activeTab === 'customize' && <CustomizeTab />}
-                    {activeTab === 'bot' && <BotTab settings={settings} fetchSettings={fetchSettings} />}
-                    {activeTab === 'social' && <SocialTab settings={settings} fetchSettings={fetchSettings} />}
-                </motion.div>
+                {/* Content */}
+                <div className="relative z-10 container mx-auto px-6 py-8">
+                    <motion.div
+                        key={activeTab}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-6"
+                    >
+                        {activeTab === 'settings' && <SettingsTab settings={settings} fetchSettings={fetchSettings} refreshTheme={refreshTheme} />}
+                        {activeTab === 'users' && <UsersTab users={users} fetchUsers={fetchUsers} loading={loading} />}
+                        {activeTab === 'servers' && <ServersTab servers={servers} fetchServers={fetchServers} loading={loading} />}
+                        {activeTab === 'plans' && <PlansTab plans={plans} fetchPlans={fetchPlans} loading={loading} />}
+                        {activeTab === 'codes' && <CodesTab codes={codes} fetchCodes={fetchCodes} loading={loading} />}
+                        {activeTab === 'customize' && <CustomizeTab refreshTheme={refreshTheme} />}
+                        {activeTab === 'bot' && <BotTab settings={settings} fetchSettings={fetchSettings} />}
+                        {activeTab === 'social' && <SocialTab settings={settings} fetchSettings={fetchSettings} />}
+                    </motion.div>
+                </div>
             </div>
-        </div>
+        </PremiumParallax>
     );
 };
 
 // Settings Tab
-const SettingsTab = ({ settings, fetchSettings }: any) => { // Removed setSettings
+function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
     const [showTestEmailModal, setShowTestEmailModal] = useState(false);
-    // ...
     const [testEmailAddress, setTestEmailAddress] = useState('');
 
     const [formData, setFormData] = useState({
@@ -271,6 +270,7 @@ const SettingsTab = ({ settings, fetchSettings }: any) => { // Removed setSettin
                     fromName: formData.smtpFromName
                 });
             }
+            await refreshTheme(); // Instant UI update
             toast.success('Settings saved!');
             fetchSettings(); // Refresh settings
         } catch (error: any) {
@@ -665,10 +665,10 @@ const SettingsTab = ({ settings, fetchSettings }: any) => { // Removed setSettin
             </div>
         </div>
     );
-};
+}
 
 // Users Tab
-const UsersTab = ({ users, fetchUsers, loading }: any) => {
+function UsersTab({ users, fetchUsers, loading }: any) {
     const [showCreateUser, setShowCreateUser] = useState(false);
     const [showGiveCoins, setShowGiveCoins] = useState<string | null>(null);
     const [showEditUser, setShowEditUser] = useState(false);
@@ -1060,10 +1060,10 @@ const UsersTab = ({ users, fetchUsers, loading }: any) => {
             )}
         </div>
     );
-};
+}
 
 // Servers Tab
-const ServersTab = ({ servers, fetchServers, loading }: any) => {
+function ServersTab({ servers, fetchServers, loading }: any) {
     const navigate = useNavigate();
     const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; serverId: string; serverName: string }>({ show: false, serverId: '', serverName: '' });
 
@@ -1235,10 +1235,10 @@ const ServersTab = ({ servers, fetchServers, loading }: any) => {
             />
         </div>
     );
-};
+}
 
 // Plans Tab
-const PlansTab = ({ plans, fetchPlans, loading }: any) => {
+function PlansTab({ plans, fetchPlans, loading }: any) {
     const [showCreate, setShowCreate] = useState(false);
     const [showEdit, setShowEdit] = useState(false);
     const [editingPlan, setEditingPlan] = useState<any>(null);
@@ -1588,10 +1588,10 @@ const PlansTab = ({ plans, fetchPlans, loading }: any) => {
             />
         </div>
     );
-};
+}
 
 // Codes Tab
-const CodesTab = ({ codes, fetchCodes, loading }: any) => {
+function CodesTab({ codes, fetchCodes, loading }: any) {
     const [showCreate, setShowCreate] = useState(false);
     const [showEdit, setShowEdit] = useState(false);
     const [editingCode, setEditingCode] = useState<any>(null);
@@ -1775,10 +1775,10 @@ const CodesTab = ({ codes, fetchCodes, loading }: any) => {
             )}
         </div>
     );
-};
+}
 
 // Customize Tab - Theme Customization
-const CustomizeTab = () => {
+function CustomizeTab({ refreshTheme }: any) {
     const [theme, setTheme] = useState({
         bgColor: '#0c0229',
         primaryColor: '#7c3aed',
@@ -1860,7 +1860,8 @@ const CustomizeTab = () => {
                 gradientStart: theme.gradientStart,
                 gradientEnd: theme.gradientEnd
             });
-            toast.success('Theme saved! Refresh to see changes.');
+            await refreshTheme();
+            toast.success('Theme saved!');
         } catch (err: any) {
             console.error('Theme save error:', err);
             toast.error(err?.response?.data?.message || 'Failed to save theme');
@@ -1873,6 +1874,7 @@ const CustomizeTab = () => {
         setSaving(true);
         try {
             await api.put('/admin/settings/panel', panelSettings);
+            await refreshTheme();
             toast.success('Panel settings saved!');
         } catch (err: any) {
             toast.error(err?.response?.data?.message || 'Failed to save settings');
@@ -2140,11 +2142,11 @@ const CustomizeTab = () => {
             </button>
         </div>
     );
-};
+}
 
-export default AdminDashboard;
 
-const BotTab = ({ settings, fetchSettings }: any) => {
+
+function BotTab({ settings, fetchSettings }: any) {
     const [rewards, setRewards] = useState<{ invites: number, coins: number }[]>([]);
     const [boostRewards, setBoostRewards] = useState<{ boosts: number, coins: number }[]>([]);
     const [apiKey, setApiKey] = useState('');
@@ -2468,10 +2470,10 @@ const BotTab = ({ settings, fetchSettings }: any) => {
             </button>
         </div>
     );
-};
+}
 
 // Social Media Tab
-const SocialTab = ({ settings, fetchSettings }: any) => {
+function SocialTab({ settings, fetchSettings }: any) {
     const [socialMedia, setSocialMedia] = useState({
         discord: '',
         instagram: '',
@@ -2561,4 +2563,6 @@ const SocialTab = ({ settings, fetchSettings }: any) => {
             </button>
         </div>
     );
-};
+}
+
+export default AdminDashboard;
