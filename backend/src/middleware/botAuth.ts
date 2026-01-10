@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import Settings from '../models/Settings';
+import { prisma } from '../prisma';
+
+import { getSettings } from '../services/settingsService';
 
 export const verifyBotKey = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -8,7 +10,7 @@ export const verifyBotKey = async (req: Request, res: Response, next: NextFuncti
             return res.status(401).json({ message: 'Bot secret is required' });
         }
 
-        const settings = await Settings.findOne();
+        const settings = await getSettings();
         if (!settings || !settings.botApiKey || settings.botApiKey !== apiKey) {
             return res.status(403).json({ message: 'Invalid bot secret' });
         }

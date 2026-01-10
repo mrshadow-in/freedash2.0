@@ -1,19 +1,11 @@
-import mongoose from 'mongoose';
-import { ENV } from './env';
+import { prisma } from '../prisma';
 
 export const connectDB = async () => {
     try {
-        const mongooseOptions = {
-            serverSelectionTimeoutMS: 10000,
-            socketTimeoutMS: 45000,
-        };
-
-        await mongoose.connect(ENV.MONGODB_URI, mongooseOptions);
-        console.log('✅ MongoDB Connected Successfully');
-        console.log('📍 Database:', ENV.MONGODB_URI.includes('localhost') ? 'Local' : 'MongoDB Atlas');
+        await prisma.$connect();
+        console.log('✅ PostgreSQL Connected Successfully (via Prisma)');
     } catch (error) {
-        console.error('❌ MongoDB connection error:', error);
-        console.log('⚠️  Starting without database - API will have limited functionality!');
-        // Don't crash - let the app run for demo purposes
+        console.error('❌ Database connection error:', error);
+        process.exit(1);
     }
 };

@@ -1,0 +1,212 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  user
+  mod
+  admin
+}
+
+enum ServerStatus {
+  installing
+  active
+  suspended
+  deleted
+}
+
+enum ThemeType {
+  light
+  dark
+}
+
+model User {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  password       String
+  username       String    @unique
+  coins          Float     @default(0)
+  role           Role      @default(user)
+  discordId      String?   @unique
+  pteroUserId    Int?
+  isBanned       Boolean   @default(false)
+  bannedAt       DateTime?
+  bannedBy       String?
+  preferences    Json?
+  lastActiveAt   DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  servers        Server[]
+  transactions   Transaction[]
+  tasks          Task[]
+  passwordResets PasswordReset[]
+  afkSession     AFKSession?
+  auditLogs      AuditLog[]
+  
+  // Relations for "bannedBy" (self-relation)
+  bannedUsers    User[]    @relation("BannedBy")
+  bannedByUser   User?     @relation("BannedBy", fields: [bannedId], references: [id])
+  bannedId       String?
+}
+
+model Server {
+  id              String       @id @default(uuid())
+  ownerId         String
+  owner           User         @relation(fields: [ownerId], references: [id])
+  pteroServerId   Int
+  pteroIdentifier String
+  planId          String
+  plan            Plan         @relation(fields: [planId], references: [id])
+  name            String
+  status          ServerStatus @default(installing)
+  ramMb           Int
+  diskMb          Int
+  cpuCores        Int
+  isSuspended     Boolean      @default(false)
+  suspendedAt     DateTime?
+  suspendedBy     String?
+  expiresAt       DateTime?
+  serverIp        String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+model Plan {
+  id          String   @id @default(uuid())
+  name        String
+  ramMb       Int
+  diskMb      Int
+  cpuPercent  Int
+  cpuCores    Int      @default(1)
+  slots       Int
+  priceCoins  Float
+  pteroEggId  Int
+  pteroNestId Int
+  eggImage    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  servers     Server[]
+}
+
+model Settings {
+  id                   Int      @id @default(1)
+  panelName            String   @default("Panel")
+  panelLogo            String?
+  supportEmail         String?
+  backgroundImage      String?
+  loginBackgroundImage String?
+  logoSize             Int      @default(48)
+  bgColor              String   @default("#0c0229")
+  
+  theme                Json?
+  afk                  Json?
+  upgradePricing       Json?
+  pterodactyl          Json?
+  smtp                 Json?
+  discordWebhooks      String[]
+  botApiKey            String?
+  inviteRewards        Json?
+  discordBot           Json?
+  boostRewards         Json?
+  socialMedia          Json?
+  
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model Transaction {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  type         String   // credit, debit
+  amount       Float
+  description  String
+  balanceAfter Float
+  metadata     Json?
+  createdAt    DateTime @default(now())
+}
+
+model Task {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  type        String
+  status      String    @default("pending")
+  rewardCoins Float
+  metadata    Json?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model EmailTemplate {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  subject   String
+  htmlBody  String
+  textBody  String
+  variables String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model InviteClaim {
+  id              String   @id @default(uuid())
+  discordUserId   String
+  invitesRequired Int
+  code            String
+  createdAt       DateTime @default(now())
+  
+  @@unique([discordUserId, invitesRequired])
+}
+
+model PasswordReset {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model RedeemCode {
+  id        String    @id @default(uuid())
+  code      String    @unique
+  amount    Float
+  maxUses   Int?      // null = unlimited
+  usedCount Int       @default(0)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model AFKSession {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id])
+  startedAt        DateTime
+  lastHeartbeat    DateTime
+  coinsEarned      Float    @default(0)
+  isActive         Boolean  @default(true)
+  dailyCoinsEarned Float    @default(0)
+  lastResetDate    DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  actorId   String?
+  user      User?    @relation(fields: [actorId], references: [id])
+  action    String
+  details   String
+  ipAddress String?
+  createdAt DateTime @default(now())
+}

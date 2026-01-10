@@ -1,5 +1,5 @@
 import axios from 'axios';
-import Settings from '../models/Settings';
+import { getSettings } from './settingsService';
 
 interface WebhookEmbed {
     title: string;
@@ -12,8 +12,10 @@ interface WebhookEmbed {
 
 export const sendDiscordWebhook = async (embed: WebhookEmbed): Promise<void> => {
     try {
-        const settings = await Settings.findOne();
-        if (!settings || settings.discordWebhooks.length === 0) {
+        const settings = await getSettings(); // Changed to use getSettings()
+        const discordWebhooks: string[] = (settings?.discordWebhooks as any) || [];
+
+        if (!discordWebhooks || discordWebhooks.length === 0) {
             console.log('No webhooks configured');
             return;
         }
@@ -23,7 +25,7 @@ export const sendDiscordWebhook = async (embed: WebhookEmbed): Promise<void> => 
         };
 
         // Send to all webhooks (fire and forget)
-        const promises = settings.discordWebhooks.map(url =>
+        const promises = discordWebhooks.map(url =>
             axios.post(url, payload).catch(err => {
                 console.error('Webhook failed:', err.message);
             })
@@ -44,7 +46,8 @@ export const sendServerCreatedWebhook = async (serverData: {
     cpuCores: number;
 }) => {
     // Fetch panel name for branding
-    const settings = await Settings.findOne();
+    // Fetch panel name for branding
+    const settings = await getSettings();
     const panelName = settings?.panelName || 'Panel';
 
     const embed: WebhookEmbed = {

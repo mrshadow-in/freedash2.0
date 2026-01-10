@@ -1,7 +1,5 @@
 import { Request, Response } from 'express';
-import Settings from '../models/Settings';
-import InviteClaim from '../models/InviteClaim';
-import RedeemCode from '../models/RedeemCode';
+import { prisma } from '../prisma';
 
 const generateCode = (length: number = 10) => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -20,22 +18,28 @@ export const claimInviteReward = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Missing discordId or inviteCount' });
         }
 
-        const settings = await Settings.findOne();
-        if (!settings || !settings.inviteRewards || settings.inviteRewards.length === 0) {
+        const settings = await prisma.settings.findFirst();
+        const inviteRewards = (settings?.inviteRewards as any) || [];
+
+        if (!inviteRewards || inviteRewards.length === 0) {
             return res.status(404).json({ message: 'No invite rewards configured' });
         }
 
         // Sort rewards descending by invites required
-        const sortedRewards = settings.inviteRewards.sort((a, b) => b.invites - a.invites);
+        const sortedRewards = inviteRewards.sort((a: any, b: any) => b.invites - a.invites);
 
         let eligibleReward = null;
 
         // Find the highest tier that is met AND not yet claimed
         for (const reward of sortedRewards) {
             if (inviteCount >= reward.invites) {
-                const existingClaim = await InviteClaim.findOne({
-                    discordUserId: discordId,
-                    invitesRequired: reward.invites
+                const existingClaim = await prisma.inviteClaim.findUnique({
+                    where: {
+                        discordUserId_invitesRequired: {
+                            discordUserId: discordId,
+                            invitesRequired: reward.invites
+                        }
+                    }
                 });
 
                 if (!existingClaim) {
@@ -52,20 +56,22 @@ export const claimInviteReward = async (req: Request, res: Response) => {
         // Generate unique code
         const codeString = `INV-${discordId.substring(0, 4)}-${generateCode(6)}`;
 
-        const newCode = new RedeemCode({
-            code: codeString,
-            amount: eligibleReward.coins,
-            maxUses: 1,
-            usedCount: 0
+        await prisma.redeemCode.create({
+            data: {
+                code: codeString,
+                amount: eligibleReward.coins,
+                maxUses: 1,
+                usedCount: 0
+            }
         });
-        await newCode.save();
 
-        const claim = new InviteClaim({
-            discordUserId: discordId,
-            invitesRequired: eligibleReward.invites,
-            code: codeString
+        await prisma.inviteClaim.create({
+            data: {
+                discordUserId: discordId,
+                invitesRequired: eligibleReward.invites,
+                code: codeString
+            }
         });
-        await claim.save();
 
         res.json({
             success: true,
@@ -82,6 +88,10 @@ export const claimInviteReward = async (req: Request, res: Response) => {
 };
 
 export const getRewardTiers = async (req: Request, res: Response) => {
-    const settings = await Settings.findOne();
-    res.json(settings?.inviteRewards || []);
+    try {
+        const settings = await prisma.settings.findFirst();
+        res.json((settings?.inviteRewards as any) || []);
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to fetch reward tiers' });
+    }
 };

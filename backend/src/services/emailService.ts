@@ -1,25 +1,28 @@
 import nodemailer from 'nodemailer';
-import Settings from '../models/Settings';
+import { getSettings } from './settingsService';
 
 export const sendEmail = async (to: string, subject: string, html: string, text?: string) => {
     try {
-        const settings = await Settings.findOne();
-        if (!settings?.smtp) {
-            throw new Error('SMTP not configured');
+        const settings = await getSettings();
+        const smtp = (settings?.smtp as any);
+
+        if (!smtp || !smtp.host) {
+            console.log('⚠️  SMTP not configured, skipping email:', subject);
+            return { success: false, message: 'SMTP not configured' };
         }
 
         const transporter = nodemailer.createTransport({
-            host: settings.smtp.host,
-            port: settings.smtp.port,
-            secure: settings.smtp.secure,
+            host: smtp.host,
+            port: smtp.port,
+            secure: smtp.secure,
             auth: {
-                user: settings.smtp.username,
-                pass: settings.smtp.password
+                user: smtp.username,
+                pass: smtp.password
             }
         });
 
         const mailOptions = {
-            from: `"${settings.smtp.fromName}" <${settings.smtp.fromEmail}>`,
+            from: `"${smtp.fromName}" <${smtp.fromEmail}>`,
             to,
             subject,
             text: text || '',
@@ -30,24 +33,27 @@ export const sendEmail = async (to: string, subject: string, html: string, text?
         return { success: true, messageId: info.messageId };
     } catch (error: any) {
         console.error('Email send error:', error);
-        throw new Error(`Failed to send email: ${error.message}`);
+        // Don't throw to avoid crashing app loop, just log
+        return { success: false, error: error.message };
     }
 };
 
 export const testSmtpConnection = async () => {
     try {
-        const settings = await Settings.findOne();
-        if (!settings?.smtp) {
+        const settings = await getSettings();
+        const smtp = (settings?.smtp as any);
+
+        if (!smtp || !smtp.host) {
             throw new Error('SMTP not configured');
         }
 
         const transporter = nodemailer.createTransport({
-            host: settings.smtp.host,
-            port: settings.smtp.port,
-            secure: settings.smtp.secure,
+            host: smtp.host,
+            port: smtp.port,
+            secure: smtp.secure,
             auth: {
-                user: settings.smtp.username,
-                pass: settings.smtp.password
+                user: smtp.username,
+                pass: smtp.password
             }
         });
 

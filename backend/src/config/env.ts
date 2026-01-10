@@ -5,12 +5,15 @@ dotenv.config();
 
 const envSchema = z.object({
     PORT: z.string().default('3000'),
-    MONGODB_URI: z.string().min(1),
+    DATABASE_URL: z.string().min(1),
     JWT_SECRET: z.string().min(1),
     JWT_REFRESH_SECRET: z.string().min(1),
     PTERODACTYL_URL: z.string().url(),
     PTERODACTYL_API_KEY: z.string().min(1),
     REDIS_URL: z.string().optional(),
+    REDIS_HOST: z.string().default('localhost'),
+    REDIS_PORT: z.string().default('6379'),
+    REDIS_PASSWORD: z.string().optional(),
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
     DISCORD_CLIENT_ID: z.string().optional(),
     DISCORD_CLIENT_SECRET: z.string().optional(),
@@ -18,21 +21,27 @@ const envSchema = z.object({
     FRONTEND_URL: z.string().default('http://localhost:5176')
 });
 
-// Create a default environment if not present, but for the specifically requested URI, we encode it here or in .env
-// The prompt emphasized specific URI usage.
+const parsed = envSchema.safeParse(process.env);
 
-export const ENV = {
-    PORT: process.env.PORT || 3000,
-    MONGODB_URI: process.env.MONGODB_URI || "mongodb+srv://lord:lord@ptro-free.3kyncba.mongodb.net/?appName=ptro-free",
-    JWT_SECRET: process.env.JWT_SECRET || 'dev_secret',
-    JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || 'dev_refresh_secret',
-    PTERODACTYL_URL: process.env.PTERODACTYL_URL || '',
-    PTERODACTYL_API_KEY: process.env.PTERODACTYL_API_KEY || 'ptla',
-    REDIS_HOST: process.env.REDIS_HOST || 'localhost',
-    REDIS_PORT: parseInt(process.env.REDIS_PORT || '6379'),
-    REDIS_PASSWORD: process.env.REDIS_PASSWORD,
-    DISCORD_CLIENT_ID: process.env.DISCORD_CLIENT_ID,
-    DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
-    DISCORD_CALLBACK_URL: process.env.DISCORD_CALLBACK_URL || 'http://localhost:3000/auth/discord/callback',
-    FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5176'
+if (!parsed.success) {
+    console.error('❌ Invalid environment variables:', parsed.error.format());
+    // Use defaults/mock for build time if needed, or exit
+    // process.exit(1); 
+}
+
+export const ENV = parsed.success ? parsed.data : {
+    // Fallbacks for type safety if validation fails (should exit in real app)
+    PORT: process.env.PORT || '3000',
+    DATABASE_URL: process.env.DATABASE_URL || 'postgresql://user:password@localhost:5432/dashboard',
+    JWT_SECRET: 'dev_secret',
+    JWT_REFRESH_SECRET: 'dev_refresh_secret',
+    PTERODACTYL_URL: '',
+    PTERODACTYL_API_KEY: '',
+    REDIS_HOST: 'localhost',
+    REDIS_PORT: '6379',
+    REDIS_PASSWORD: undefined,
+    DISCORD_CLIENT_ID: undefined,
+    DISCORD_CLIENT_SECRET: undefined,
+    DISCORD_CALLBACK_URL: 'http://localhost:3000/auth/discord/callback',
+    FRONTEND_URL: 'http://localhost:5176'
 };

@@ -1,6 +1,6 @@
-import { Network, Globe, Lock } from 'lucide-react';
+import { Network, Globe } from 'lucide-react';
 
-const NetworkTab = ({ server }: { server: any }) => {
+const NetworkTab = ({ server: _server }: { server: any }) => {
     return (
         <div className="bg-[#1a1b26] border border-white/5 rounded-2xl p-6 min-h-[400px]">
             <div className="flex justify-between items-center mb-6">

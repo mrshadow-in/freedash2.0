@@ -1,16 +1,17 @@
 import axios from 'axios';
 import { ENV } from '../config/env';
-import Settings from '../models/Settings';
+import { prisma } from '../prisma';
 
 // Get Pterodactyl settings from database or fallback to env
 async function getPteroConfig() {
     try {
-        const settings = await Settings.findOne();
-        if (settings?.pterodactyl?.apiUrl && settings?.pterodactyl?.apiKey) {
+        const settings = await prisma.settings.findFirst();
+        const pterodactyl = (settings?.pterodactyl as any);
+        if (pterodactyl?.apiUrl && pterodactyl?.apiKey) {
             return {
-                url: settings.pterodactyl.apiUrl,
-                key: settings.pterodactyl.apiKey,
-                clientKey: settings.pterodactyl.clientApiKey
+                url: pterodactyl.apiUrl,
+                key: pterodactyl.apiKey,
+                clientKey: pterodactyl.clientApiKey
             };
         }
     } catch (error) {
@@ -20,7 +21,8 @@ async function getPteroConfig() {
     // Fallback to env
     return {
         url: ENV.PTERODACTYL_URL,
-        key: ENV.PTERODACTYL_API_KEY
+        key: ENV.PTERODACTYL_API_KEY,
+        clientKey: undefined // Env doesn't have client key usually? Or add it if needed.
     };
 }
 
@@ -262,7 +264,17 @@ export const powerPteroServer = async (identifier: string, signal: 'start' | 'st
     );
 };
 
+import redis from '../redis';
+
+// ... (existing imports)
+
 export const getPteroServerResources = async (identifier: string) => {
+    const CACHE_KEY = `ptero:resources:${identifier}`;
+    const cached = await redis.get(CACHE_KEY);
+    if (cached) {
+        return JSON.parse(cached);
+    }
+
     const config = await getPteroConfig();
     const token = config.clientKey || config.key;
 
@@ -275,5 +287,10 @@ export const getPteroServerResources = async (identifier: string) => {
             }
         }
     );
-    return (response.data as any).attributes;
+
+    const data = (response.data as any).attributes;
+    // Cache for 30 seconds
+    await redis.set(CACHE_KEY, JSON.stringify(data), 'EX', 30);
+
+    return data;
 };

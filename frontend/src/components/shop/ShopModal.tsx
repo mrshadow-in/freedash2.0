@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Cpu, HardDrive, Zap, ShoppingBag, Server, Shield, Database, Loader2, Coins } from 'lucide-react';
+import { X, Cpu, HardDrive, ShoppingBag, Database, Loader2, Coins } from 'lucide-react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import api from '../../api/client';
 import { toast } from 'react-hot-toast';

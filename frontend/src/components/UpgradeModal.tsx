@@ -48,7 +48,7 @@ const UpgradeModal = ({ isOpen, onClose, server, pricing }: UpgradeModalProps) =
                 cpuCores: cpu
             });
         },
-        onSuccess: (res: any) => {
+        onSuccess: (_res: any) => {
             queryClient.invalidateQueries({ queryKey: ['server', server._id] });
             queryClient.invalidateQueries({ queryKey: ['servers'] });
             toast.success('Server upgraded successfully!');

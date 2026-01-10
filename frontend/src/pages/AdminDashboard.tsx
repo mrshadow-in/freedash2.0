@@ -161,8 +161,9 @@ const AdminDashboard = () => {
 };
 
 // Settings Tab
-const SettingsTab = ({ settings, setSettings, fetchSettings }: any) => {
+const SettingsTab = ({ settings, fetchSettings }: any) => { // Removed setSettings
     const [showTestEmailModal, setShowTestEmailModal] = useState(false);
+    // ...
     const [testEmailAddress, setTestEmailAddress] = useState('');
 
     const [formData, setFormData] = useState({
@@ -271,6 +272,7 @@ const SettingsTab = ({ settings, setSettings, fetchSettings }: any) => {
                 });
             }
             toast.success('Settings saved!');
+            fetchSettings(); // Refresh settings
         } catch (error: any) {
             console.error('Save settings error:', error);
             toast.error(error.response?.data?.message || 'Failed to save settings');

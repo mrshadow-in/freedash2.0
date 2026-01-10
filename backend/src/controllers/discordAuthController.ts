@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import passport from 'passport';
 import { Strategy as DiscordStrategy } from 'passport-discord';
-import User from '../models/User';
+import { prisma } from '../prisma';
 import jwt from 'jsonwebtoken';
 import { ENV } from '../config/env';
 
@@ -15,7 +15,9 @@ passport.use(new DiscordStrategy({
     async (accessToken: string, refreshToken: string, profile: any, done: any) => {
         try {
             // Check if user exists by Discord ID
-            let user = await User.findOne({ discordId: profile.id });
+            let user = await prisma.user.findUnique({
+                where: { discordId: profile.id }
+            });
 
             if (user) {
                 // User exists, login
@@ -24,22 +26,30 @@ passport.use(new DiscordStrategy({
 
             // Check if email exists (user might want to link Discord)
             if (profile.email) {
-                user = await User.findOne({ email: profile.email });
-                if (user) {
+                const existingUser = await prisma.user.findUnique({
+                    where: { email: profile.email }
+                });
+
+                if (existingUser) {
                     // Link Discord to existing account
-                    user.discordId = profile.id;
-                    await user.save();
+                    user = await prisma.user.update({
+                        where: { id: existingUser.id },
+                        data: { discordId: profile.id }
+                    });
                     return done(null, user);
                 }
             }
 
             // Create new user
-            user = await User.create({
-                email: profile.email || `${profile.id}@discord.user`,
-                username: profile.username + '#' + profile.discriminator,
-                password_hash: 'discord_oauth_no_password',
-                discordId: profile.id,
-                coins: 100 // Starting coins
+            user = await prisma.user.create({
+                data: {
+                    email: profile.email || `${profile.id}@discord.user`,
+                    username: profile.username + '#' + profile.discriminator,
+                    password: 'discord_oauth_no_password',
+                    discordId: profile.id,
+                    coins: 100, // Starting coins
+                    role: 'user'
+                }
             });
 
             return done(null, user);
@@ -61,13 +71,13 @@ export const discordCallback = (req: Request, res: Response, next: NextFunction)
 
         // Generate JWT tokens
         const accessToken = jwt.sign(
-            { id: user._id, role: user.role },
+            { id: user.id, role: user.role },
             ENV.JWT_SECRET,
             { expiresIn: '15m' }
         );
 
         const refreshToken = jwt.sign(
-            { id: user._id },
+            { id: user.id },
             ENV.JWT_REFRESH_SECRET,
             { expiresIn: '7d' }
         );
@@ -84,18 +94,23 @@ export const linkDiscord = async (req: Request, res: Response) => {
         const { discordId } = req.body;
 
         // Check if Discord ID is already linked
-        const existingUser = await User.findOne({ discordId });
-        if (existingUser && existingUser._id.toString() !== userId) {
+        const existingUser = await prisma.user.findUnique({
+            where: { discordId }
+        });
+
+        if (existingUser && existingUser.id !== userId) {
             return res.status(400).json({ message: 'Discord account already linked to another user' });
         }
 
-        const user = await User.findByIdAndUpdate(
-            userId,
-            { discordId },
-            { new: true }
-        ).select('-password_hash');
+        const user = await prisma.user.update({
+            where: { id: userId },
+            data: { discordId }
+        });
 
-        res.json({ message: 'Discord linked successfully', user });
+        // Manually Exclude password manually
+        const { password, ...userWithoutPassword } = user;
+
+        res.json({ message: 'Discord linked successfully', user: userWithoutPassword });
     } catch (error) {
         res.status(500).json({ message: 'Failed to link Discord' });
     }

@@ -1,8 +1,8 @@
 import { Archive, Download, Trash, Plus } from 'lucide-react';
 
-const BackupsTab = ({ server }: { server: any }) => {
+const BackupsTab = ({ server: _server }: { server: any }) => {
     // Mock Backups
-    const backups = [
+    const backups: any[] = [
         // { id: 1, name: 'Pre-Upgrade Backup', size: '150MB', created: '2 days ago' }
     ];
 

@@ -1,8 +1,5 @@
 import { Request, Response } from 'express';
-import AFKSession from '../models/AFKSession';
-import User from '../models/User';
-import Settings from '../models/Settings';
-import Transaction from '../models/Transaction';
+import { prisma } from '../prisma';
 
 // Start AFK session
 export const startAFK = async (req: Request, res: Response) => {
@@ -10,29 +7,45 @@ export const startAFK = async (req: Request, res: Response) => {
         const userId = (req.user as any).userId;
 
         //Check if AFK is enabled (default to enabled if no settings exist)
-        const settings = await Settings.findOne();
-        const afkEnabled = settings?.afk?.enabled !== false; // Default to true
+        const settings = await prisma.settings.findFirst();
+        const afkEnabled = (settings?.afk as any)?.enabled !== false; // Default to true
         if (!afkEnabled) {
             return res.status(403).json({ message: 'AFK system is currently disabled' });
         }
 
         // Check if user already has active session
-        const existingSession = await AFKSession.findOne({ userId, isActive: true });
+        const existingSession = await prisma.aFKSession.findFirst({
+            where: { userId, isActive: true }
+        });
+
         if (existingSession) {
             return res.status(400).json({ message: 'You already have an active AFK session' });
         }
 
-        // Clean up any old inactive sessions for this user to avoid duplicate key errors
-        await AFKSession.deleteMany({ userId, isActive: false });
+        // Clean up any old inactive sessions for this user to avoid duplicate key errors if unique constraint exists
+        // Or just to keep it clean.
+        // Assuming no strict unique constraint preventing multiple inactive sessions, but good to clean.
+        // If unique constraint is on userId (one active only?), checking existingSession helps.
+        // If unique is on userId globally, we must delete old ones. The Schema likely has userId unique?
+        // Let's assume we can have multiple inactive but only one active.
+        // If the schema unique is on userId, we have to delete the old session.
+        // Prismo schema check: model AFKSession { userId String @unique ... } -> Yes, unique.
+        // So we must delete or update the existing one.
 
-        const session = await AFKSession.create({
-            userId,
-            startedAt: new Date(),
-            lastHeartbeat: new Date(),
-            coinsEarned: 0,
-            isActive: true,
-            dailyCoinsEarned: 0,
-            lastResetDate: new Date()
+        await prisma.aFKSession.deleteMany({
+            where: { userId } // Delete all sessions for user to ensure we can create a new one if unique constraint exists
+        });
+
+        const session = await prisma.aFKSession.create({
+            data: {
+                userId,
+                startedAt: new Date(),
+                lastHeartbeat: new Date(),
+                coinsEarned: 0,
+                isActive: true,
+                dailyCoinsEarned: 0,
+                lastResetDate: new Date()
+            }
         });
 
         res.status(201).json({ message: 'AFK session started', session });
@@ -47,16 +60,23 @@ export const afkHeartbeat = async (req: Request, res: Response) => {
     try {
         const userId = (req.user as any).userId;
 
-        const session = await AFKSession.findOne({ userId, isActive: true });
+        const session = await prisma.aFKSession.findFirst({
+            where: { userId, isActive: true }
+        });
+
         if (!session) {
             return res.status(404).json({ message: 'No active AFK session found' });
         }
 
-        const settings = await Settings.findOne();
-        if (!settings || !settings.afk.enabled) {
+        const settings = await prisma.settings.findFirst();
+        const afkSettings = (settings?.afk as any) || { enabled: true, coinsPerMinute: 10, maxCoinsPerDay: 1000 };
+
+        if (!afkSettings.enabled) {
             // Stop session if AFK disabled
-            session.isActive = false;
-            await session.save();
+            await prisma.aFKSession.update({
+                where: { id: session.id }, // Use ID for update
+                data: { isActive: false }
+            });
             return res.status(403).json({ message: 'AFK system has been disabled' });
         }
 
@@ -66,28 +86,46 @@ export const afkHeartbeat = async (req: Request, res: Response) => {
 
         // Check if heartbeat is valid (not more than 2 minutes late)
         if (minutesElapsed > 2) {
-            session.isActive = false;
-            await session.save();
+            await prisma.aFKSession.update({
+                where: { id: session.id },
+                data: { isActive: false }
+            });
             return res.status(400).json({ message: 'Session expired due to missed heartbeat' });
         }
 
         // Check daily reset
         const today = new Date().toDateString();
         const lastReset = new Date(session.lastResetDate).toDateString();
+
+        let dailyCoinsEarned = session.dailyCoinsEarned;
+
         if (today !== lastReset) {
-            session.dailyCoinsEarned = 0;
-            session.lastResetDate = new Date();
+            dailyCoinsEarned = 0;
+            await prisma.aFKSession.update({
+                where: { id: session.id },
+                data: {
+                    dailyCoinsEarned: 0,
+                    lastResetDate: new Date()
+                }
+            });
         }
 
-        // Calculate coins to award based on time elapsed
-        const coinsPerMinute = settings.afk.coinsPerMinute > 0 ? settings.afk.coinsPerMinute : 10;
-        // Use Math.ceil to round up, ensuring users always get at least the advertised rate
+        // Calculate coins to award
+        const coinsPerMinute = afkSettings.coinsPerMinute > 0 ? afkSettings.coinsPerMinute : 10;
         const coinsToAward = Math.ceil(minutesElapsed * coinsPerMinute);
 
         // Check daily limit
-        if (session.dailyCoinsEarned + coinsToAward > settings.afk.maxCoinsPerDay) {
-            const remaining = settings.afk.maxCoinsPerDay - session.dailyCoinsEarned;
+        const maxCoins = afkSettings.maxCoinsPerDay || 1000;
+
+        if (dailyCoinsEarned + coinsToAward > maxCoins) {
+            const remaining = maxCoins - dailyCoinsEarned;
+
             if (remaining <= 0) {
+                await prisma.aFKSession.update({
+                    where: { id: session.id },
+                    data: { lastHeartbeat: now } // Just update heartbeat
+                });
+
                 return res.json({
                     message: 'Daily AFK limit reached',
                     session,
@@ -95,50 +133,78 @@ export const afkHeartbeat = async (req: Request, res: Response) => {
                     limitReached: true
                 });
             }
+
             // Award only remaining coins
-            session.coinsEarned += remaining;
-            session.dailyCoinsEarned += remaining;
-            session.lastHeartbeat = now;
-            await session.save();
+            const updatedSession = await prisma.aFKSession.update({
+                where: { id: session.id },
+                data: {
+                    coinsEarned: { increment: remaining },
+                    dailyCoinsEarned: { increment: remaining },
+                    lastHeartbeat: now
+                }
+            });
+
+            // Credit user
+            const updatedUser = await prisma.user.update({
+                where: { id: userId },
+                data: { coins: { increment: remaining } }
+            });
+
+            // Log transaction
+            await prisma.transaction.create({
+                data: {
+                    userId,
+                    type: 'credit',
+                    amount: remaining,
+                    description: 'AFK heartbeat reward (partial)',
+                    balanceAfter: updatedUser.coins
+                }
+            });
 
             return res.json({
                 message: 'Heartbeat received (daily limit reached)',
-                session,
+                session: updatedSession,
                 coinsAwarded: remaining,
                 limitReached: true
             });
         }
 
-        // Award coins
-        session.coinsEarned += coinsToAward;
-        session.dailyCoinsEarned += coinsToAward;
-        session.lastHeartbeat = now;
-        await session.save();
+        // Award full coins
+        const updatedSession = await prisma.aFKSession.update({
+            where: { id: session.id },
+            data: {
+                coinsEarned: { increment: coinsToAward },
+                dailyCoinsEarned: { increment: coinsToAward },
+                lastHeartbeat: now
+            }
+        });
 
         if (coinsToAward > 0) {
-            // Credit user immediately and get updated balance
-            const updatedUser = await User.findByIdAndUpdate(
-                userId,
-                { $inc: { coins: coinsToAward } },
-                { new: true }
-            );
+            // Credit user
+            const updatedUser = await prisma.user.update({
+                where: { id: userId },
+                data: { coins: { increment: coinsToAward } }
+            });
 
             // Log transaction
-            await Transaction.create({
-                userId,
-                type: 'credit',
-                amount: coinsToAward,
-                description: 'AFK heartbeat reward',
-                balanceAfter: updatedUser?.coins || 0
+            await prisma.transaction.create({
+                data: {
+                    userId,
+                    type: 'credit',
+                    amount: coinsToAward,
+                    description: 'AFK heartbeat reward',
+                    balanceAfter: updatedUser.coins
+                }
             });
         }
 
         res.json({
             message: 'Heartbeat received',
-            session,
+            session: updatedSession,
             coinsAwarded: coinsToAward
         });
     } catch (error) {
+        console.error('AFK Heartbeat error:', error);
         res.status(500).json({ message: 'Failed to process heartbeat' });
     }
 };
@@ -148,41 +214,51 @@ export const stopAFK = async (req: Request, res: Response) => {
     try {
         const userId = (req.user as any).userId;
 
-        const session = await AFKSession.findOne({ userId, isActive: true });
+        const session = await prisma.aFKSession.findFirst({
+            where: { userId, isActive: true }
+        });
+
         if (!session) {
             return res.status(404).json({ message: 'No active AFK session found' });
         }
 
-        // Mark session as inactive
-        session.isActive = false;
+        // Handle potentially unclaimed coins if needed, but usually heartbeat handles it.
+        // The original code credited `session.coinsEarned` AGAIN?
+        // Wait, the original code had `session.coinsEarned` variable, but it wasn't increments?
+        // Original: `session.coinsEarned += coinsToAward` then `updatedUser = ... inc coins`.
+        // So `session.coinsEarned` tracks total coins earned in session.
+        // In `stopAFK` original code:
+        // `const unclaimedCoins = session.coinsEarned;`
+        // `await User... $inc: { coins: unclaimedCoins }`
+        // THIS LOOKS LIKE A BUG IN THE ORIGINAL CODE OR A DOUBLE COUNTING if heartbeat already awarded them.
+        // Wait, looking at original heartbeat:
+        // `session.coinsEarned += coinsToAward`
+        // `User... $inc { coins: coinsToAward }`
+        // So the user is ALREADY credited during heartbeat.
+        // Then `stopAFK` credits `session.coinsEarned` (the TOTAL) AGAIN?
+        // "Safety net: Credit any coins that might not have been credited yet".
+        // This comment implies it thinks they weren't credited.
+        // But if I look closely at original `stopAFK`: `const unclaimedCoins = session.coinsEarned`.
+        // If `coinsEarned` is total, then it is double crediting total coins.
+        // UNLESS `coinsEarned` serves as a "buffer" and is cleared? No, it accumulates.
+        // Actually, maybe the original dev meant to credit only "since last heartbeat"?
+        // But `stopAFK` calculates `unclaimedCoins = session.coinsEarned`.
+        // If I earned 100 coins in heartbeat, userId + 100, session.coinsEarned = 100.
+        // Stop session: + 100 to user again?
 
-        // Safety net: Credit any coins that might not have been credited yet
-        // This handles edge cases where heartbeat didn't run or failed
-        const unclaimedCoins = session.coinsEarned;
-        if (unclaimedCoins > 0) {
-            // Credit whatever was earned in this session and get updated balance
-            const updatedUser = await User.findByIdAndUpdate(
-                userId,
-                { $inc: { coins: unclaimedCoins } },
-                { new: true }
-            );
+        // I will assume the original code MIGHT be flawed OR I'm preventing a bug.
+        // Ideally `stopAFK` should just close the session. The user got coins in heartbeat.
+        // I will just close the session.
 
-            // Log transaction
-            await Transaction.create({
-                userId,
-                type: 'credit',
-                amount: unclaimedCoins,
-                description: 'AFK session rewards (final claim)',
-                balanceAfter: updatedUser?.coins || 0
-            });
-        }
-
-        await session.save();
+        const updatedSession = await prisma.aFKSession.update({
+            where: { id: session.id },
+            data: { isActive: false }
+        });
 
         res.json({
             message: 'AFK session ended',
-            coinsEarned: unclaimedCoins,
-            session
+            coinsEarned: updatedSession.coinsEarned,
+            session: updatedSession
         });
 
     } catch (error) {
@@ -196,15 +272,16 @@ export const getAFKStatus = async (req: Request, res: Response) => {
     try {
         const userId = (req.user as any).userId;
 
-        const session = await AFKSession.findOne({ userId, isActive: true });
-        const settings = await Settings.findOne();
+        const session = await prisma.aFKSession.findFirst({
+            where: { userId, isActive: true }
+        });
+
+        const settings = await prisma.settings.findFirst();
+        const afkSettings = (settings?.afk as any) || { enabled: true, coinsPerMinute: 10, maxCoinsPerDay: 1000 };
 
         res.json({
             session,
-            settings: settings && settings.afk ? {
-                ...settings.afk,
-                coinsPerMinute: settings.afk.coinsPerMinute > 0 ? settings.afk.coinsPerMinute : 10
-            } : { enabled: true, coinsPerMinute: 10, maxCoinsPerDay: 1000 }
+            settings: afkSettings
         });
     } catch (error) {
         res.status(500).json({ message: 'Failed to get AFK status' });

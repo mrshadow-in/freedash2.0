@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { ENV } from '../config/env';
-import User from '../models/User';
+import { prisma } from '../prisma';
 
 export interface AuthRequest extends Request {
     user?: {
@@ -19,14 +19,18 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     const token = authHeader.split(' ')[1];
     try {
         const decoded = jwt.verify(token, ENV.JWT_SECRET) as any;
+        const userId = decoded.id || decoded.userId;
 
         // Check if user is banned
-        const user = await User.findById(decoded.id || decoded.userId);
+        const user = await prisma.user.findUnique({
+            where: { id: userId }
+        });
+
         if (user?.isBanned) {
             return res.status(403).json({ message: 'User is banned' });
         }
 
-        req.user = { userId: decoded.id || decoded.userId, role: decoded.role };
+        req.user = { userId, role: decoded.role };
         next();
     } catch (error) {
         return res.status(403).json({ message: 'Invalid token' });

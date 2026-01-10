@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Loader2, ShoppingCart, ExternalLink, Copy, Check } from 'lucide-react';
+import { Loader2, ShoppingCart, Copy, Check } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 // Components
@@ -62,7 +62,7 @@ const ManageServer = () => {
         mutationFn: async (signal: string) => {
             return api.post(`/servers/${id}/power`, { signal });
         },
-        onSuccess: (data, variables) => {
+        onSuccess: (_data, variables) => {
             toast.success(`Signal sent: ${variables}`);
         },
         onError: (error: any) => {

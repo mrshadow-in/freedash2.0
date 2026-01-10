@@ -1,57 +1,59 @@
-import mongoose from 'mongoose';
-import Server from '../models/Server';
-import User from '../models/User';
-import Plan from '../models/Plan';
-import { ENV } from '../config/env';
+import { prisma } from '../prisma';
 
 const seed = async () => {
     try {
-        await mongoose.connect(ENV.MONGODB_URI);
-        console.log('Connected to DB');
+        console.log('Connected to DB via Prisma');
 
-        const user = await User.findOne();
+        const user = await prisma.user.findFirst();
         if (!user) {
             console.log('No user found');
             process.exit(1);
         }
 
         // Try to find a plan, if not create one carefully
-        let plan = await Plan.findOne();
+        let plan = await prisma.plan.findFirst();
         if (!plan) {
             console.log('No Plan found, finding any... or creating default');
-            // Hardcode create if needed, but ensure fields match IPlan
-            plan = await Plan.create({
-                name: 'Test Plan',
-                ramMb: 1024,
-                diskMb: 5120,
-                cpuPercent: 100,
-                cpuCores: 1,
-                slots: 5,
-                priceCoins: 0,
-                pteroEggId: 1,
-                pteroNestId: 1
+            // Create
+            plan = await prisma.plan.create({
+                data: {
+                    name: 'Test Plan',
+                    ramMb: 1024,
+                    diskMb: 5120,
+                    cpuPercent: 100,
+                    cpuCores: 1,
+                    slots: 5,
+                    priceCoins: 0,
+                    pteroEggId: 1,
+                    pteroNestId: 1
+                }
             });
         }
 
-        const serverId = '693304c2e324072e5535812b';
+        const serverId = 'server-manual-test-id'; // Prisma using UUID or CUID usually, but simplified for manual seeding
 
-        // Delete if exists
-        await Server.deleteOne({ _id: serverId });
+        // In Prisma, we often let DB generate ID or use UUID. If we want fixed ID:
+        // Assume ID is string based on schema.
 
-        const server = await Server.create({
-            _id: serverId,
-            ownerId: user._id,
-            pteroServerId: 99999,
-            pteroIdentifier: 'text-server',
-            planId: plan._id,
-            name: 'Manual Test Server',
-            ramMb: 1024,
-            diskMb: 5120,
-            cpuCores: 1,
-            status: 'active'
+        // Delete if exists (by name or some field, since ID might vary if we can't force it easily depending on schema default)
+        // But for this script, we'll just creating a new one or find existing.
+
+        // We'll just create a new one.
+        const server = await prisma.server.create({
+            data: {
+                ownerId: user.id,
+                pteroServerId: 99999,
+                pteroIdentifier: 'text-server',
+                planId: plan.id,
+                name: 'Manual Test Server',
+                ramMb: 1024,
+                diskMb: 5120,
+                cpuCores: 1,
+                status: 'active'
+            }
         });
 
-        console.log('Server Created:', server._id);
+        console.log('Server Created:', server.id);
         process.exit(0);
 
     } catch (error) {

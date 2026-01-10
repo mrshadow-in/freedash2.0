@@ -1,9 +1,6 @@
 import { Request, Response } from 'express';
-import Server from '../models/Server';
-import User from '../models/User';
-import Settings from '../models/Settings';
-import Transaction from '../models/Transaction';
-import Plan from '../models/Plan';
+import { prisma } from '../prisma';
+import { Prisma } from '@prisma/client';
 
 // Upgrade server RAM
 export const upgradeRAM = async (req: Request, res: Response) => {
@@ -16,62 +13,68 @@ export const upgradeRAM = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Invalid RAM amount' });
         }
 
-        const server = await Server.findById(serverId);
-        if (!server) {
-            return res.status(404).json({ message: 'Server not found' });
-        }
+        const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+            const server = await tx.server.findUnique({ where: { id: serverId } });
+            if (!server) {
+                throw new Error('Server not found');
+            }
 
-        if (server.ownerId.toString() !== userId) {
-            return res.status(403).json({ message: 'Not authorized' });
-        }
+            if (server.ownerId !== userId) {
+                throw new Error('Not authorized');
+            }
 
-        // Get pricing from settings
-        const settings = await Settings.findOne();
-        if (!settings) {
-            return res.status(500).json({ message: 'Settings not configured' });
-        }
+            // Get pricing from settings
+            const settings = await tx.settings.findFirst();
+            if (!settings) {
+                throw new Error('Settings not configured');
+            }
 
-        const cost = amountGB * settings.upgradePricing.ramPerGB;
+            const upgradePricing = (settings.upgradePricing as any) || { ramPerGB: 0, diskPerGB: 0, cpuPerCore: 0 };
+            const cost = amountGB * upgradePricing.ramPerGB;
 
-        // Check user balance and deduct atomically
-        const user = await User.findById(userId);
-        if (!user || user.coins < cost) {
-            return res.status(400).json({ message: 'Insufficient coins' });
-        }
+            // Check user balance and deduct atomically
+            const user = await tx.user.findUnique({ where: { id: userId } });
+            if (!user || user.coins < cost) {
+                throw new Error('Insufficient coins');
+            }
 
-        // Atomic coin deduction
-        const updatedUser = await User.findByIdAndUpdate(
-            userId,
-            { $inc: { coins: -cost } },
-            { new: true }
-        );
+            // Atomic coin deduction
+            const updatedUser = await tx.user.update({
+                where: { id: userId },
+                data: { coins: { decrement: cost } }
+            });
 
-        if (!updatedUser) {
-            return res.status(500).json({ message: 'Failed to deduct coins' });
-        }
+            // Update server RAM
+            const amountMB = amountGB * 1024;
+            const updatedServer = await tx.server.update({
+                where: { id: serverId },
+                data: { ramMb: { increment: amountMB } }
+            });
 
-        // Update server RAM
-        const amountMB = amountGB * 1024;
-        server.ramMb += amountMB;
-        await server.save();
+            // Log transaction
+            await tx.transaction.create({
+                data: {
+                    userId,
+                    type: 'debit',
+                    amount: cost,
+                    description: `Upgraded RAM by ${amountGB}GB for server ${server.name}`,
+                    balanceAfter: updatedUser.coins
+                }
+            });
 
-        // Log transaction
-        await Transaction.create({
-            userId,
-            type: 'debit',
-            amount: cost,
-            description: `Upgraded RAM by ${amountGB}GB for server ${server.name}`,
-            balanceAfter: updatedUser.coins
+            return { server: updatedServer, user: updatedUser, cost };
         });
 
         res.json({
             message: 'RAM upgraded successfully',
-            server,
-            coinsSpent: cost,
-            newBalance: updatedUser.coins
+            server: result.server,
+            coinsSpent: result.cost,
+            newBalance: result.user.coins
         });
-    } catch (error) {
-        res.status(500).json({ message: 'Failed to upgrade RAM' });
+    } catch (error: any) {
+        const msg = error.message === 'Insufficient coins' ? error.message : 'Failed to upgrade RAM';
+        const status = error.message === 'Server not found' ? 404 : (error.message === 'Not authorized' ? 403 : (error.message === 'Insufficient coins' ? 400 : 500));
+        res.status(status).json({ message: msg });
     }
 };
 
@@ -86,57 +89,54 @@ export const upgradeDisk = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Invalid disk amount' });
         }
 
-        const server = await Server.findById(serverId);
-        if (!server) {
-            return res.status(404).json({ message: 'Server not found' });
-        }
+        const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+            const server = await tx.server.findUnique({ where: { id: serverId } });
+            if (!server) throw new Error('Server not found');
+            if (server.ownerId !== userId) throw new Error('Not authorized');
 
-        if (server.ownerId.toString() !== userId) {
-            return res.status(403).json({ message: 'Not authorized' });
-        }
+            const settings = await tx.settings.findFirst();
+            if (!settings) throw new Error('Settings not configured');
 
-        const settings = await Settings.findOne();
-        if (!settings) {
-            return res.status(500).json({ message: 'Settings not configured' });
-        }
+            const upgradePricing = (settings.upgradePricing as any) || { ramPerGB: 0, diskPerGB: 0, cpuPerCore: 0 };
+            const cost = amountGB * upgradePricing.diskPerGB;
 
-        const cost = amountGB * settings.upgradePricing.diskPerGB;
+            const user = await tx.user.findUnique({ where: { id: userId } });
+            if (!user || user.coins < cost) throw new Error('Insufficient coins');
 
-        const user = await User.findById(userId);
-        if (!user || user.coins < cost) {
-            return res.status(400).json({ message: 'Insufficient coins' });
-        }
+            const updatedUser = await tx.user.update({
+                where: { id: userId },
+                data: { coins: { decrement: cost } }
+            });
 
-        const updatedUser = await User.findByIdAndUpdate(
-            userId,
-            { $inc: { coins: -cost } },
-            { new: true }
-        );
+            const amountMB = amountGB * 1024;
+            const updatedServer = await tx.server.update({
+                where: { id: serverId },
+                data: { diskMb: { increment: amountMB } }
+            });
 
-        if (!updatedUser) {
-            return res.status(500).json({ message: 'Failed to deduct coins' });
-        }
+            await tx.transaction.create({
+                data: {
+                    userId,
+                    type: 'debit',
+                    amount: cost,
+                    description: `Upgraded Disk by ${amountGB}GB for server ${server.name}`,
+                    balanceAfter: updatedUser.coins
+                }
+            });
 
-        const amountMB = amountGB * 1024;
-        server.diskMb += amountMB;
-        await server.save();
-
-        await Transaction.create({
-            userId,
-            type: 'debit',
-            amount: cost,
-            description: `Upgraded Disk by ${amountGB}GB for server ${server.name}`,
-            balanceAfter: updatedUser.coins
+            return { server: updatedServer, user: updatedUser, cost };
         });
 
         res.json({
             message: 'Disk upgraded successfully',
-            server,
-            coinsSpent: cost,
-            newBalance: updatedUser.coins
+            server: result.server,
+            coinsSpent: result.cost,
+            newBalance: result.user.coins
         });
-    } catch (error) {
-        res.status(500).json({ message: 'Failed to upgrade disk' });
+    } catch (error: any) {
+        const msg = error.message === 'Insufficient coins' ? error.message : 'Failed to upgrade disk';
+        const status = error.message === 'Server not found' ? 404 : (error.message === 'Not authorized' ? 403 : (error.message === 'Insufficient coins' ? 400 : 500));
+        res.status(status).json({ message: msg });
     }
 };
 
@@ -151,55 +151,52 @@ export const upgradeCPU = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Invalid CPU cores amount' });
         }
 
-        const server = await Server.findById(serverId);
-        if (!server) {
-            return res.status(404).json({ message: 'Server not found' });
-        }
+        const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+            const server = await tx.server.findUnique({ where: { id: serverId } });
+            if (!server) throw new Error('Server not found');
+            if (server.ownerId !== userId) throw new Error('Not authorized');
 
-        if (server.ownerId.toString() !== userId) {
-            return res.status(403).json({ message: 'Not authorized' });
-        }
+            const settings = await tx.settings.findFirst();
+            if (!settings) throw new Error('Settings not configured');
 
-        const settings = await Settings.findOne();
-        if (!settings) {
-            return res.status(500).json({ message: 'Settings not configured' });
-        }
+            const upgradePricing = (settings.upgradePricing as any) || { ramPerGB: 0, diskPerGB: 0, cpuPerCore: 0 };
+            const cost = cores * upgradePricing.cpuPerCore;
 
-        const cost = cores * settings.upgradePricing.cpuPerCore;
+            const user = await tx.user.findUnique({ where: { id: userId } });
+            if (!user || user.coins < cost) throw new Error('Insufficient coins');
 
-        const user = await User.findById(userId);
-        if (!user || user.coins < cost) {
-            return res.status(400).json({ message: 'Insufficient coins' });
-        }
+            const updatedUser = await tx.user.update({
+                where: { id: userId },
+                data: { coins: { decrement: cost } }
+            });
 
-        const updatedUser = await User.findByIdAndUpdate(
-            userId,
-            { $inc: { coins: -cost } },
-            { new: true }
-        );
+            const updatedServer = await tx.server.update({
+                where: { id: serverId },
+                data: { cpuCores: { increment: cores } }
+            });
 
-        if (!updatedUser) {
-            return res.status(500).json({ message: 'Failed to deduct coins' });
-        }
+            await tx.transaction.create({
+                data: {
+                    userId,
+                    type: 'debit',
+                    amount: cost,
+                    description: `Upgraded CPU by ${cores} core(s) for server ${server.name}`,
+                    balanceAfter: updatedUser.coins
+                }
+            });
 
-        server.cpuCores += cores;
-        await server.save();
-
-        await Transaction.create({
-            userId,
-            type: 'debit',
-            amount: cost,
-            description: `Upgraded CPU by ${cores} core(s) for server ${server.name}`,
-            balanceAfter: updatedUser.coins
+            return { server: updatedServer, user: updatedUser, cost };
         });
 
         res.json({
             message: 'CPU upgraded successfully',
-            server,
-            coinsSpent: cost,
-            newBalance: updatedUser.coins
+            server: result.server,
+            coinsSpent: result.cost,
+            newBalance: result.user.coins
         });
-    } catch (error) {
-        res.status(500).json({ message: 'Failed to upgrade CPU' });
+    } catch (error: any) {
+        const msg = error.message === 'Insufficient coins' ? error.message : 'Failed to upgrade CPU';
+        const status = error.message === 'Server not found' ? 404 : (error.message === 'Not authorized' ? 403 : (error.message === 'Insufficient coins' ? 400 : 500));
+        res.status(status).json({ message: msg });
     }
 };
