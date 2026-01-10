@@ -15,9 +15,9 @@ COPY prisma ./prisma
 # Install dependencies (Triggers postinstall: prisma generate)
 RUN npm install
 
-# FIX: Ensure Prisma binary has execute permissions
-RUN chmod +x node_modules/.bin/prisma && \
-    find node_modules/prisma -name "query-engine*" -exec chmod +x {} +
+# FIX: Ensure ALL binaries in node_modules/.bin have execute permissions
+RUN chmod -R +x node_modules/.bin && \
+    if [ -d "node_modules/prisma" ]; then find node_modules/prisma -name "query-engine*" -exec chmod +x {} +; fi
 
 # Copy rest of source code
 COPY . .
