@@ -414,6 +414,12 @@ export const getConsoleCredentials = async (req: AuthRequest, res: Response) => 
 
         if (!server) return res.status(404).json({ message: 'Server not found' });
 
+        // Check if server is ready
+        const pteroServer = await getPteroServer(server.pteroServerId);
+        if (pteroServer.suspended || pteroServer.container.installed !== 1) {
+            return res.status(400).json({ message: 'Server is not ready' });
+        }
+
         const data = await getConsoleDetails(server.pteroIdentifier);
         res.json(data);
     } catch (error: any) {
