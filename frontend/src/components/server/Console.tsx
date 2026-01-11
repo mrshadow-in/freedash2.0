@@ -27,11 +27,14 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
 
         setStatus('connecting');
         try {
+            console.log('[Console] Fetching credentials from /servers/' + serverId + '/console');
             const res = await api.get(`/servers/${serverId}/console`);
             const { token, socket } = res.data;
+            console.log('[Console] Received socket URL:', socket);
+            console.log('[Console] Token length:', token?.length || 0);
             initWebSocket(socket, token);
-        } catch (error) {
-            console.error('Failed to get console credentials', error);
+        } catch (error: any) {
+            console.error('[Console] Failed to get console credentials:', error.response?.data || error.message);
             setStatus('error');
         }
     };
@@ -46,6 +49,7 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
     }, [serverId, serverStatus]);
 
     const initWebSocket = (url: string, token: string) => {
+        console.log('[Console] Connecting to WebSocket:', url);
         const ws = new WebSocket(url);
         wsRef.current = ws;
 

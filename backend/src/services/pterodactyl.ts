@@ -269,6 +269,8 @@ export const getConsoleDetails = async (identifier: string) => {
     const config = await getPteroConfig();
     const token = config.clientKey || config.key;
 
+    console.log(`[Console] Fetching WebSocket details for server: ${identifier}`);
+
     const response: any = await axios.get(
         `${config.url}/api/client/servers/${identifier}/websocket`,
         {
@@ -278,7 +280,12 @@ export const getConsoleDetails = async (identifier: string) => {
             }
         }
     );
-    return response.data.data;
+
+    const data = response.data.data;
+    console.log(`[Console] Pterodactyl returned socket URL: ${data.socket}`);
+    console.log(`[Console] Token length: ${data.token?.length || 0}`);
+
+    return data;
 };
 
 // File Manager Functions
