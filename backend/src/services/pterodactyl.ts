@@ -396,12 +396,12 @@ export const createFolder = async (identifier: string, root: string, name: strin
     );
 };
 
-export const getUploadUrl = async (identifier: string) => {
+export const getUploadUrl = async (identifier: string, directory: string = '/') => {
     const config = await getPteroConfig();
     const token = config.clientKey || config.key;
 
     const response: any = await axios.get(
-        `${config.url}/api/client/servers/${identifier}/files/upload`,
+        `${config.url}/api/client/servers/${identifier}/files/upload?directory=${encodeURIComponent(directory)}`,
         {
             headers: {
                 Authorization: `Bearer ${token}`,
@@ -620,7 +620,7 @@ export const renamePteroFile = async (
 // Upload file (Binary/Multipart)
 export const uploadFileToPtero = async (identifier: string, directory: string, filename: string, content: Buffer) => {
     // 1. Get Signed Upload URL
-    const uploadUrl = await getUploadUrl(identifier);
+    const uploadUrl = await getUploadUrl(identifier, directory);
 
     // 2. Construct Multipart Body Manually (No 'form-data' dependency)
     const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2);
