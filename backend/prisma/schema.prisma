@@ -17,8 +17,16 @@ enum Role {
 enum ServerStatus {
   installing
   active
+  running
+  stopped
   suspended
   deleted
+}
+
+enum NodeStatus {
+  online
+  offline
+  maintenance
 }
 
 enum ThemeType {
@@ -62,8 +70,18 @@ model Server {
   id              String       @id @default(uuid())
   ownerId         String
   owner           User         @relation(fields: [ownerId], references: [id])
-  pteroServerId   Int
-  pteroIdentifier String
+  
+  // Legacy Pterodactyl fields (optional for migration)
+  pteroServerId   Int?
+  pteroIdentifier String?
+  
+  // New self-hosted fields
+  nodeId          String?
+  node            Node?        @relation(fields: [nodeId], references: [id])
+  containerId     String?      // Docker container ID
+  serverPath      String?      // e.g., /home/servers/{id}
+  ports           Json?        // {game: 25565, rcon: 25575}
+  
   planId          String
   plan            Plan         @relation(fields: [planId], references: [id])
   name            String
@@ -78,6 +96,35 @@ model Server {
   serverIp        String?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
+}
+
+// VPS Node for self-hosted panel
+model Node {
+  id          String     @id @default(uuid())
+  name        String
+  ipAddress   String
+  sshPort     Int        @default(22)
+  sshUser     String     @default("root")
+  sshKeyPath  String?    // Path to private SSH key on backend server
+  sshPassword String?    // Encrypted, fallback if no SSH key
+  osType      String     @default("ubuntu")
+  
+  // Resource limits
+  maxRam      Int        // MB
+  maxCpu      Int        // Number of cores
+  maxDisk     Int        // MB
+  usedRam     Int        @default(0)
+  usedCpu     Int        @default(0)
+  usedDisk    Int        @default(0)
+  
+  // Status
+  status      NodeStatus @default(offline)
+  lastPing    DateTime?
+  
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  
+  servers     Server[]
 }
 
 model Plan {

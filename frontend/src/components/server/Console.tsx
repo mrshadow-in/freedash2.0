@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
-import api from '../../api/client';
 import { Loader2 } from 'lucide-react';
 
 interface ConsoleProps {
@@ -25,16 +24,37 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
             return;
         }
 
+        // Close existing connection
+        if (wsRef.current) {
+            wsRef.current.close();
+            wsRef.current = null;
+        }
+
         setStatus('connecting');
         try {
-            console.log('[Console] Fetching credentials from /servers/' + serverId + '/console');
-            const res = await api.get(`/servers/${serverId}/console`);
-            const { token, socket } = res.data;
-            console.log('[Console] Received socket URL:', socket);
-            console.log('[Console] Token length:', token?.length || 0);
-            initWebSocket(socket, token);
+            // Get auth token from localStorage
+            const token = localStorage.getItem('token');
+            if (!token) {
+                console.error('[Console] No auth token');
+                setStatus('error');
+                return;
+            }
+
+            // Connect directly to our backend WebSocket
+            const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+            const host = window.location.host.includes('localhost')
+                ? 'localhost:3000'  // Dev mode
+                : window.location.host;  // Prod - goes through nginx
+
+            // For production with nginx, use /api prefix
+            const wsUrl = window.location.host.includes('localhost')
+                ? `${protocol}://${host}/api/ws/console?serverId=${serverId}&token=${token}`
+                : `${protocol}://${window.location.host}/api/ws/console?serverId=${serverId}&token=${token}`;
+
+            console.log('[Console] Connecting to:', wsUrl);
+            initWebSocket(wsUrl);
         } catch (error: any) {
-            console.error('[Console] Failed to get console credentials:', error.response?.data || error.message);
+            console.error('[Console] Failed to connect:', error.message);
             setStatus('error');
         }
     };
@@ -48,15 +68,14 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
         };
     }, [serverId, serverStatus]);
 
-    const initWebSocket = (url: string, token: string) => {
+    const initWebSocket = (url: string) => {
         console.log('[Console] Connecting to WebSocket:', url);
         const ws = new WebSocket(url);
         wsRef.current = ws;
 
         ws.onopen = () => {
-            console.log('WebSocket opened, sending auth...');
-            // Send auth immediately on connection - REQUIRED by Pterodactyl
-            ws.send(JSON.stringify({ event: 'auth', args: [token] }));
+            console.log('[Console] WebSocket opened');
+            // No auth needed - backend handles it via query param token
         };
 
         ws.onmessage = (event) => {

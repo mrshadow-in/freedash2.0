@@ -17,6 +17,7 @@ import { discordLogin, discordCallback } from './controllers/discordAuthControll
 import passport from 'passport';
 import botRoutes from './routes/botRoutes';
 import adRoutes from './routes/adRoutes';
+import nodeRoutes from './routes/nodeRoutes';
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.get('/api/auth/discord', discordLogin);
 app.get('/api/auth/discord/callback', discordCallback);
 app.use('/api/servers', serverRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/admin/nodes', nodeRoutes);
 app.use('/api/afk', afkRoutes);
 app.use('/api/upgrades', upgradeRoutes);
 app.use('/api/bot', botRoutes);
