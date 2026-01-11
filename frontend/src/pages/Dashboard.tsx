@@ -128,14 +128,14 @@ const Dashboard = () => {
                 <div className="absolute bottom-[10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px]" />
             </div>
 
-            {/* Sidebar Left Ad Zone - Fixed Floating */}
-            <div className="fixed left-4 top-1/2 -translate-y-1/2 z-20 hidden xl:block max-w-[200px]">
-                <AdZone position="sidebar-left" rotate={true} rotationInterval={30} className="" />
+            {/* Sidebar Left Ad Zone - Fixed Floating - Shows ALL ads stacked */}
+            <div className="fixed left-4 top-1/2 -translate-y-1/2 z-20 hidden xl:block max-w-[200px] space-y-4">
+                <AdZone position="sidebar-left" rotate={false} className="" />
             </div>
 
-            {/* Sidebar Right Ad Zone - Fixed Floating */}
-            <div className="fixed right-4 top-1/2 -translate-y-1/2 z-20 hidden xl:block max-w-[200px]">
-                <AdZone position="sidebar-right" rotate={true} rotationInterval={30} className="" />
+            {/* Sidebar Right Ad Zone - Fixed Floating - Shows ALL ads stacked */}
+            <div className="fixed right-4 top-1/2 -translate-y-1/2 z-20 hidden xl:block max-w-[200px] space-y-4">
+                <AdZone position="sidebar-right" rotate={false} className="" />
             </div>
 
             {/* Navigation Header */}
