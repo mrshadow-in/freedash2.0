@@ -102,8 +102,8 @@ const FileManager = ({ serverId }: FileManagerProps) => {
                 body: formData
             });
 
-            // Check if upload was successful
-            if (!response.ok) {
+            // Check if upload was successful (Pterodactyl returns 204 No Content on success)
+            if (response.status !== 200 && response.status !== 204) {
                 throw new Error(`Upload failed with status: ${response.status}`);
             }
 

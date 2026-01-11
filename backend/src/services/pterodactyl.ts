@@ -590,3 +590,29 @@ export const updateStartupVariable = async (identifier: string, key: string, val
     );
     return response.data;
 };
+
+// Rename file
+export const renamePteroFile = async (
+    identifier: string,
+    root: string,
+    from: string,
+    to: string
+) => {
+    const config = getPteroConfig();
+    const token = await getClientToken(identifier);
+
+    await axios.put(
+        `${config.url}/api/client/servers/${identifier}/files/rename`,
+        {
+            root,
+            files: [{ from, to }]
+        },
+        {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                Accept: 'application/vnd.pterodactyl.v1+json'
+            }
+        }
+    );
+};
