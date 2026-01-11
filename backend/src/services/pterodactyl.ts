@@ -540,7 +540,7 @@ export const pullPteroFile = async (pteroIdentifier: string, url: string, direct
     try {
         await axios.post(
             `${config.url}/api/client/servers/${pteroIdentifier}/files/pull`,
-            { url, root: directory },
+            { url, directory: directory },
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
