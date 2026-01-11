@@ -728,7 +728,7 @@ function UsersTab({ users, fetchUsers, loading }: any) {
 
     const openEditModal = (user: any) => {
         setEditingUser({
-            _id: user._id,
+            _id: user.id,
             username: user.username,
             email: user.email,
             password: '',
@@ -751,7 +751,7 @@ function UsersTab({ users, fetchUsers, loading }: any) {
                 updateData.password = editingUser.password;
             }
 
-            await api.put(`/admin/users/${editingUser._id}`, updateData);
+            await api.put(`/admin/users/${editingUser.id}`, updateData);
             toast.success('User updated successfully!');
             setShowEditUser(false);
             setEditingUser(null);
@@ -945,7 +945,7 @@ function UsersTab({ users, fetchUsers, loading }: any) {
                         </thead>
                         <tbody>
                             {users.map((user: any) => (
-                                <tr key={user._id} className="border-b border-white/5">
+                                <tr key={user.id} className="border-b border-white/5">
                                     <td className="p-3">{user.username}</td>
                                     <td className="p-3">{user.email}</td>
                                     <td className="p-3">
@@ -954,7 +954,7 @@ function UsersTab({ users, fetchUsers, loading }: any) {
                                             <button
                                                 onClick={() => {
                                                     setCoinAmount(user.coins);
-                                                    setShowGiveCoins(user._id);
+                                                    setShowGiveCoins(user.id);
                                                 }}
                                                 className="px-2 py-1 bg-yellow-500/20 hover:bg-yellow-500/30 rounded text-xs transition"
                                                 title="Give Coins"
@@ -966,7 +966,7 @@ function UsersTab({ users, fetchUsers, loading }: any) {
                                     <td className="p-3">
                                         <select
                                             value={user.role}
-                                            onChange={(e) => changeRole(user._id, e.target.value)}
+                                            onChange={(e) => changeRole(user.id, e.target.value)}
                                             className={`px-2 py-1 rounded text-xs bg-white/10 border border-white/20 ${user.role === 'admin' ? 'text-purple-400' :
                                                 user.role === 'mod' ? 'text-blue-400' : 'text-gray-400'
                                                 }`}
@@ -992,14 +992,14 @@ function UsersTab({ users, fetchUsers, loading }: any) {
                                         </button>
                                         {user.isBanned ? (
                                             <button
-                                                onClick={() => unbanUser(user._id)}
+                                                onClick={() => unbanUser(user.id)}
                                                 className="px-3 py-1 bg-green-500/20 hover:bg-green-500/30 rounded text-sm"
                                             >
                                                 Unban
                                             </button>
                                         ) : (
                                             <button
-                                                onClick={() => banUser(user._id)}
+                                                onClick={() => banUser(user.id)}
                                                 className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 rounded text-sm"
                                             >
                                                 Ban
@@ -1155,7 +1155,7 @@ function ServersTab({ servers, fetchServers, loading }: any) {
                         </tr>
                     ) : (
                         serverList.map((server: any) => (
-                            <tr key={server._id} className="border-b border-white/5">
+                            <tr key={server.id} className="border-b border-white/5">
                                 <td className="p-3">{server.name}</td>
                                 <td className="p-3">{server.ownerId?.username || 'Unknown'}</td>
                                 <td className="p-3">
@@ -1172,19 +1172,19 @@ function ServersTab({ servers, fetchServers, loading }: any) {
                                         {server.status === 'active' && !server.isSuspended ? (
                                             <>
                                                 <button
-                                                    onClick={() => navigate(`/server/${server._id}`)}
+                                                    onClick={() => navigate(`/server/${server.id}`)}
                                                     className="px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 rounded text-sm transition"
                                                 >
                                                     Access
                                                 </button>
                                                 <button
-                                                    onClick={() => suspendServer(server._id)}
+                                                    onClick={() => suspendServer(server.id)}
                                                     className="px-3 py-1 bg-yellow-500/20 hover:bg-yellow-500/30 rounded text-sm transition"
                                                 >
                                                     Suspend
                                                 </button>
                                                 <button
-                                                    onClick={() => setDeleteConfirm({ show: true, serverId: server._id, serverName: server.name })}
+                                                    onClick={() => setDeleteConfirm({ show: true, serverId: server.id, serverName: server.name })}
                                                     className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 rounded text-sm transition"
                                                 >
                                                     Delete
@@ -1193,19 +1193,19 @@ function ServersTab({ servers, fetchServers, loading }: any) {
                                         ) : (
                                             <>
                                                 <button
-                                                    onClick={() => navigate(`/server/${server._id}`)}
+                                                    onClick={() => navigate(`/server/${server.id}`)}
                                                     className="px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 rounded text-sm transition"
                                                 >
                                                     Access
                                                 </button>
                                                 <button
-                                                    onClick={() => unsuspendServer(server._id)}
+                                                    onClick={() => unsuspendServer(server.id)}
                                                     className="px-3 py-1 bg-green-500/20 hover:bg-green-500/30 rounded text-sm transition"
                                                 >
                                                     Unsuspend
                                                 </button>
                                                 <button
-                                                    onClick={() => setDeleteConfirm({ show: true, serverId: server._id, serverName: server.name })}
+                                                    onClick={() => setDeleteConfirm({ show: true, serverId: server.id, serverName: server.name })}
                                                     className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 rounded text-sm transition"
                                                 >
                                                     Delete
@@ -1315,7 +1315,7 @@ function PlansTab({ plans, fetchPlans, loading }: any) {
     const updatePlan = async () => {
         if (!editingPlan) return;
         try {
-            await api.put(`/admin/plans/${editingPlan._id}`, editingPlan);
+            await api.put(`/admin/plans/${editingPlan.id}`, editingPlan);
             toast.success('Plan updated!');
             setShowEdit(false);
             setEditingPlan(null);
@@ -1460,7 +1460,7 @@ function PlansTab({ plans, fetchPlans, loading }: any) {
             ) : (
                 <div className="space-y-2">
                     {plans.map((plan: any) => (
-                        <div key={plan._id} className="p-4 bg-white/5 border border-white/10 rounded-lg flex justify-between items-center">
+                        <div key={plan.id} className="p-4 bg-white/5 border border-white/10 rounded-lg flex justify-between items-center">
                             <div className="flex items-center gap-4">
                                 {plan.eggImage && (
                                     <img src={plan.eggImage} alt="" className="w-10 h-10 rounded-lg object-cover" />
@@ -1486,7 +1486,7 @@ function PlansTab({ plans, fetchPlans, loading }: any) {
                                     Edit
                                 </button>
                                 <button
-                                    onClick={() => setDeleteConfirm({ show: true, planId: plan._id, planName: plan.name })}
+                                    onClick={() => setDeleteConfirm({ show: true, planId: plan.id, planName: plan.name })}
                                     className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded text-sm transition"
                                 >
                                     Delete
@@ -1643,7 +1643,7 @@ function CodesTab({ codes, fetchCodes, loading }: any) {
 
     const openEditModal = (code: any) => {
         setEditingCode({
-            _id: code._id,
+            _id: code.id,
             code: code.code,
             amount: code.amount,
             maxUses: code.maxUses
@@ -1653,7 +1653,7 @@ function CodesTab({ codes, fetchCodes, loading }: any) {
 
     const updateCode = async () => {
         try {
-            await api.put(`/admin/redeem-codes/${editingCode._id}`, {
+            await api.put(`/admin/redeem-codes/${editingCode.id}`, {
                 code: editingCode.code,
                 amount: editingCode.amount,
                 maxUses: editingCode.maxUses
@@ -1780,7 +1780,7 @@ function CodesTab({ codes, fetchCodes, loading }: any) {
             ) : (
                 <div className="space-y-2">
                     {codes.map((code: any) => (
-                        <div key={code._id} className="p-4 bg-white/5 border border-white/10 rounded-lg flex justify-between items-center">
+                        <div key={code.id} className="p-4 bg-white/5 border border-white/10 rounded-lg flex justify-between items-center">
                             <div>
                                 <p className="font-mono font-bold">{code.code}</p>
                                 <p className="text-sm text-gray-400">
@@ -1795,7 +1795,7 @@ function CodesTab({ codes, fetchCodes, loading }: any) {
                                     Edit
                                 </button>
                                 <button
-                                    onClick={() => deleteCode(code._id)}
+                                    onClick={() => deleteCode(code.id)}
                                     className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 rounded text-sm"
                                 >
                                     Delete
