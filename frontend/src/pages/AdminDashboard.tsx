@@ -209,7 +209,7 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
         coinsPerGbHour: 0,
         coinsPerGbMinute: 0,
         billingAutoSuspend: false,
-        billingAutoSuspend: false,
+
         billingAutoResume: false,
         panelAccessEnabled: true
     });
@@ -308,7 +308,7 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                     coinsPerGbMinute: formData.coinsPerGbMinute,
                     autoSuspend: formData.billingAutoSuspend,
                     autoResume: formData.billingAutoResume
-                    autoResume: formData.billingAutoResume
+
                 });
             } else if (type === 'security') {
                 await api.put('/admin/settings/security', {
