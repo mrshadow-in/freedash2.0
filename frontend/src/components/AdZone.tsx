@@ -119,7 +119,10 @@ const AdZone: React.FC<AdZoneProps> = ({
 
     const handleAdClick = async (adId: string) => {
         try {
+            console.log('Tracking click for ad:', adId);
             const res = await api.post(`/ads/${adId}/click`);
+            console.log('Click response:', res.data);
+
             if (res.data?.reward > 0) {
                 toast.success(`You earned ${res.data.reward} coins!`, {
                     icon: '🪙',
@@ -129,10 +132,21 @@ const AdZone: React.FC<AdZoneProps> = ({
                         border: '1px solid #4f46e5'
                     }
                 });
-                // Optional: Refresh user balance if available in store
+            } else {
+                // Debug feedback for the user who says "no coin"
+                // If they see this, it means connection works but reward is 0
+                toast('Ad Clicked (No Reward Configured)', {
+                    icon: 'ℹ️',
+                    style: {
+                        background: '#130b2e',
+                        color: '#9ca3af',
+                        border: '1px solid #374151'
+                    }
+                });
             }
         } catch (error) {
             console.error('Failed to track click:', error);
+            toast.error('Failed to track click');
         }
     };
 

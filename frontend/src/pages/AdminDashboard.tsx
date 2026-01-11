@@ -3115,6 +3115,12 @@ function AdsTab() {
                                         <span className="block text-gray-600 mb-1">Clicks</span>
                                         <span className="text-white">{ad.clicks}</span>
                                     </div>
+                                    <div>
+                                        <span className="block text-gray-600 mb-1">Reward</span>
+                                        <span className={ad.rewardCoins > 0 ? "text-green-400" : "text-gray-500"}>
+                                            {ad.rewardCoins || 0} 🪙
+                                        </span>
+                                    </div>
                                 </div>
 
                                 <div className="mt-6 flex gap-2">
