@@ -272,7 +272,7 @@ export const powerServer = async (req: AuthRequest, res: Response) => {
 export const getServer = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const server = await prisma.server.findFirst({
+        let server = await prisma.server.findFirst({
             where: { id: id, ownerId: req.user!.userId },
             include: { plan: true }
         });
@@ -280,6 +280,35 @@ export const getServer = async (req: AuthRequest, res: Response) => {
         if (!server) {
             return res.status(404).json({ message: 'Server not found' });
         }
+
+        // Sync with Pterodactyl (Live Status Check)
+        try {
+            const pteroServer = await getPteroServer(server.pteroServerId);
+            const pteroStatus = pteroServer.status || (pteroServer.suspended ? 'suspended' : 'running');
+
+            // basic allocation check
+            const allocations = pteroServer.relationships?.allocations?.data || [];
+            const defaultAlloc = allocations.find((a: any) => a.attributes.is_default) || allocations[0];
+            let serverIp = server.serverIp;
+            if (defaultAlloc) {
+                serverIp = `${defaultAlloc.attributes.ip}:${defaultAlloc.attributes.port}`;
+            }
+
+            if (server.status !== pteroStatus || server.serverIp !== serverIp) {
+                server = await prisma.server.update({
+                    where: { id: server.id },
+                    data: {
+                        status: pteroStatus,
+                        serverIp: serverIp
+                    },
+                    include: { plan: true }
+                });
+            }
+        } catch (syncError) {
+            console.error('Failed to sync with Pterodactyl:', syncError);
+            // Ignore sync error and return cached server, but log it
+        }
+
         res.json(server);
     } catch (error) {
         res.status(500).json({ message: 'Failed to fetch server' });

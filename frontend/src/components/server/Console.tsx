@@ -59,11 +59,13 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
             handleEvent(data);
         };
 
-        ws.onclose = () => {
+        ws.onclose = (event) => {
+            console.log('WebSocket Closed:', event.code, event.reason);
             setStatus('disconnected');
         };
 
-        ws.onerror = () => {
+        ws.onerror = (err) => {
+            console.error('WebSocket Error:', err);
             setStatus('error');
         };
 
@@ -113,9 +115,14 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
                 break;
             case 'token expiring':
                 // Refresh token logic could go here
+                console.log('Console token expiring...');
                 break;
             case 'jwt error':
+                console.error('JWT Error from Console Socket');
                 setStatus('error');
+                break;
+            default:
+                // console.log('Unknown event:', event);
                 break;
         }
     };
