@@ -143,18 +143,23 @@ const updateServerProperties = async (req, res) => {
 exports.updateServerProperties = updateServerProperties;
 const searchPlugins = async (req, res) => {
     try {
-        const { q, provider = 'spigot' } = req.query;
+        const { q, provider = 'spigot', limit = '12', sort } = req.query;
         if (!q)
             return res.json([]);
+        const size = parseInt(limit) || 12;
         if (provider === 'modrinth') {
             // Modrinth Search (Ported from Addon)
             // Filter for bukkit/spigot/paper categories
             const facets = encodeURIComponent('["categories:bukkit","categories:spigot","categories:paper"]');
-            // Note: Modrinth API expects facets as JSON string
-            // Correct format: facets=[["categories:bukkit"],["categories:spigot"]] usually implies OR logic if separate arrays? 
-            // Let's stick to simple "bukkit" category for now which covers most.
-            // Using a broader search to ensure hits.
-            const response = await axios_1.default.get(`https://api.modrinth.com/v2/search?query=${q}&limit=20&facets=[["categories:bukkit","categories:spigot","categories:paper"]]`);
+            // Map Sort
+            let mrSort = 'relevance';
+            if (sort === 'Downloads')
+                mrSort = 'downloads';
+            if (sort === 'Updated')
+                mrSort = 'updated';
+            if (sort === 'Created')
+                mrSort = 'newest';
+            const response = await axios_1.default.get(`https://api.modrinth.com/v2/search?query=${q}&limit=${size}&index=${mrSort}&facets=[["categories:bukkit","categories:spigot","categories:paper"]]`);
             const plugins = (response.data.hits || []).map((p) => ({
                 id: p.project_id,
                 name: p.title,
@@ -173,7 +178,15 @@ const searchPlugins = async (req, res) => {
                 return res.json([]); // Or error
             }
             // gameId=432 (Minecraft), classId=5 (Bukkit Plugins)
-            const url = `https://api.curseforge.com/v1/mods/search?gameId=432&classId=5&searchFilter=${q}&sortField=2&sortOrder=desc&pageSize=20`;
+            // Sort: 1=Name, 2=Downloads, 3=Popularity, 4=Updated, 6=TotalDownloads
+            let cfSort = 2; // Downloads
+            if (sort === 'Updated')
+                cfSort = 4;
+            if (sort === 'Created')
+                cfSort = 4;
+            if (sort === 'Name')
+                cfSort = 1;
+            const url = `https://api.curseforge.com/v1/mods/search?gameId=432&classId=5&searchFilter=${q}&sortField=${cfSort}&sortOrder=desc&pageSize=${size}`;
             const response = await axios_1.default.get(url, { headers: { 'x-api-key': CURSEFORGE_API_KEY } });
             const plugins = (response.data.data || []).map((p) => ({
                 id: p.id,
@@ -189,7 +202,15 @@ const searchPlugins = async (req, res) => {
         }
         else {
             // Spigot Search (Default)
-            const response = await axios_1.default.get(`https://api.spiget.org/v2/search/resources/${q}?size=20&sort=-likes`);
+            // Sort: -likes, -downloads, -updated, +name
+            let spSort = '-likes';
+            if (sort === 'Downloads')
+                spSort = '-downloads';
+            if (sort === 'Updated')
+                spSort = '-updateDate';
+            if (sort === 'Created')
+                spSort = '-releaseDate';
+            const response = await axios_1.default.get(`https://api.spiget.org/v2/search/resources/${q}?size=${size}&sort=${spSort}`);
             const plugins = response.data.map((p) => ({
                 id: p.id,
                 name: p.name,

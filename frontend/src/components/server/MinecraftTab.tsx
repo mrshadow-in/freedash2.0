@@ -39,8 +39,9 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
 
     // Version Changer State
     const [selectedPaperVersion, setSelectedPaperVersion] = useState('');
-    const [provider, setProvider] = useState('modrinth'); // Default to Modrinth as per screenshot? Or Spigot.
+    const [provider, setProvider] = useState('modrinth');
     const [sortBy, setSortBy] = useState('Downloads');
+    const [pageSize, setPageSize] = useState('12');
 
     // Fetch Minecraft versions from API
     const { data: minecraftVersions = FALLBACK_VERSIONS } = useQuery({
@@ -199,7 +200,14 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
 
         setSearching(true);
         try {
-            const { data } = await api.get(`/servers/${server.id}/minecraft/plugins?q=${encodeURIComponent(searchQuery)}&provider=${provider}`);
+            // Include filters in query
+            const queryParams = new URLSearchParams({
+                q: searchQuery,
+                provider,
+                sort: sortBy,
+                limit: pageSize
+            });
+            const { data } = await api.get(`/servers/${server.id}/minecraft/plugins?${queryParams}`);
             setPlugins(data);
         } catch (error) {
             toast.error('Failed to search plugins');
@@ -243,8 +251,8 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
             {/* Plugins Tab */}
             {subTab === 'plugins' && (
                 <div className="space-y-6">
-                    {/* Installed Plugins */}
-                    <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+                    {/* Installed Plugins (New UI) */}
+                    <div className="bg-[#14161F] rounded-xl p-6 border border-white/5">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-bold text-white flex items-center gap-2">
                                 <Package size={20} className="text-green-400" />
@@ -253,25 +261,27 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
                             <button
                                 onClick={() => refetchInstalled()}
                                 className="p-2 hover:bg-white/10 rounded-lg transition"
+                                title="Refresh List"
                             >
                                 <RefreshCw size={16} className="text-gray-400" />
                             </button>
                         </div>
 
                         {installedPlugins.length === 0 ? (
-                            <p className="text-gray-400 text-sm">No plugins installed yet</p>
+                            <p className="text-gray-500 text-sm text-center py-4">No plugins installed yet.</p>
                         ) : (
                             <div className="space-y-2">
                                 {installedPlugins.map((plugin: any) => (
-                                    <div key={plugin.name} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-                                        <div>
-                                            <p className="text-white font-medium">{plugin.name}</p>
-                                            <p className="text-xs text-gray-400">{(plugin.size / 1024).toFixed(2)} KB</p>
+                                    <div key={plugin.name} className="flex items-center justify-between p-4 bg-[#0F1115] rounded-lg border border-white/5 hover:border-white/10 transition group">
+                                        <div className="flex flex-col">
+                                            <p className="text-white font-bold text-sm bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">{plugin.name}</p>
+                                            <p className="text-xs text-gray-500 mt-0.5">{(plugin.size / 1024).toFixed(2)} KB</p>
                                         </div>
                                         <button
                                             onClick={() => deleteMutation.mutate(plugin.name)}
                                             disabled={deleteMutation.isPending}
-                                            className="p-2 hover:bg-red-500/20 text-red-400 rounded-lg transition disabled:opacity-50"
+                                            className="p-2 hover:bg-red-500/10 text-gray-500 hover:text-red-400 rounded-lg transition"
+                                            title="Uninstall Plugin"
                                         >
                                             <Trash2 size={16} />
                                         </button>
