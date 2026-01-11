@@ -93,3 +93,19 @@ export const redeemCode = async (req: AuthRequest, res: Response) => {
         res.status(400).json({ message: error.message });
     }
 };
+
+export const getTransactionHistory = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user!.userId;
+
+        const transactions = await prisma.transaction.findMany({
+            where: { userId },
+            orderBy: { createdAt: 'desc' },
+            take: 50
+        });
+
+        res.json(transactions);
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to fetch transaction history' });
+    }
+};

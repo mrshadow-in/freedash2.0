@@ -5,10 +5,12 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../api/client';
 import MobileMenu from './MobileMenu';
+import TransactionHistoryModal from './TransactionHistoryModal';
 
 const Header = () => {
     const { user: authUser, logout } = useAuthStore();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isLogsOpen, setIsLogsOpen] = useState(false);
 
     // Fetch fresh user data for real-time balance updates
     const { data: userData } = useQuery({
@@ -64,15 +66,19 @@ const Header = () => {
                             <span className="font-bold text-sm">AFK Zone</span>
                         </Link>
 
-                        <div className="hidden md:flex items-center gap-3 bg-white/5 border border-white/10 px-4 py-2 rounded-xl backdrop-blur-md">
+                        <button
+                            onClick={() => setIsLogsOpen(true)}
+                            className="hidden md:flex items-center gap-3 bg-white/5 border border-white/10 px-4 py-2 rounded-xl backdrop-blur-md hover:bg-white/10 transition cursor-pointer"
+                            title="View Transaction History"
+                        >
                             <div className="bg-yellow-500/20 p-1.5 rounded-full ring-1 ring-yellow-500/30">
                                 <Coins size={16} className="text-yellow-400" />
                             </div>
-                            <div>
+                            <div className="text-left">
                                 <div className="text-[10px] text-gray-400 font-bold tracking-wider uppercase">Balance</div>
                                 <div className="font-bold text-white text-lg leading-none">{user?.coins || 0}</div>
                             </div>
-                        </div>
+                        </button>
 
                         {/* Desktop User Section */}
                         <div className="hidden lg:flex items-center gap-4 pl-6 border-l border-white/10">
@@ -115,6 +121,11 @@ const Header = () => {
                 onClose={() => setIsMobileMenuOpen(false)}
                 user={user}
                 logout={logout}
+            />
+
+            <TransactionHistoryModal
+                isOpen={isLogsOpen}
+                onClose={() => setIsLogsOpen(false)}
             />
         </>
     );

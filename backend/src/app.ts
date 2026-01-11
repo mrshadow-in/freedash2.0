@@ -11,7 +11,7 @@ import adminRoutes from './routes/adminRoutes';
 import afkRoutes from './routes/afkRoutes';
 import upgradeRoutes from './routes/upgradeRoutes';
 import { authenticate } from './middleware/auth';
-import { redeemCode } from './controllers/coinController';
+import { redeemCode, getTransactionHistory } from './controllers/coinController';
 import { completeTask, getTasks } from './controllers/taskController';
 import { initBillingJob } from './jobs/billing';
 import { discordLogin, discordCallback } from './controllers/discordAuthController';
@@ -47,6 +47,7 @@ app.use('/api/ads', adRoutes);
 const coinRouter = express.Router();
 coinRouter.use(authenticate as any);
 coinRouter.post('/redeem', redeemCode as any);
+coinRouter.get('/history', getTransactionHistory as any);
 app.use('/api/coins', coinRouter);
 
 const taskRouter = express.Router();
