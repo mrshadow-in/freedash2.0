@@ -8,7 +8,16 @@ import {
     updatePteroServerBuild,
     powerPteroServer,
     getPteroServerResources,
-    createPteroUser
+    createPteroUser,
+    getConsoleDetails,
+    listFiles,
+    getFileContent,
+    writeFileContent,
+    renameFile,
+    deleteFile,
+    createFolder,
+    getUploadUrl,
+    reinstallServer
 } from '../services/pterodactyl';
 import { z } from 'zod';
 import { ENV } from '../config/env';
@@ -363,5 +372,164 @@ export const getServerUsage = async (req: Request, res: Response) => {
         res.json(stats);
     } catch (error: any) {
         res.status(500).json({ message: 'Failed to fetch server usage' });
+    }
+};
+
+// Console
+export const getConsoleCredentials = async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    try {
+        const server = await prisma.server.findFirst({
+            where: { id: id, ownerId: req.user!.userId }
+        });
+
+        if (!server) return res.status(404).json({ message: 'Server not found' });
+
+        const data = await getConsoleDetails(server.pteroIdentifier);
+        res.json(data);
+    } catch (error: any) {
+        res.status(500).json({ message: 'Failed to fetch console credentials' });
+    }
+};
+
+// Files
+export const getServerFiles = async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const { directory } = req.query;
+
+    try {
+        const server = await prisma.server.findFirst({
+            where: { id: id, ownerId: req.user!.userId }
+        });
+        if (!server) return res.status(404).json({ message: 'Server not found' });
+
+        const files = await listFiles(server.pteroIdentifier, directory as string);
+        res.json(files);
+    } catch (error: any) {
+        res.status(500).json({ message: 'Failed to fetch files' });
+    }
+};
+
+export const getFile = async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const { file } = req.query;
+
+    try {
+        const server = await prisma.server.findFirst({
+            where: { id: id, ownerId: req.user!.userId }
+        });
+        if (!server) return res.status(404).json({ message: 'Server not found' });
+
+        const content = await getFileContent(server.pteroIdentifier, file as string);
+        res.send(content);
+    } catch (error: any) {
+        res.status(500).json({ message: 'Failed to fetch file content' });
+    }
+};
+
+export const writeFile = async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const { file, content } = req.body;
+
+    try {
+        const server = await prisma.server.findFirst({
+            where: { id: id, ownerId: req.user!.userId }
+        });
+        if (!server) return res.status(404).json({ message: 'Server not found' });
+
+        await writeFileContent(server.pteroIdentifier, file, content);
+        res.json({ message: 'File saved' });
+    } catch (error: any) {
+        res.status(500).json({ message: 'Failed to save file' });
+    }
+};
+
+export const renameServerFile = async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const { root, files } = req.body;
+
+    try {
+        const server = await prisma.server.findFirst({
+            where: { id: id, ownerId: req.user!.userId }
+        });
+        if (!server) return res.status(404).json({ message: 'Server not found' });
+
+        await renameFile(server.pteroIdentifier, root, files);
+        res.json({ message: 'Renamed successfully' });
+    } catch (error: any) {
+        res.status(500).json({ message: 'Failed to rename' });
+    }
+};
+
+export const deleteServerFile = async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const { root, files } = req.body;
+
+    try {
+        const server = await prisma.server.findFirst({
+            where: { id: id, ownerId: req.user!.userId }
+        });
+        if (!server) return res.status(404).json({ message: 'Server not found' });
+
+        await deleteFile(server.pteroIdentifier, root, files);
+        res.json({ message: 'Deleted successfully' });
+    } catch (error: any) {
+        res.status(500).json({ message: 'Failed to delete' });
+    }
+};
+
+export const createServerFolder = async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const { root, name } = req.body;
+
+    try {
+        const server = await prisma.server.findFirst({
+            where: { id: id, ownerId: req.user!.userId }
+        });
+        if (!server) return res.status(404).json({ message: 'Server not found' });
+
+        await createFolder(server.pteroIdentifier, root, name);
+        res.json({ message: 'Folder created' });
+    } catch (error: any) {
+        res.status(500).json({ message: 'Failed to create folder' });
+    }
+};
+
+export const getServerUploadUrl = async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+
+    try {
+        const server = await prisma.server.findFirst({
+            where: { id: id, ownerId: req.user!.userId }
+        });
+        if (!server) return res.status(404).json({ message: 'Server not found' });
+
+        const url = await getUploadUrl(server.pteroIdentifier);
+        res.json({ url });
+    } catch (error: any) {
+        res.status(500).json({ message: 'Failed to get upload URL' });
+    }
+};
+
+export const reinstallServerAction = async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+
+    try {
+        const server = await prisma.server.findFirst({
+            where: { id: id, ownerId: req.user!.userId }
+        });
+        if (!server) return res.status(404).json({ message: 'Server not found' });
+
+        await reinstallServer(server.pteroIdentifier);
+
+        // Update DB status to installing
+        await prisma.server.update({
+            where: { id: server.id },
+            data: { status: 'installing' }
+        });
+
+        res.json({ message: 'Server reinstalling' });
+    } catch (error: any) {
+        res.status(500).json({ message: 'Failed to reinstall server' });
     }
 };

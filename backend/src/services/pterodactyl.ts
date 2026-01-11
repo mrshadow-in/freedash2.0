@@ -264,6 +264,158 @@ export const powerPteroServer = async (identifier: string, signal: 'start' | 'st
     );
 };
 
+// Console / WebSocket Details
+export const getConsoleDetails = async (identifier: string) => {
+    const config = await getPteroConfig();
+    const token = config.clientKey || config.key;
+
+    const response = await axios.get(
+        `${config.url}/api/client/servers/${identifier}/websocket`,
+        {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: 'application/vnd.pterodactyl.v1+json'
+            }
+        }
+    );
+    return response.data.data;
+};
+
+// File Manager Functions
+export const listFiles = async (identifier: string, directory: string = '') => {
+    const config = await getPteroConfig();
+    const token = config.clientKey || config.key;
+
+    const response = await axios.get(
+        `${config.url}/api/client/servers/${identifier}/files/list?directory=${encodeURIComponent(directory)}`,
+        {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: 'application/vnd.pterodactyl.v1+json'
+            }
+        }
+    );
+    return response.data.data;
+};
+
+export const getFileContent = async (identifier: string, file: string) => {
+    const config = await getPteroConfig();
+    const token = config.clientKey || config.key;
+
+    const response = await axios.get(
+        `${config.url}/api/client/servers/${identifier}/files/contents?file=${encodeURIComponent(file)}`,
+        {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: 'text/plain'
+            }
+        }
+    );
+    return response.data;
+};
+
+export const writeFileContent = async (identifier: string, file: string, content: string) => {
+    const config = await getPteroConfig();
+    const token = config.clientKey || config.key;
+
+    await axios.post(
+        `${config.url}/api/client/servers/${identifier}/files/write?file=${encodeURIComponent(file)}`,
+        content,
+        {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: 'application/vnd.pterodactyl.v1+json',
+                'Content-Type': 'text/plain'
+            }
+        }
+    );
+};
+
+export const renameFile = async (identifier: string, root: string, files: { from: string; to: string }[]) => {
+    const config = await getPteroConfig();
+    const token = config.clientKey || config.key;
+
+    await axios.put(
+        `${config.url}/api/client/servers/${identifier}/files/rename`,
+        { root, files },
+        {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                Accept: 'application/vnd.pterodactyl.v1+json'
+            }
+        }
+    );
+};
+
+export const deleteFile = async (identifier: string, root: string, files: string[]) => {
+    const config = await getPteroConfig();
+    const token = config.clientKey || config.key;
+
+    await axios.post(
+        `${config.url}/api/client/servers/${identifier}/files/delete`,
+        { root, files },
+        {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                Accept: 'application/vnd.pterodactyl.v1+json'
+            }
+        }
+    );
+};
+
+export const createFolder = async (identifier: string, root: string, name: string) => {
+    const config = await getPteroConfig();
+    const token = config.clientKey || config.key;
+
+    await axios.post(
+        `${config.url}/api/client/servers/${identifier}/files/create-folder`,
+        { root, name },
+        {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                Accept: 'application/vnd.pterodactyl.v1+json'
+            }
+        }
+    );
+};
+
+export const getUploadUrl = async (identifier: string) => {
+    const config = await getPteroConfig();
+    const token = config.clientKey || config.key;
+
+    const response = await axios.get(
+        `${config.url}/api/client/servers/${identifier}/files/upload`,
+        {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: 'application/vnd.pterodactyl.v1+json'
+            }
+        }
+    );
+    return response.data.attributes.url;
+};
+
+// Reinstall
+export const reinstallServer = async (identifier: string) => {
+    const config = await getPteroConfig();
+    const token = config.clientKey || config.key;
+
+    await axios.post(
+        `${config.url}/api/client/servers/${identifier}/settings/reinstall`,
+        {},
+        {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                Accept: 'application/vnd.pterodactyl.v1+json'
+            }
+        }
+    );
+};
+
 import redis from '../redis';
 
 // ... (existing imports)

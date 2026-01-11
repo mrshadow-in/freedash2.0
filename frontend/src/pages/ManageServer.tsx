@@ -10,13 +10,17 @@ import { toast } from 'react-hot-toast';
 import Header from '../components/Header';
 import ServerHeader from '../components/server/ServerHeader';
 import ShopModal from '../components/shop/ShopModal';
+import Console from '../components/server/Console';
+import FileManager from '../components/server/FileManager';
+import { Terminal, FolderOpen, Settings, Info } from 'lucide-react';
+
 
 const ManageServer = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [isShopOpen, setIsShopOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<'resources' | 'shop'>('resources');
+    const [activeTab, setActiveTab] = useState<'console' | 'resources' | 'files' | 'settings' | 'shop'>('console');
     const [copiedIP, setCopiedIP] = useState(false);
 
     // Fetch Server Details
@@ -82,6 +86,21 @@ const ManageServer = () => {
         },
         onError: (error: any) => {
             toast.error(error.response?.data?.message || 'Failed to delete server');
+        }
+    });
+
+    // Reinstall Mutation
+    const reinstallMutation = useMutation({
+        mutationFn: async () => {
+            return api.post(`/servers/${id}/reinstall`);
+        },
+        onSuccess: () => {
+            toast.success('Server reinstall started');
+            setShowReinstallConfirm(false);
+            queryClient.invalidateQueries({ queryKey: ['server', id] });
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Reinstall failed');
         }
     });
 
@@ -166,10 +185,28 @@ const ManageServer = () => {
                 {/* Tab Navigation - Only Resources and Shop */}
                 <div className="flex gap-4 border-b border-white/10 mb-8 overflow-x-auto pb-2">
                     <button
+                        onClick={() => setActiveTab('console')}
+                        className={`flex items-center gap-2 px-6 py-3 font-bold transition whitespace-nowrap rounded-t-lg ${activeTab === 'console' ? 'text-white bg-white/5 border-b-2 border-slate-500' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                    >
+                        <Terminal size={18} /> Console
+                    </button>
+                    <button
                         onClick={() => setActiveTab('resources')}
                         className={`flex items-center gap-2 px-6 py-3 font-bold transition whitespace-nowrap rounded-t-lg ${activeTab === 'resources' ? 'text-white bg-white/5 border-b-2 border-green-500' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
                     >
-                        Resources
+                        <Info size={18} /> Resources
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('files')}
+                        className={`flex items-center gap-2 px-6 py-3 font-bold transition whitespace-nowrap rounded-t-lg ${activeTab === 'files' ? 'text-white bg-white/5 border-b-2 border-yellow-500' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                    >
+                        <FolderOpen size={18} /> Files
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('settings')}
+                        className={`flex items-center gap-2 px-6 py-3 font-bold transition whitespace-nowrap rounded-t-lg ${activeTab === 'settings' ? 'text-white bg-white/5 border-b-2 border-red-500' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                    >
+                        <Settings size={18} /> Settings
                     </button>
                     <button
                         onClick={() => setActiveTab('shop')}
@@ -181,6 +218,37 @@ const ManageServer = () => {
 
                 {/* Tab Content */}
                 <div className="min-h-[500px]">
+                    {activeTab === 'console' && (
+                        <Console serverId={id!} />
+                    )}
+
+                    {activeTab === 'files' && (
+                        <FileManager serverId={id!} />
+                    )}
+
+                    {activeTab === 'settings' && (
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
+                            <h2 className="text-2xl font-bold text-white mb-6">Server Settings</h2>
+
+                            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6">
+                                <h3 className="text-xl font-bold text-white mb-2">Danger Zone</h3>
+                                <p className="text-gray-400 mb-6">Reinstalling your server will delete some configuration files but usually keeps data. Backup first!</p>
+
+                                <button
+                                    onClick={() => {
+                                        if (confirm("Are you SURE you want to reinstall? This will stop the server.")) {
+                                            reinstallMutation.mutate();
+                                        }
+                                    }}
+                                    disabled={reinstallMutation.isPending}
+                                    className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold transition"
+                                >
+                                    {reinstallMutation.isPending ? 'Reinstalling...' : 'Reinstall Server'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     {activeTab === 'resources' && (
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             {/* RAM Card */}
