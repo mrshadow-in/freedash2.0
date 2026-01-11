@@ -53,17 +53,14 @@ const serializeProperties = (originalContent: string, updates: Record<string, st
 export const getServerProperties = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const server = await prisma.server.findUnique({ where: { id: (id) } }); // ID is string uuid? NO.
-        // Wait, Server ID in API is usually UUID (from database). Pterodactyl requires Ptero Identifier.
-        // Let's check Schema. Server.id is String (UUID).
-        // Server has pteroIdentifier (string) and pteroServerId (int).
+        const server = await prisma.server.findUnique({ where: { id: (id) } });
 
         if (!server || !server.pteroIdentifier) {
             return res.status(404).json({ message: 'Server not found or not initialized' });
         }
 
-        // Verify ownership
-        if (server.userId !== req.user!.userId && req.user!.role !== 'admin') {
+        // Verify ownership (prisma schema uses ownerId)
+        if (server.ownerId !== req.user!.userId && req.user!.role !== 'admin') {
             return res.status(403).json({ message: 'Unauthorized' });
         }
 
@@ -79,20 +76,19 @@ export const getServerProperties = async (req: AuthRequest, res: Response) => {
 export const updateServerProperties = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const updates = req.body; // Record<string, string | boolean | number>
+        const updates = req.body;
 
         const server = await prisma.server.findUnique({ where: { id: (id) } });
         if (!server || !server.pteroIdentifier) {
             return res.status(404).json({ message: 'Server not found' });
         }
 
-        if (server.userId !== req.user!.userId && req.user!.role !== 'admin') {
+        if (server.ownerId !== req.user!.userId && req.user!.role !== 'admin') {
             return res.status(403).json({ message: 'Unauthorized' });
         }
 
         const content = await getFileContent(server.pteroIdentifier, 'server.properties');
 
-        // Convert all values to string
         const stringUpdates: Record<string, string> = {};
         Object.entries(updates).forEach(([k, v]) => {
             stringUpdates[k] = String(v);
@@ -113,9 +109,8 @@ export const searchPlugins = async (req: Request, res: Response) => {
         const { q } = req.query;
         if (!q) return res.json([]);
 
-        // Use Spiget API
         const response = await axios.get(`https://api.spiget.org/v2/search/resources/${q}?size=20&sort=-likes`);
-        const plugins = response.data.map((p: any) => ({
+        const plugins = (response.data as any).map((p: any) => ({
             id: p.id,
             name: p.name,
             tag: p.tag,
@@ -140,23 +135,15 @@ export const installPlugin = async (req: AuthRequest, res: Response) => {
         if (!server || !server.pteroIdentifier) {
             return res.status(404).json({ message: 'Server not found' });
         }
-        if (server.userId !== req.user!.userId && req.user!.role !== 'admin') {
+        if (server.ownerId !== req.user!.userId && req.user!.role !== 'admin') {
             return res.status(403).json({ message: 'Unauthorized' });
         }
-
-        // Typically Spiget download URL is complicated. 
-        // Ideally we use: https://api.spiget.org/v2/resources/[ID]/download
-        // But the frontend should pass the Resource ID and we construct the URL?
-        // Or frontend passes URL.
-        // Let's accept Resource ID.
 
         const resourceId = req.body.resourceId;
         if (!resourceId) return res.status(400).json({ message: 'Missing resourceId' });
 
-        // Construct download URL
         const realDownloadUrl = `https://api.spiget.org/v2/resources/${resourceId}/download`;
 
-        // Pterodactyl Pull
         await pullPteroFile(server.pteroIdentifier, realDownloadUrl, '/plugins');
 
         res.json({ message: 'Plugin installation started' });

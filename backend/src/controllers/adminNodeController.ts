@@ -70,7 +70,7 @@ export const createNode = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('Error creating node:', error);
         if (error instanceof z.ZodError) {
-            res.status(400).json({ message: 'Invalid data', errors: error.errors });
+            res.status(400).json({ message: 'Invalid data', errors: error.issues });
         } else {
             res.status(500).json({ message: 'Failed to create node. Check Pterodactyl logs.' });
         }

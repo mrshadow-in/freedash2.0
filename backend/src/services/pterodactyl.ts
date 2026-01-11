@@ -73,26 +73,7 @@ export const createPteroUser = async (email: string, username: string, password?
     }
 };
 
-export const reinstallServer = async (pteroId: number) => {
-    const config = await getPteroConfig();
-    try {
-        await axios.post(
-            `${config.url}/api/application/servers/${pteroId}/reinstall`,
-            {},
-            {
-                headers: {
-                    Authorization: `Bearer ${config.key}`,
-                    'Content-Type': 'application/json',
-                    Accept: 'application/vnd.pterodactyl.v1+json'
-                }
-            }
-        );
-        return true;
-    } catch (error) {
-        console.error('Error reinstalling server:', error);
-        throw error;
-    }
-};
+// Reinstall server removed from here (duplicate)
 
 // Update Pterodactyl user password
 export const updatePteroUserPassword = async (userId: number, password: string) => {
@@ -473,4 +454,99 @@ export const getPteroServerResources = async (identifier: string) => {
     await redis.set(CACHE_KEY, JSON.stringify(data), 'EX', 30);
 
     return data;
+};
+
+// ==========================================
+// Node Management (Wings)
+// ==========================================
+
+export const getPteroNodes = async () => {
+    const config = await getPteroConfig();
+    try {
+        const response = await axios.get(`${config.url}/api/application/nodes?include=location`, {
+            headers: {
+                Authorization: `Bearer ${config.key}`,
+                Accept: 'application/vnd.pterodactyl.v1+json'
+            }
+        });
+        return (response.data as any).data.map((item: any) => item.attributes);
+    } catch (error) {
+        console.error('Error fetching nodes:', error);
+        throw error;
+    }
+};
+
+export const getPteroLocations = async () => {
+    const config = await getPteroConfig();
+    try {
+        const response = await axios.get(`${config.url}/api/application/locations`, {
+            headers: {
+                Authorization: `Bearer ${config.key}`,
+                Accept: 'application/vnd.pterodactyl.v1+json'
+            }
+        });
+        return (response.data as any).data.map((item: any) => item.attributes);
+    } catch (error) {
+        console.error('Error fetching locations:', error);
+        throw error;
+    }
+};
+
+export const createPteroNode = async (data: any) => {
+    const config = await getPteroConfig();
+    try {
+        const response = await axios.post(
+            `${config.url}/api/application/nodes`,
+            data,
+            {
+                headers: {
+                    Authorization: `Bearer ${config.key}`,
+                    'Content-Type': 'application/json',
+                    Accept: 'application/vnd.pterodactyl.v1+json'
+                }
+            }
+        );
+        return (response.data as any).attributes;
+    } catch (error) {
+        console.error('Error creating node:', error);
+        throw error;
+    }
+};
+
+export const getPteroNodeConfiguration = async (id: number) => {
+    const config = await getPteroConfig();
+    try {
+        const response = await axios.get(`${config.url}/api/application/nodes/${id}/configuration`, {
+            headers: {
+                Authorization: `Bearer ${config.key}`,
+                Accept: 'application/vnd.pterodactyl.v1+json'
+            }
+        });
+        return (response.data as any);
+    } catch (error) {
+        console.error('Error fetching node config:', error);
+        throw error;
+    }
+};
+
+export const pullPteroFile = async (pteroIdentifier: string, url: string, directory: string = '/') => {
+    const config = await getPteroConfig();
+    const token = config.clientKey || config.key;
+    try {
+        await axios.post(
+            `${config.url}/api/client/servers/${pteroIdentifier}/files/pull`,
+            { url, root: directory },
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    Accept: 'application/vnd.pterodactyl.v1+json'
+                }
+            }
+        );
+        return true;
+    } catch (error) {
+        console.error('Error pulling file:', error);
+        throw error;
+    }
 };
