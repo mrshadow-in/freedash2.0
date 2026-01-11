@@ -4,6 +4,7 @@ import { Power, RotateCw, Square, Skull, ExternalLink, ShoppingBag, Ghost, Trash
 
 interface ServerHeaderProps {
     server: any;
+    powerState?: string;
     onPowerAction: (signal: string) => void;
     isPowerPending: boolean;
     onOpenShop: () => void;
@@ -11,7 +12,7 @@ interface ServerHeaderProps {
     panelUrl?: string;
 }
 
-const ServerHeader = ({ server, onPowerAction, isPowerPending, onOpenShop, onDelete, panelUrl = '' }: ServerHeaderProps) => {
+const ServerHeader = ({ server, powerState, onPowerAction, isPowerPending, onOpenShop, onDelete, panelUrl = '' }: ServerHeaderProps) => {
     const [activeSignal, setActiveSignal] = useState<string | null>(null);
 
     const handlePower = (signal: string) => {
@@ -21,13 +22,17 @@ const ServerHeader = ({ server, onPowerAction, isPowerPending, onOpenShop, onDel
     };
 
     const getStatusInfo = () => {
-        const status = server.status?.toLowerCase() || 'unknown';
-        if (status === 'running' || status === 'active') {
+        const status = powerState || server.status?.toLowerCase() || 'unknown';
+
+        if (status === 'running') {
             return { color: 'bg-green-500', text: 'Online', textColor: 'text-green-400', bgColor: 'bg-green-500/20' };
         } else if (status === 'starting' || status === 'installing') {
             return { color: 'bg-yellow-500', text: 'Starting', textColor: 'text-yellow-400', bgColor: 'bg-yellow-500/20' };
         } else if (status === 'stopping') {
             return { color: 'bg-orange-500', text: 'Stopping', textColor: 'text-orange-400', bgColor: 'bg-orange-500/20' };
+        } else if (status === 'active') {
+            // 'active' is DB status for provisioned, assume Offline if no powerState
+            return { color: 'bg-red-500', text: 'Offline', textColor: 'text-red-400', bgColor: 'bg-red-500/20' };
         } else {
             return { color: 'bg-red-500', text: 'Offline', textColor: 'text-red-400', bgColor: 'bg-red-500/20' };
         }
@@ -141,9 +146,9 @@ const ServerHeader = ({ server, onPowerAction, isPowerPending, onOpenShop, onDel
                 <div className="mt-6 pt-5 border-t border-white/10">
                     <div className="flex flex-wrap gap-2">
                         {[
-                            { signal: 'start', icon: Power, label: 'Start', color: 'bg-green-600 hover:bg-green-500', disabled: server.status === 'running' || server.status === 'active' },
+                            { signal: 'start', icon: Power, label: 'Start', color: 'bg-green-600 hover:bg-green-500', disabled: (statusInfo.text === 'Online' || statusInfo.text === 'Starting') },
                             { signal: 'restart', icon: RotateCw, label: 'Restart', color: 'bg-yellow-600 hover:bg-yellow-500', disabled: false },
-                            { signal: 'stop', icon: Square, label: 'Stop', color: 'bg-red-600 hover:bg-red-500', disabled: server.status === 'offline' || server.status === 'stopped' },
+                            { signal: 'stop', icon: Square, label: 'Stop', color: 'bg-red-600 hover:bg-red-500', disabled: statusInfo.text === 'Offline' },
                             { signal: 'kill', icon: Skull, label: 'Kill', color: 'bg-gray-700 hover:bg-gray-600', disabled: false },
                         ].map(({ signal, icon: Icon, label, color, disabled }) => (
                             <motion.button
