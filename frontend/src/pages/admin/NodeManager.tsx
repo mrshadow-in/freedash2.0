@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/client';
 import {
-    Plus, Server, Trash2, RefreshCw, Activity, CheckCircle,
-    XCircle, Edit2, X, Search, HardDrive, Cpu, MemoryStick
+    RefreshCw, Activity, XCircle, X, Search
 } from 'lucide-react';
 import NodeDetails from './NodeDetails';
 

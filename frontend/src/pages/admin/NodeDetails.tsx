@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/client';
 import {
-    Server, HardDrive, Cpu, Activity, Trash2, Plus,
-    Link, Copy, CheckCircle, AlertCircle
+    Activity, Trash2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -26,7 +25,7 @@ const NodeDetails = ({ nodeId, onBack }: NodeDetailsProps) => {
     });
 
     // Fetch allocations
-    const { data: allocations, isLoading: loadingAllocations } = useQuery({
+    const { data: allocations } = useQuery({
         queryKey: ['admin-node-allocations', nodeId],
         queryFn: async () => {
             const res = await api.get(`/admin/nodes/${nodeId}/allocations`);
@@ -182,7 +181,7 @@ const NodeDetails = ({ nodeId, onBack }: NodeDetailsProps) => {
                         <h3 className="text-lg font-bold text-white mb-4">Assign New Allocations</h3>
                         <AllocationForm
                             ip={node.ipAddress}
-                            onSubmit={(data) => createAllocationMutation.mutate(data)}
+                            onSubmit={(data: any) => createAllocationMutation.mutate(data)}
                             loading={createAllocationMutation.isPending}
                         />
                     </div>
@@ -252,7 +251,7 @@ const AllocationForm = ({ ip, onSubmit, loading }: any) => {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const portList = formData.ports.split(',').map(p => p.trim()).filter(p => p);
+        const portList = formData.ports.split(',').map((p: string) => p.trim()).filter((p: string) => p);
         onSubmit({
             ip: formData.ip,
             alias: formData.alias,
