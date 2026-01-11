@@ -39,6 +39,7 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
 
     // Version Changer State
     const [selectedPaperVersion, setSelectedPaperVersion] = useState('');
+    const [provider, setProvider] = useState('spigot');
 
     // Fetch Minecraft versions from API
     const { data: minecraftVersions = FALLBACK_VERSIONS } = useQuery({
@@ -76,7 +77,8 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
             return api.post(`/servers/${server.id}/minecraft/plugins/install`, {
                 resourceId: plugin.id,
                 fileName: `${plugin.name}.jar`,
-                version
+                version,
+                provider: plugin.provider || 'spigot'
             });
         },
         onSuccess: (_, variables) => {
@@ -196,7 +198,7 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
 
         setSearching(true);
         try {
-            const { data } = await api.get(`/servers/${server.id}/minecraft/plugins?q=${encodeURIComponent(searchQuery)}`);
+            const { data } = await api.get(`/servers/${server.id}/minecraft/plugins?q=${encodeURIComponent(searchQuery)}&provider=${provider}`);
             setPlugins(data);
         } catch (error) {
             toast.error('Failed to search plugins');
@@ -280,9 +282,17 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
 
                     {/* Plugin Search */}
                     <div className="bg-white/5 rounded-xl p-6 border border-white/10">
-                        <h3 className="text-lg font-bold text-white mb-4">Plugin Manager (Spigot)</h3>
+                        <h3 className="text-lg font-bold text-white mb-4">Plugin Manager</h3>
 
                         <form onSubmit={handleSearchPlugins} className="flex gap-2 mb-6">
+                            <select
+                                value={provider}
+                                onChange={(e) => setProvider(e.target.value)}
+                                className="bg-[#0F1115] border border-white/10 rounded-lg text-white px-3 focus:outline-none focus:border-purple-500"
+                            >
+                                <option value="spigot">SpigotMC</option>
+                                <option value="modrinth">Modrinth</option>
+                            </select>
                             <div className="flex-1 relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                                 <input

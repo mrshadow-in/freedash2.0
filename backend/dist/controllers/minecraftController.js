@@ -142,20 +142,45 @@ const updateServerProperties = async (req, res) => {
 exports.updateServerProperties = updateServerProperties;
 const searchPlugins = async (req, res) => {
     try {
-        const { q } = req.query;
+        const { q, provider = 'spigot' } = req.query;
         if (!q)
             return res.json([]);
-        const response = await axios_1.default.get(`https://api.spiget.org/v2/search/resources/${q}?size=20&sort=-likes`);
-        const plugins = response.data.map((p) => ({
-            id: p.id,
-            name: p.name,
-            tag: p.tag,
-            likes: p.likes,
-            downloads: p.downloads,
-            icon: p.icon?.url ? `https://www.spigotmc.org/${p.icon.url}` : null,
-            testedVersions: p.testedVersions
-        }));
-        res.json(plugins);
+        if (provider === 'modrinth') {
+            // Modrinth Search (Ported from Addon)
+            // Filter for bukkit/spigot/paper categories
+            const facets = encodeURIComponent('["categories:bukkit","categories:spigot","categories:paper"]');
+            // Note: Modrinth API expects facets as JSON string
+            // Correct format: facets=[["categories:bukkit"],["categories:spigot"]] usually implies OR logic if separate arrays? 
+            // Let's stick to simple "bukkit" category for now which covers most.
+            // Using a broader search to ensure hits.
+            const response = await axios_1.default.get(`https://api.modrinth.com/v2/search?query=${q}&limit=20&facets=[["categories:bukkit","categories:spigot","categories:paper"]]`);
+            const plugins = (response.data.hits || []).map((p) => ({
+                id: p.project_id,
+                name: p.title,
+                tag: p.description,
+                likes: p.follows,
+                downloads: p.downloads,
+                icon: p.icon_url,
+                provider: 'modrinth', // Tag provider
+                testedVersions: p.versions // rough approximation
+            }));
+            res.json(plugins);
+        }
+        else {
+            // Spigot Search (Default)
+            const response = await axios_1.default.get(`https://api.spiget.org/v2/search/resources/${q}?size=20&sort=-likes`);
+            const plugins = response.data.map((p) => ({
+                id: p.id,
+                name: p.name,
+                tag: p.tag,
+                likes: p.likes,
+                downloads: p.downloads,
+                icon: p.icon?.url ? `https://www.spigotmc.org/${p.icon.url}` : null,
+                provider: 'spigot',
+                testedVersions: p.testedVersions
+            }));
+            res.json(plugins);
+        }
     }
     catch (error) {
         console.error('Error searching plugins:', error);
@@ -166,7 +191,7 @@ exports.searchPlugins = searchPlugins;
 const installPlugin = async (req, res) => {
     try {
         const { id } = req.params;
-        const { downloadUrl, fileName } = req.body;
+        const { resourceId, provider = 'spigot' } = req.body;
         const server = await prisma_1.prisma.server.findUnique({ where: { id } });
         if (!server || !server.pteroIdentifier) {
             return res.status(404).json({ message: 'Server not found' });
@@ -174,12 +199,28 @@ const installPlugin = async (req, res) => {
         if (server.ownerId !== req.user.userId && req.user.role !== 'admin') {
             return res.status(403).json({ message: 'Unauthorized' });
         }
-        const resourceId = req.body.resourceId;
         if (!resourceId)
             return res.status(400).json({ message: 'Missing resourceId' });
-        const realDownloadUrl = `https://api.spiget.org/v2/resources/${resourceId}/download`;
-        await (0, pterodactyl_1.pullPteroFile)(server.pteroIdentifier, realDownloadUrl, '/plugins');
-        res.json({ message: 'Plugin installation started' });
+        let downloadUrl = '';
+        if (provider === 'modrinth') {
+            // Modrinth: Fetch version to get download URL
+            // Get versions for this project
+            const verRes = await axios_1.default.get(`https://api.modrinth.com/v2/project/${resourceId}/version`);
+            const versions = verRes.data;
+            if (!versions || versions.length === 0) {
+                return res.status(404).json({ message: 'No versions found for this plugin' });
+            }
+            // Pick the first one (latest) - ideally filter by game version but for now just latest
+            const latestVersion = versions[0];
+            const file = latestVersion.files.find((f) => f.primary) || latestVersion.files[0];
+            downloadUrl = file.url;
+        }
+        else {
+            // Spigot: Direct API Download
+            downloadUrl = `https://api.spiget.org/v2/resources/${resourceId}/download`;
+        }
+        await (0, pterodactyl_1.pullPteroFile)(server.pteroIdentifier, downloadUrl, '/plugins');
+        res.json({ message: `Plugin installation started from ${provider}` });
     }
     catch (error) {
         console.error('Error installing plugin:', error);
