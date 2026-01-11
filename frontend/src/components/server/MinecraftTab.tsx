@@ -364,10 +364,14 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
                                 {/* Size/PageSize */}
                                 <div className="space-y-1">
                                     <label className="text-xs text-gray-500 ml-1">Size</label>
-                                    <select className="w-full bg-[#0F1115] border border-white/5 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-purple-500">
-                                        <option>12</option>
-                                        <option>24</option>
-                                        <option>48</option>
+                                    <select
+                                        value={pageSize}
+                                        onChange={(e) => setPageSize(e.target.value)}
+                                        className="w-full bg-[#0F1115] border border-white/5 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-purple-500"
+                                    >
+                                        <option value="12">12</option>
+                                        <option value="24">24</option>
+                                        <option value="48">48</option>
                                     </select>
                                 </div>
                             </div>
