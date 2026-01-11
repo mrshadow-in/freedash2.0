@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../prisma';
 import { Prisma } from '@prisma/client';
+import { updatePteroServerBuild } from '../services/pterodactyl';
 
 // Upgrade server RAM
 export const upgradeRAM = async (req: Request, res: Response) => {
@@ -14,7 +15,10 @@ export const upgradeRAM = async (req: Request, res: Response) => {
         }
 
         const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-            const server = await tx.server.findUnique({ where: { id: serverId } });
+            const server = await tx.server.findUnique({
+                where: { id: serverId },
+                include: { plan: true }
+            });
             if (!server) {
                 throw new Error('Server not found');
             }
@@ -32,7 +36,7 @@ export const upgradeRAM = async (req: Request, res: Response) => {
             const upgradePricing = (settings.upgradePricing as any) || { ramPerGB: 0, diskPerGB: 0, cpuPerCore: 0 };
             const cost = amountGB * upgradePricing.ramPerGB;
 
-            // Check user balance and deduct atomically
+            // Check user balance
             const user = await tx.user.findUnique({ where: { id: userId } });
             if (!user || user.coins < cost) {
                 throw new Error('Insufficient coins');
@@ -48,7 +52,8 @@ export const upgradeRAM = async (req: Request, res: Response) => {
             const amountMB = amountGB * 1024;
             const updatedServer = await tx.server.update({
                 where: { id: serverId },
-                data: { ramMb: { increment: amountMB } }
+                data: { ramMb: { increment: amountMB } },
+                include: { plan: true }
             });
 
             // Log transaction
@@ -64,6 +69,23 @@ export const upgradeRAM = async (req: Request, res: Response) => {
 
             return { server: updatedServer, user: updatedUser, cost };
         });
+
+        // Update Pterodactyl Limits
+        if (result.server.pteroServerId) {
+            try {
+                await updatePteroServerBuild(
+                    result.server.pteroServerId,
+                    result.server.ramMb,
+                    result.server.diskMb,
+                    result.server.cpuCores * 100, // Convert cores to percent
+                    result.server.plan?.slots || 1 // Use plan slots or default to 1
+                );
+            } catch (pteroError) {
+                console.error('Failed to update Pterodactyl build:', pteroError);
+                // We don't fail the request because DB is already updated, but we log it.
+                // Optionally alert user that sync failed (but usually it works if config is rights)
+            }
+        }
 
         res.json({
             message: 'RAM upgraded successfully',
@@ -90,7 +112,10 @@ export const upgradeDisk = async (req: Request, res: Response) => {
         }
 
         const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-            const server = await tx.server.findUnique({ where: { id: serverId } });
+            const server = await tx.server.findUnique({
+                where: { id: serverId },
+                include: { plan: true }
+            });
             if (!server) throw new Error('Server not found');
             if (server.ownerId !== userId) throw new Error('Not authorized');
 
@@ -111,7 +136,8 @@ export const upgradeDisk = async (req: Request, res: Response) => {
             const amountMB = amountGB * 1024;
             const updatedServer = await tx.server.update({
                 where: { id: serverId },
-                data: { diskMb: { increment: amountMB } }
+                data: { diskMb: { increment: amountMB } },
+                include: { plan: true }
             });
 
             await tx.transaction.create({
@@ -126,6 +152,21 @@ export const upgradeDisk = async (req: Request, res: Response) => {
 
             return { server: updatedServer, user: updatedUser, cost };
         });
+
+        // Update Pterodactyl Limits
+        if (result.server.pteroServerId) {
+            try {
+                await updatePteroServerBuild(
+                    result.server.pteroServerId,
+                    result.server.ramMb,
+                    result.server.diskMb,
+                    result.server.cpuCores * 100,
+                    result.server.plan?.slots || 1
+                );
+            } catch (pteroError) {
+                console.error('Failed to update Pterodactyl build:', pteroError);
+            }
+        }
 
         res.json({
             message: 'Disk upgraded successfully',
@@ -152,7 +193,10 @@ export const upgradeCPU = async (req: Request, res: Response) => {
         }
 
         const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-            const server = await tx.server.findUnique({ where: { id: serverId } });
+            const server = await tx.server.findUnique({
+                where: { id: serverId },
+                include: { plan: true }
+            });
             if (!server) throw new Error('Server not found');
             if (server.ownerId !== userId) throw new Error('Not authorized');
 
@@ -172,7 +216,8 @@ export const upgradeCPU = async (req: Request, res: Response) => {
 
             const updatedServer = await tx.server.update({
                 where: { id: serverId },
-                data: { cpuCores: { increment: cores } }
+                data: { cpuCores: { increment: cores } },
+                include: { plan: true }
             });
 
             await tx.transaction.create({
@@ -187,6 +232,21 @@ export const upgradeCPU = async (req: Request, res: Response) => {
 
             return { server: updatedServer, user: updatedUser, cost };
         });
+
+        // Update Pterodactyl Limits
+        if (result.server.pteroServerId) {
+            try {
+                await updatePteroServerBuild(
+                    result.server.pteroServerId,
+                    result.server.ramMb,
+                    result.server.diskMb,
+                    result.server.cpuCores * 100,
+                    result.server.plan?.slots || 1
+                );
+            } catch (pteroError) {
+                console.error('Failed to update Pterodactyl build:', pteroError);
+            }
+        }
 
         res.json({
             message: 'CPU upgraded successfully',
