@@ -209,7 +209,9 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
         coinsPerGbHour: 0,
         coinsPerGbMinute: 0,
         billingAutoSuspend: false,
-        billingAutoResume: false
+        billingAutoSuspend: false,
+        billingAutoResume: false,
+        panelAccessEnabled: true
     });
 
     useEffect(() => {
@@ -248,6 +250,7 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                 coinsPerGbMinute: settings.billing?.coinsPerGbMinute || 0,
                 billingAutoSuspend: settings.billing?.autoSuspend ?? false,
                 billingAutoResume: settings.billing?.autoResume ?? false,
+                panelAccessEnabled: settings.security?.enablePanelAccess ?? true,
                 webhook: ''
             });
         }
@@ -305,6 +308,11 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                     coinsPerGbMinute: formData.coinsPerGbMinute,
                     autoSuspend: formData.billingAutoSuspend,
                     autoResume: formData.billingAutoResume
+                    autoResume: formData.billingAutoResume
+                });
+            } else if (type === 'security') {
+                await api.put('/admin/settings/security', {
+                    enablePanelAccess: formData.panelAccessEnabled
                 });
             }
             await refreshTheme(); // Instant UI update
@@ -466,6 +474,34 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                         className="px-6 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 rounded-lg hover:opacity-90 transition"
                     >
                         Save Billing Settings
+                    </button>
+                </div>
+            </div>
+
+            {/* Security Settings */}
+            <div className="border border-white/10 rounded-xl p-6">
+                <h3 className="text-xl font-bold mb-4">🔒 Security Settings</h3>
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between bg-white/5 p-4 rounded-lg border border-white/10">
+                        <div>
+                            <div className="font-bold text-white">Allow User Panel Access</div>
+                            <div className="text-sm text-gray-400">If disabled, only Admins can access the Pterodactyl Panel button on server cards.</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                checked={formData.panelAccessEnabled}
+                                onChange={(e) => setFormData({ ...formData, panelAccessEnabled: e.target.checked })}
+                                className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-purple-500"
+                            />
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={() => saveSettings('security')}
+                        className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg hover:opacity-90 transition"
+                    >
+                        Save Security Settings
                     </button>
                 </div>
             </div>

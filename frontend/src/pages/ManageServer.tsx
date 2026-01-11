@@ -9,6 +9,7 @@ import { toast } from 'react-hot-toast';
 
 // Components
 import Header from '../components/Header';
+import { useAuthStore } from '../store/authStore';
 import ServerHeader from '../components/server/ServerHeader';
 import ShopModal from '../components/shop/ShopModal';
 import Console from '../components/server/Console';
@@ -21,6 +22,7 @@ import AdZone from '../components/AdZone';
 
 const ManageServer = () => {
     const { id } = useParams();
+    const { user } = useAuthStore();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [isShopOpen, setIsShopOpen] = useState(false);
@@ -169,6 +171,8 @@ const ManageServer = () => {
                             onOpenShop={() => setIsShopOpen(true)}
                             onDelete={handleDelete}
                             panelUrl={settings?.pterodactylUrl || ''}
+                            panelAccessEnabled={settings?.security?.enablePanelAccess ?? true}
+                            userRole={user?.role || 'user'}
                         />
 
                         {/* Suspended Server Banner */}
@@ -225,6 +229,56 @@ const ManageServer = () => {
                                             )}
                                         </button>
                                     </div>
+                                </div>
+                            </div>
+                        </motion.div>
+
+                        {/* Resource Stats Bar */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.15 }}
+                            className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"
+                        >
+                            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 flex items-center justify-between">
+                                <div>
+                                    <div className="text-gray-400 text-xs font-bold uppercase mb-1">Memory (RAM)</div>
+                                    <div className="text-xl font-bold text-white font-mono">
+                                        {(server.ramMb && server.ramMb >= 1024) ? `${(server.ramMb / 1024).toFixed(1)} GB` : `${server.ramMb || 0} MB`}
+                                    </div>
+                                </div>
+                                <div className="p-3 bg-blue-500/20 rounded-lg">
+                                    <svg className="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 flex items-center justify-between">
+                                <div>
+                                    <div className="text-gray-400 text-xs font-bold uppercase mb-1">Storage (Disk)</div>
+                                    <div className="text-xl font-bold text-white font-mono">
+                                        {(server.diskMb && server.diskMb >= 1024) ? `${(server.diskMb / 1024).toFixed(1)} GB` : `${server.diskMb || 0} MB`}
+                                    </div>
+                                </div>
+                                <div className="p-3 bg-green-500/20 rounded-lg">
+                                    <svg className="w-6 h-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 flex items-center justify-between">
+                                <div>
+                                    <div className="text-gray-400 text-xs font-bold uppercase mb-1">CPU Cores</div>
+                                    <div className="text-xl font-bold text-white font-mono">
+                                        {server.cpuCores || 1} Core{(server.cpuCores || 1) > 1 ? 's' : ''}
+                                    </div>
+                                </div>
+                                <div className="p-3 bg-purple-500/20 rounded-lg">
+                                    <svg className="w-6 h-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                                    </svg>
                                 </div>
                             </div>
                         </motion.div>

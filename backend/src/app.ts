@@ -86,7 +86,8 @@ app.get('/api/settings', async (req, res) => {
                 gradientStart: (settings?.theme as any)?.gradientStart || '#7c3aed',
                 gradientEnd: (settings?.theme as any)?.gradientEnd || '#3b82f6'
             },
-            socialMedia: (settings?.socialMedia as any) || {}
+            socialMedia: (settings?.socialMedia as any) || {},
+            security: (settings?.security as any) || { enablePanelAccess: true }
         });
     } catch (error) {
         res.status(500).json({ message: 'Failed to fetch settings' });

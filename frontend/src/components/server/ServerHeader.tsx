@@ -10,10 +10,13 @@ interface ServerHeaderProps {
     onOpenShop: () => void;
     onDelete?: () => void;
     panelUrl?: string;
+    panelAccessEnabled?: boolean;
+    userRole?: string;
 }
 
-const ServerHeader = ({ server, powerState, onPowerAction, isPowerPending, onOpenShop, onDelete, panelUrl = '' }: ServerHeaderProps) => {
+const ServerHeader = ({ server, powerState, onPowerAction, isPowerPending, onOpenShop, onDelete, panelUrl = '', panelAccessEnabled = true, userRole = 'user' }: ServerHeaderProps) => {
     const [activeSignal, setActiveSignal] = useState<string | null>(null);
+    const isPanelLocked = !panelAccessEnabled && userRole !== 'admin';
 
     const handlePower = (signal: string) => {
         setActiveSignal(signal);
@@ -118,17 +121,34 @@ const ServerHeader = ({ server, powerState, onPowerAction, isPowerPending, onOpe
                             Upgrade
                         </motion.button>
 
-                        <motion.a
-                            href={`${panelUrl}/server/${server.pteroIdentifier}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-xl font-bold flex items-center gap-2 transition border border-white/10 text-sm"
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                        >
-                            <ExternalLink size={16} />
-                            Panel
-                        </motion.a>
+                        {isPanelLocked ? (
+                            <div className="group relative">
+                                <button
+                                    disabled
+                                    className="px-4 py-2 bg-gray-600/20 border border-gray-600/30 text-gray-500 rounded-xl font-bold flex items-center gap-2 cursor-not-allowed text-sm"
+                                >
+                                    <ExternalLink size={16} />
+                                    <span>Panel</span>
+                                    <span className="ml-1 text-[10px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded border border-red-500/20">LOCKED</span>
+                                </button>
+                                {/* Tooltip */}
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1 bg-black/90 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none">
+                                    Access restricted by Admin
+                                </div>
+                            </div>
+                        ) : (
+                            <motion.a
+                                href={`${panelUrl}/server/${server.pteroIdentifier}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-xl font-bold flex items-center gap-2 transition border border-white/10 text-sm"
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                            >
+                                <ExternalLink size={16} />
+                                Panel
+                            </motion.a>
+                        )}
 
                         {onDelete && (
                             <motion.button
