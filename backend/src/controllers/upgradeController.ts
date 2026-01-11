@@ -33,8 +33,13 @@ export const upgradeRAM = async (req: Request, res: Response) => {
                 throw new Error('Settings not configured');
             }
 
-            const upgradePricing = (settings.upgradePricing as any) || { ramPerGB: 0, diskPerGB: 0, cpuPerCore: 0 };
+            // Default fallback is NON-ZERO to prevent free upgrades if not set
+            const upgradePricing = (settings.upgradePricing as any) || { ramPerGB: 100, diskPerGB: 50, cpuPerCore: 20 };
             const cost = amountGB * upgradePricing.ramPerGB;
+
+            if (cost <= 0) {
+                throw new Error('Upgrade pricing not configured (cost is 0). Contact support.');
+            }
 
             // Check user balance
             const user = await tx.user.findUnique({ where: { id: userId } });
@@ -94,8 +99,8 @@ export const upgradeRAM = async (req: Request, res: Response) => {
             newBalance: result.user.coins
         });
     } catch (error: any) {
-        const msg = error.message === 'Insufficient coins' ? error.message : 'Failed to upgrade RAM';
-        const status = error.message === 'Server not found' ? 404 : (error.message === 'Not authorized' ? 403 : (error.message === 'Insufficient coins' ? 400 : 500));
+        const msg = error.message === 'Insufficient coins' ? error.message : (error.message.startsWith('Upgrade pricing') ? error.message : 'Failed to upgrade RAM');
+        const status = error.message === 'Server not found' ? 404 : (error.message === 'Not authorized' ? 403 : (error.message === 'Insufficient coins' || error.message.startsWith('Upgrade pricing') ? 400 : 500));
         res.status(status).json({ message: msg });
     }
 };
@@ -122,8 +127,12 @@ export const upgradeDisk = async (req: Request, res: Response) => {
             const settings = await tx.settings.findFirst();
             if (!settings) throw new Error('Settings not configured');
 
-            const upgradePricing = (settings.upgradePricing as any) || { ramPerGB: 0, diskPerGB: 0, cpuPerCore: 0 };
+            const upgradePricing = (settings.upgradePricing as any) || { ramPerGB: 100, diskPerGB: 50, cpuPerCore: 20 };
             const cost = amountGB * upgradePricing.diskPerGB;
+
+            if (cost <= 0) {
+                throw new Error('Upgrade pricing not configured (cost is 0). Contact support.');
+            }
 
             const user = await tx.user.findUnique({ where: { id: userId } });
             if (!user || user.coins < cost) throw new Error('Insufficient coins');
@@ -175,8 +184,8 @@ export const upgradeDisk = async (req: Request, res: Response) => {
             newBalance: result.user.coins
         });
     } catch (error: any) {
-        const msg = error.message === 'Insufficient coins' ? error.message : 'Failed to upgrade disk';
-        const status = error.message === 'Server not found' ? 404 : (error.message === 'Not authorized' ? 403 : (error.message === 'Insufficient coins' ? 400 : 500));
+        const msg = error.message === 'Insufficient coins' ? error.message : (error.message.startsWith('Upgrade pricing') ? error.message : 'Failed to upgrade disk');
+        const status = error.message === 'Server not found' ? 404 : (error.message === 'Not authorized' ? 403 : (error.message === 'Insufficient coins' || error.message.startsWith('Upgrade pricing') ? 400 : 500));
         res.status(status).json({ message: msg });
     }
 };
@@ -203,8 +212,12 @@ export const upgradeCPU = async (req: Request, res: Response) => {
             const settings = await tx.settings.findFirst();
             if (!settings) throw new Error('Settings not configured');
 
-            const upgradePricing = (settings.upgradePricing as any) || { ramPerGB: 0, diskPerGB: 0, cpuPerCore: 0 };
+            const upgradePricing = (settings.upgradePricing as any) || { ramPerGB: 100, diskPerGB: 50, cpuPerCore: 20 };
             const cost = cores * upgradePricing.cpuPerCore;
+
+            if (cost <= 0) {
+                throw new Error('Upgrade pricing not configured (cost is 0). Contact support.');
+            }
 
             const user = await tx.user.findUnique({ where: { id: userId } });
             if (!user || user.coins < cost) throw new Error('Insufficient coins');
@@ -255,8 +268,8 @@ export const upgradeCPU = async (req: Request, res: Response) => {
             newBalance: result.user.coins
         });
     } catch (error: any) {
-        const msg = error.message === 'Insufficient coins' ? error.message : 'Failed to upgrade CPU';
-        const status = error.message === 'Server not found' ? 404 : (error.message === 'Not authorized' ? 403 : (error.message === 'Insufficient coins' ? 400 : 500));
+        const msg = error.message === 'Insufficient coins' ? error.message : (error.message.startsWith('Upgrade pricing') ? error.message : 'Failed to upgrade CPU');
+        const status = error.message === 'Server not found' ? 404 : (error.message === 'Not authorized' ? 403 : (error.message === 'Insufficient coins' || error.message.startsWith('Upgrade pricing') ? 400 : 500));
         res.status(status).json({ message: msg });
     }
 };
