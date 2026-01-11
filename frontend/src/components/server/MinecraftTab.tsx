@@ -292,6 +292,9 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
                             >
                                 <option value="spigot">SpigotMC</option>
                                 <option value="modrinth">Modrinth</option>
+                                <option value="hangar">Hangar</option>
+                                <option value="polymart">Polymart</option>
+                                <option value="curseforge">CurseForge</option>
                             </select>
                             <div className="flex-1 relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />

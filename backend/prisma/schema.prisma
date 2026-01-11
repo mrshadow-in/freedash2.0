@@ -145,6 +145,7 @@ model Settings {
   boostRewards         Json?
   socialMedia          Json?
   billing              Json?
+  plugins              Json? // Stores { curseforge_api_key, polymart_api_key }
   
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt

@@ -126,7 +126,7 @@ const AdminDashboard = () => {
             <div className="relative z-10 bg-white/5 backdrop-blur-md border-b border-white/10">
                 <div className="container mx-auto px-6">
                     <div className="flex gap-2">
-                        {['settings', 'users', 'servers', 'wings', 'plans', 'codes', 'ads', 'customize', 'bot', 'social'].map((tab) => (
+                        {['settings', 'users', 'servers', 'wings', 'plans', 'codes', 'ads', 'customize', 'bot', 'social', 'plugins'].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
@@ -160,7 +160,10 @@ const AdminDashboard = () => {
                     {activeTab === 'ads' && <AdsTab />}
                     {activeTab === 'customize' && <CustomizeTab refreshTheme={refreshTheme} />}
                     {activeTab === 'bot' && <BotTab settings={settings} fetchSettings={fetchSettings} />}
+                    {activeTab === 'bot' && <BotTab settings={settings} fetchSettings={fetchSettings} />}
                     {activeTab === 'social' && <SocialTab settings={settings} fetchSettings={fetchSettings} />}
+                    {activeTab === 'plugins' && <PluginsManagementTab settings={settings} fetchSettings={fetchSettings} />}
+
                 </motion.div>
             </div>
         </div>
@@ -3090,6 +3093,78 @@ function AdsTab() {
                     ))}
                 </div>
             )}
+        </div>
+    );
+}
+
+
+// Plugins Management Tab
+function PluginsManagementTab({ settings, fetchSettings }: any) {
+    const [formData, setFormData] = useState({
+        curseforge_api_key: '',
+        polymart_api_key: ''
+    });
+
+    useEffect(() => {
+        if (settings?.plugins) {
+            setFormData({
+                curseforge_api_key: settings.plugins.curseforge_api_key || '',
+                polymart_api_key: settings.plugins.polymart_api_key || ''
+            });
+        }
+    }, [settings]);
+
+    const saveSettings = async () => {
+        try {
+            await api.put('/admin/settings/plugins', formData);
+            toast.success('Plugin settings saved!');
+            fetchSettings();
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Failed to save settings');
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="border border-white/10 rounded-xl p-6">
+                <h3 className="text-xl font-bold mb-4">🧩 Plugin Providers API Keys</h3>
+                <p className="text-sm text-gray-400 mb-6">
+                    Configure API keys to enable premium plugin providers.
+                </p>
+
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-2">CurseForge API Key</label>
+                        <input
+                            type="password"
+                            value={formData.curseforge_api_key}
+                            onChange={(e) => setFormData({ ...formData, curseforge_api_key: e.target.value })}
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white font-mono"
+                            placeholder="Enter your CurseForge Eternal API Key"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Required for searching/downloading from CurseForge.</p>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-2">Polymart API Key (Optional)</label>
+                        <input
+                            type="password"
+                            value={formData.polymart_api_key}
+                            onChange={(e) => setFormData({ ...formData, polymart_api_key: e.target.value })}
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white font-mono"
+                            placeholder="Enter Polymart API Key"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Leave empty if using free resources only.</p>
+                    </div>
+
+                    <button
+                        onClick={saveSettings}
+                        className="px-6 py-2 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg hover:opacity-90 transition font-medium"
+                    >
+                        Save API Keys
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }

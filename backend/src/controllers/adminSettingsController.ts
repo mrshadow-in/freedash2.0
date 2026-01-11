@@ -296,6 +296,31 @@ export const updateUpgradePricing = async (req: Request, res: Response) => {
     }
 };
 
+// Update Plugin settings
+export const updatePluginSettings = async (req: Request, res: Response) => {
+    try {
+        const { curseforge_api_key, polymart_api_key } = req.body;
+        const currentSettings = await getSettingsOrCreate();
+
+        const currentPlugins = (currentSettings.plugins as any) || { curseforge_api_key: '', polymart_api_key: '' };
+        const newPlugins = {
+            ...currentPlugins,
+            curseforge_api_key: curseforge_api_key ?? currentPlugins.curseforge_api_key,
+            polymart_api_key: polymart_api_key ?? currentPlugins.polymart_api_key,
+        };
+
+        const settings = await prisma.settings.update({
+            where: { id: currentSettings.id },
+            data: { plugins: newPlugins }
+        });
+        await invalidateSettingsCache();
+        res.json({ message: 'Plugin settings updated', settings });
+    } catch (error) {
+        console.error('Plugin settings update error:', error);
+        res.status(500).json({ message: 'Failed to update plugin settings' });
+    }
+};
+
 // Update Pterodactyl settings
 export const updatePterodactylSettings = async (req: Request, res: Response) => {
     try {

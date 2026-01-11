@@ -22,6 +22,7 @@ router.post('/settings/smtp/send-test', adminController.sendTestEmail);
 router.post('/settings/webhooks', adminController.addWebhook);
 router.delete('/settings/webhooks', adminController.removeWebhook);
 router.put('/settings/social-media', adminController.updateSocialMedia);
+router.put('/settings/plugins', adminController.updatePluginSettings);
 
 router.put('/settings/bot', adminController.updateBotSettings);
 router.post('/settings/bot/key', adminController.regenerateBotKey);

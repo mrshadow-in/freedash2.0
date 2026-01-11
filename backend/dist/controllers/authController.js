@@ -70,7 +70,7 @@ const login = async (req, res) => {
         if (!user || !(await bcrypt_1.default.compare(password, user.password))) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
-        const accessToken = jsonwebtoken_1.default.sign({ userId: user.id, role: user.role }, env_1.ENV.JWT_SECRET, { expiresIn: '15m' });
+        const accessToken = jsonwebtoken_1.default.sign({ userId: user.id, role: user.role }, env_1.ENV.JWT_SECRET, { expiresIn: '7d' });
         const refreshToken = jsonwebtoken_1.default.sign({ userId: user.id }, env_1.ENV.JWT_REFRESH_SECRET, { expiresIn: '7d' });
         // Update last active
         await prisma_1.prisma.user.update({
@@ -101,7 +101,7 @@ const refreshToken = async (req, res) => {
         const user = await prisma_1.prisma.user.findUnique({ where: { id: decoded.userId } });
         if (!user)
             return res.status(403).json({ message: 'User not found' });
-        const newAccessToken = jsonwebtoken_1.default.sign({ userId: user.id, role: user.role }, env_1.ENV.JWT_SECRET, { expiresIn: '15m' });
+        const newAccessToken = jsonwebtoken_1.default.sign({ userId: user.id, role: user.role }, env_1.ENV.JWT_SECRET, { expiresIn: '7d' });
         res.json({ accessToken: newAccessToken });
     }
     catch (error) {
