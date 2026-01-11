@@ -41,7 +41,6 @@ const pterodactyl_1 = require("../services/pterodactyl");
 const prisma_1 = require("../prisma");
 const axios_1 = __importDefault(require("axios"));
 // Helper to parse properties file
-const CURSEFORGE_API_KEY = process.env.CURSEFORGE_API_KEY;
 const parseProperties = (content) => {
     const lines = content.split('\n');
     const properties = {};
@@ -143,23 +142,18 @@ const updateServerProperties = async (req, res) => {
 exports.updateServerProperties = updateServerProperties;
 const searchPlugins = async (req, res) => {
     try {
-        const { q, provider = 'spigot', limit = '12', sort } = req.query;
+        const { q, provider = 'spigot' } = req.query;
         if (!q)
             return res.json([]);
-        const size = parseInt(limit) || 12;
         if (provider === 'modrinth') {
             // Modrinth Search (Ported from Addon)
             // Filter for bukkit/spigot/paper categories
             const facets = encodeURIComponent('["categories:bukkit","categories:spigot","categories:paper"]');
-            // Map Sort
-            let mrSort = 'relevance';
-            if (sort === 'Downloads')
-                mrSort = 'downloads';
-            if (sort === 'Updated')
-                mrSort = 'updated';
-            if (sort === 'Created')
-                mrSort = 'newest';
-            const response = await axios_1.default.get(`https://api.modrinth.com/v2/search?query=${q}&limit=${size}&index=${mrSort}&facets=[["categories:bukkit","categories:spigot","categories:paper"]]`);
+            // Note: Modrinth API expects facets as JSON string
+            // Correct format: facets=[["categories:bukkit"],["categories:spigot"]] usually implies OR logic if separate arrays? 
+            // Let's stick to simple "bukkit" category for now which covers most.
+            // Using a broader search to ensure hits.
+            const response = await axios_1.default.get(`https://api.modrinth.com/v2/search?query=${q}&limit=20&facets=[["categories:bukkit","categories:spigot","categories:paper"]]`);
             const plugins = (response.data.hits || []).map((p) => ({
                 id: p.project_id,
                 name: p.title,
@@ -172,45 +166,9 @@ const searchPlugins = async (req, res) => {
             }));
             res.json(plugins);
         }
-        else if (provider === 'curseforge') {
-            // CurseForge Search
-            if (!CURSEFORGE_API_KEY) {
-                return res.json([]); // Or error
-            }
-            // gameId=432 (Minecraft), classId=5 (Bukkit Plugins)
-            // Sort: 1=Name, 2=Downloads, 3=Popularity, 4=Updated, 6=TotalDownloads
-            let cfSort = 2; // Downloads
-            if (sort === 'Updated')
-                cfSort = 4;
-            if (sort === 'Created')
-                cfSort = 4;
-            if (sort === 'Name')
-                cfSort = 1;
-            const url = `https://api.curseforge.com/v1/mods/search?gameId=432&classId=5&searchFilter=${q}&sortField=${cfSort}&sortOrder=desc&pageSize=${size}`;
-            const response = await axios_1.default.get(url, { headers: { 'x-api-key': CURSEFORGE_API_KEY } });
-            const plugins = (response.data.data || []).map((p) => ({
-                id: p.id,
-                name: p.name,
-                tag: p.summary,
-                likes: p.downloadCount, // Approximate likes with downloads
-                downloads: p.downloadCount,
-                icon: p.logo?.url,
-                provider: 'curseforge',
-                testedVersions: [] // CF versions strictly tied to files
-            }));
-            res.json(plugins);
-        }
         else {
             // Spigot Search (Default)
-            // Sort: -likes, -downloads, -updated, +name
-            let spSort = '-likes';
-            if (sort === 'Downloads')
-                spSort = '-downloads';
-            if (sort === 'Updated')
-                spSort = '-updateDate';
-            if (sort === 'Created')
-                spSort = '-releaseDate';
-            const response = await axios_1.default.get(`https://api.spiget.org/v2/search/resources/${q}?size=${size}&sort=${spSort}`);
+            const response = await axios_1.default.get(`https://api.spiget.org/v2/search/resources/${q}?size=20&sort=-likes`);
             const plugins = response.data.map((p) => ({
                 id: p.id,
                 name: p.name,
@@ -251,50 +209,24 @@ const installPlugin = async (req, res) => {
             if (!versions || versions.length === 0) {
                 return res.status(404).json({ message: 'No versions found for this plugin' });
             }
+            // Pick the first one (latest)
             const latestVersion = versions[0];
             const file = latestVersion.files.find((f) => f.primary) || latestVersion.files[0];
             await (0, pterodactyl_1.pullPteroFile)(server.pteroIdentifier, file.url, '/plugins');
-        }
-        else if (provider === 'curseforge') {
-            // CurseForge: Fetch Files
-            if (!CURSEFORGE_API_KEY)
-                throw new Error('CurseForge API Key not configured');
-            const filesRes = await axios_1.default.get(`https://api.curseforge.com/v1/mods/${resourceId}/files?pageSize=1`, {
-                headers: { 'x-api-key': CURSEFORGE_API_KEY }
-            });
-            const files = filesRes.data.data;
-            if (!files || files.length === 0)
-                return res.status(404).json({ message: 'No files found' });
-            const file = files[0];
-            const downloadUrl = file.downloadUrl;
-            await (0, pterodactyl_1.pullPteroFile)(server.pteroIdentifier, downloadUrl, '/plugins');
         }
         else {
             // Spigot: Proxy Download (Backend -> Ptero)
             const downloadUrl = `https://api.spiget.org/v2/resources/${resourceId}/download`;
             console.log(`[Plugin] Proxy downloading Spigot resource ${resourceId}...`);
-            try {
-                // 1. Download to memory
-                const dlResponse = await axios_1.default.get(downloadUrl, {
-                    responseType: 'arraybuffer',
-                    headers: { 'User-Agent': 'FreeDash/2.0' }
-                });
-                if (!dlResponse.data)
-                    throw new Error('Empty response from Spigot');
-                // 2. Upload to Server
-                const finalName = req.body.fileName || `${resourceId}.jar`;
-                const buf = Buffer.from(dlResponse.data);
-                console.log(`[Plugin] Uploading ${finalName} (${buf.length} bytes) to Pterodactyl...`);
-                await (0, pterodactyl_1.uploadFileToPtero)(server.pteroIdentifier, '/plugins', finalName, buf);
-                console.log(`[Plugin] Upload success.`);
-            }
-            catch (err) {
-                console.error('[Plugin] Proxy Download/Upload Failed:', err.message);
-                if (err.response) {
-                    console.error('Upstream Response:', err.response.status, err.response.data instanceof Buffer ? err.response.data.toString('utf8').substring(0, 100) : err.response.data);
-                }
-                throw new Error('Failed to proxy download/upload plugin: ' + err.message);
-            }
+            // 1. Download to memory
+            const dlResponse = await axios_1.default.get(downloadUrl, {
+                responseType: 'arraybuffer',
+                headers: { 'User-Agent': 'FreeDash/2.0' }
+            });
+            // 2. Upload to Server
+            // Use fileName from body
+            const finalName = req.body.fileName || `${resourceId}.jar`;
+            await (0, pterodactyl_1.uploadFileToPtero)(server.pteroIdentifier, '/plugins', finalName, Buffer.from(dlResponse.data));
         }
         res.json({ message: `Plugin installation started from ${provider}` });
     }
