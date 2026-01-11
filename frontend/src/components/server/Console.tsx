@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Cpu, Activity, HardDrive, Wifi } from 'lucide-react';
+import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 
 interface ConsoleProps {
     serverId: string;
@@ -16,6 +17,7 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
     const fitAddonRef = useRef<FitAddon | null>(null);
     const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error' | 'installing'>('connecting');
     const [stats, setStats] = useState<any>(null);
+    const [statsHistory, setStatsHistory] = useState<any[]>([]);
     const [command, setCommand] = useState('');
 
     const sendCommand = () => {
@@ -27,13 +29,11 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
     };
 
     const connect = async () => {
-        // Check server status first
         if (serverStatus === 'installing' || serverStatus === 'transferring') {
             setStatus('installing');
             return;
         }
 
-        // Close existing connection
         if (wsRef.current) {
             wsRef.current.close();
             wsRef.current = null;
@@ -41,7 +41,6 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
 
         setStatus('connecting');
         try {
-            // Get auth token from localStorage
             const token = localStorage.getItem('accessToken');
             if (!token) {
                 console.error('[Console] No auth token');
@@ -49,18 +48,15 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
                 return;
             }
 
-            // Connect directly to our backend WebSocket
             const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
             const host = window.location.host.includes('localhost')
-                ? 'localhost:3000'  // Dev mode
-                : window.location.host;  // Prod - goes through nginx
+                ? 'localhost:3000'
+                : window.location.host;
 
-            // For production with nginx, use /api prefix
             const wsUrl = window.location.host.includes('localhost')
                 ? `${protocol}://${host}/api/ws/console?serverId=${serverId}&token=${token}`
                 : `${protocol}://${window.location.host}/api/ws/console?serverId=${serverId}&token=${token}`;
 
-            console.log('[Console] Connecting to:', wsUrl);
             initWebSocket(wsUrl);
         } catch (error: any) {
             console.error('[Console] Failed to connect:', error.message);
@@ -70,21 +66,28 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
 
     useEffect(() => {
         connect();
-
         return () => {
             if (wsRef.current) wsRef.current.close();
             if (xtermRef.current) xtermRef.current.dispose();
         };
     }, [serverId, serverStatus]);
 
+    // Initial empty data for charts
+    useEffect(() => {
+        const initialData = Array(20).fill(0).map((_, i) => ({
+            time: i,
+            cpu: 0,
+            memory: 0
+        }));
+        setStatsHistory(initialData);
+    }, []);
+
     const initWebSocket = (url: string) => {
-        console.log('[Console] Connecting to WebSocket:', url);
         const ws = new WebSocket(url);
         wsRef.current = ws;
 
         ws.onopen = () => {
-            console.log('[Console] WebSocket opened');
-            // No auth needed - backend handles it via query param token
+            // WS opened
         };
 
         ws.onmessage = (event) => {
@@ -92,21 +95,13 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
             handleEvent(data);
         };
 
-        ws.onclose = (event) => {
-            console.log('WebSocket Closed:', event.code, event.reason);
-            setStatus('disconnected');
-        };
+        ws.onclose = () => setStatus('disconnected');
+        ws.onerror = () => setStatus('error');
 
-        ws.onerror = (err) => {
-            console.error('WebSocket Error:', err);
-            setStatus('error');
-        };
-
-        // Initialize Terminal
         if (terminalRef.current && !xtermRef.current) {
             const term = new Terminal({
                 cursorBlink: true,
-                convertEol: true,
+                convertEol: true, // Fix for line endings
                 theme: {
                     background: '#0d1117',
                     foreground: '#c9d1d9',
@@ -122,18 +117,17 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
             xtermRef.current = term;
             fitAddonRef.current = fitAddon;
 
-            // Handle Input - use 'send command' event (Pterodactyl protocol)
             term.onData((data) => {
                 if (ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({ event: 'send command', args: [data] }));
                 }
             });
 
-            // Resize observer
-            const resizeObserver = new ResizeObserver(() => {
-                fitAddon.fit();
-            });
+            const resizeObserver = new ResizeObserver(() => fitAddon.fit());
             resizeObserver.observe(terminalRef.current);
+
+            // Initial clear on new connection
+            // term.clear(); 
         }
     };
 
@@ -141,114 +135,158 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
         const { event, args } = data;
         switch (event) {
             case 'auth success':
-                console.log('Console authenticated successfully');
                 setStatus('connected');
+                // Request logs immediately
+                if (wsRef.current?.readyState === WebSocket.OPEN) {
+                    wsRef.current.send(JSON.stringify({ event: 'send logs', args: [] }));
+                }
                 break;
             case 'console output':
                 xtermRef.current?.write(args[0]);
-                break;
-            case 'status':
-                console.log('Server status:', args[0]);
                 break;
             case 'stats':
                 try {
                     const statsData = JSON.parse(args[0]);
                     setStats(statsData);
+                    setStatsHistory(prev => {
+                        const newData = [...prev.slice(1), {
+                            time: new Date().toLocaleTimeString(),
+                            cpu: statsData.cpu_absolute || 0,
+                            memory: (statsData.memory_bytes || 0) / 1024 / 1024
+                        }];
+                        return newData;
+                    });
                 } catch (e) {
                     console.error('Failed to parse stats:', e);
                 }
                 break;
             case 'token expiring':
-                console.log('Console token expiring, should reconnect...');
-                // Auto-reconnect with fresh token
-                connect();
-                break;
             case 'token expired':
-                console.log('Console token expired, reconnecting...');
                 connect();
-                break;
-            case 'jwt error':
-                console.error('JWT Error from Console Socket');
-                setStatus('error');
-                break;
-            default:
-                console.log('Console event:', event, args);
                 break;
         }
     };
 
+    const formatBytes = (bytes: number) => {
+        if (!bytes) return '0 B';
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+    };
+
     return (
-        <div className="flex flex-col h-[600px] bg-[#0d1117] rounded-xl overflow-hidden border border-white/10 shadow-xl">
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-2 bg-[#161b22] border-b border-white/5">
-                <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${status === 'connected' ? 'bg-green-500' : 'bg-red-500'}`} />
-                    <span className="text-xs font-mono text-gray-400 uppercase">{status}</span>
-                </div>
-                {stats && (
-                    <div className="flex gap-4 text-xs font-mono text-gray-400">
-                        <span>CPU: {Math.round(stats.cpu_absolute)}%</span>
-                        <span>MEM: {(stats.memory_bytes / 1024 / 1024).toFixed(0)}MB</span>
+        <div className="flex flex-col lg:flex-row gap-4 h-[600px]">
+            {/* Terminal Section */}
+            <div className="flex-1 flex flex-col bg-[#0d1117] rounded-xl overflow-hidden border border-white/10 shadow-xl min-w-0">
+                {/* Header with Status */}
+                <div className="flex items-center justify-between px-4 py-2 bg-[#161b22] border-b border-white/5">
+                    <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${status === 'connected' ? 'bg-green-500' : 'bg-red-500'}`} />
+                        <span className="text-xs font-mono text-gray-400 uppercase">{status}</span>
                     </div>
-                )}
+                </div>
+
+                <div className="flex-1 relative min-h-0">
+                    {/* Loaders/Error overlays */}
+                    {status === 'connecting' && (
+                        <div className="absolute inset-0 flex flex-col z-20 items-center justify-center bg-[#0d1117]/80 gap-4">
+                            <Loader2 className="animate-spin text-purple-500" size={32} />
+                        </div>
+                    )}
+
+                    <div ref={terminalRef} className="h-full w-full" />
+                </div>
+
+                {/* Input */}
+                <div className="flex items-center gap-2 px-4 py-3 bg-[#161b22] border-t border-white/5">
+                    <span className="text-gray-500 font-mono text-lg">{'>'}</span>
+                    <input
+                        type="text"
+                        value={command}
+                        onChange={(e) => setCommand(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && sendCommand()}
+                        placeholder="Type a command..."
+                        className="flex-1 bg-transparent border-none outline-none text-gray-200 font-mono placeholder-gray-600 focus:ring-0"
+                        disabled={status !== 'connected'}
+                    />
+                </div>
             </div>
 
-            {/* Terminal Area */}
-            <div className="flex-1 relative">
-                {status === 'connecting' && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0d1117] z-10 gap-4">
-                        <Loader2 className="animate-spin text-purple-500" size={32} />
-                        <span className="text-gray-400">Connecting to server socket...</span>
+            {/* Stats Sidebar */}
+            <div className="w-full lg:w-72 flex flex-col gap-4">
+
+                {/* Uptime/State Card */}
+                <div className="bg-[#161b22] border border-white/10 rounded-xl p-4">
+                    <h3 className="text-gray-400 text-xs uppercase font-bold mb-2">State</h3>
+                    <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${stats?.state === 'running' ? 'bg-green-500' : 'bg-red-500'}`} />
+                        <span className="text-white font-mono capitalize">{stats?.state || 'Unknown'}</span>
                     </div>
-                )}
-                {status === 'installing' && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0d1117] z-10 p-8 text-center text-yellow-500">
-                        <Loader2 className="animate-spin mb-4" size={48} />
-                        <h3 className="text-xl font-bold mb-2">Server Installing</h3>
-                        <p className="text-gray-400 max-w-md">Your server is currently being set up. The console will be available once the installation is complete.</p>
+                    <div className="mt-2 text-xs text-gray-500 font-mono">
+                        Uptime: {stats?.uptime ? (stats.uptime / 1000).toFixed(0) + 's' : '--'}
                     </div>
-                )}
-                {status === 'error' && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0d1117] z-10 text-red-500 gap-4">
-                        <span className="text-lg font-bold">Connection Failed</span>
-                        <button
-                            onClick={connect}
-                            className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-white text-sm transition"
-                        >
-                            Retry Connection
-                        </button>
+                </div>
+
+                {/* CPU Graph */}
+                <div className="bg-[#161b22] border border-white/10 rounded-xl p-4 flex-1 min-h-[140px]">
+                    <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-gray-400 text-xs uppercase font-bold flex items-center gap-1"><Cpu size={12} /> CPU Load</h3>
+                        <span className="text-green-400 font-mono text-xs">{stats?.cpu_absolute?.toFixed(1) || 0}%</span>
                     </div>
-                )}
-                {status === 'disconnected' && (
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex items-center justify-center">
-                        <div className="bg-[#161b22] border border-white/10 p-6 rounded-xl flex flex-col items-center shadow-2xl">
-                            <h3 className="text-red-400 font-bold mb-2">Disconnected</h3>
-                            <button
-                                onClick={connect}
-                                className="px-6 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg font-bold transition"
-                            >
-                                Reconnect
-                            </button>
+                    <div className="h-24 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={statsHistory}>
+                                <defs>
+                                    <linearGradient id="cpuGradient" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#4ade80" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#4ade80" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <Area type="monotone" dataKey="cpu" stroke="#4ade80" fill="url(#cpuGradient)" strokeWidth={2} isAnimationActive={false} />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* Memory Graph */}
+                <div className="bg-[#161b22] border border-white/10 rounded-xl p-4 flex-1 min-h-[140px]">
+                    <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-gray-400 text-xs uppercase font-bold flex items-center gap-1"><Activity size={12} /> Memory</h3>
+                        <span className="text-blue-400 font-mono text-xs">{formatBytes(stats?.memory_bytes || 0)}</span>
+                    </div>
+                    <div className="h-24 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={statsHistory}>
+                                <defs>
+                                    <linearGradient id="memGradient" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#60a5fa" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <Area type="monotone" dataKey="memory" stroke="#60a5fa" fill="url(#memGradient)" strokeWidth={2} isAnimationActive={false} />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* Network / Disk Text */}
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-[#161b22] border border-white/10 rounded-xl p-3">
+                        <h3 className="text-gray-500 text-[10px] uppercase font-bold mb-1 flex items-center gap-1"><HardDrive size={10} /> Disk</h3>
+                        <div className="text-purple-400 font-mono text-xs truncate">
+                            {formatBytes(stats?.disk_bytes || 0)}
                         </div>
                     </div>
-                )}
-                <div ref={terminalRef} className="h-full w-full" />
-            </div>
-
-            {/* Command Input */}
-            <div className="flex items-center gap-2 px-4 py-3 bg-[#161b22] border-t border-white/5">
-                <span className="text-gray-500 font-mono text-lg">{'>'}</span>
-                <input
-                    type="text"
-                    value={command}
-                    onChange={(e) => setCommand(e.target.value)}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter') sendCommand();
-                    }}
-                    placeholder="Type a command..."
-                    className="flex-1 bg-transparent border-none outline-none text-gray-200 font-mono placeholder-gray-600 focus:ring-0"
-                    disabled={status !== 'connected'}
-                />
+                    <div className="bg-[#161b22] border border-white/10 rounded-xl p-3">
+                        <h3 className="text-gray-500 text-[10px] uppercase font-bold mb-1 flex items-center gap-1"><Wifi size={10} /> Net</h3>
+                        <div className="text-yellow-400 font-mono text-[10px] truncate">
+                            In: {formatBytes(stats?.network?.rx_bytes || 0)}
+                        </div>
+                        <div className="text-yellow-400 font-mono text-[10px] truncate">
+                            Out: {formatBytes(stats?.network?.tx_bytes || 0)}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );

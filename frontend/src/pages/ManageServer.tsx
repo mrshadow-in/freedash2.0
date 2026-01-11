@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import { motion } from 'framer-motion';
-import { Loader2, ShoppingCart, Copy, Check, Terminal, FolderOpen, Settings, Ghost, Info } from 'lucide-react';
+import { Loader2, ShoppingCart, Copy, Check, Terminal, FolderOpen, Settings, Ghost } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 
@@ -21,7 +21,7 @@ const ManageServer = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [isShopOpen, setIsShopOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<'console' | 'resources' | 'files' | 'settings' | 'shop' | 'minecraft'>('console');
+    const [activeTab, setActiveTab] = useState<'console' | 'files' | 'settings' | 'shop' | 'minecraft'>('console');
     const [copiedIP, setCopiedIP] = useState(false);
 
     // Fetch Server Details
@@ -191,12 +191,7 @@ const ManageServer = () => {
                     >
                         <Terminal size={18} /> Console
                     </button>
-                    <button
-                        onClick={() => setActiveTab('resources')}
-                        className={`flex items-center gap-2 px-6 py-3 font-bold transition whitespace-nowrap rounded-t-lg ${activeTab === 'resources' ? 'text-white bg-white/5 border-b-2 border-green-500' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
-                    >
-                        <Info size={18} /> Resources
-                    </button>
+
                     <button
                         onClick={() => setActiveTab('files')}
                         className={`flex items-center gap-2 px-6 py-3 font-bold transition whitespace-nowrap rounded-t-lg ${activeTab === 'files' ? 'text-white bg-white/5 border-b-2 border-yellow-500' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
@@ -260,121 +255,7 @@ const ManageServer = () => {
                         </div>
                     )}
 
-                    {activeTab === 'resources' && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {/* RAM Card */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.1 }}
-                                className="bg-gradient-to-br from-blue-600/10 to-blue-900/10 border border-blue-500/20 rounded-2xl p-8 relative overflow-hidden group hover:border-blue-500/40 transition"
-                            >
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition" />
-                                <div className="relative">
-                                    <div className="w-16 h-16 bg-blue-500/20 rounded-xl flex items-center justify-center mb-4">
-                                        <svg className="w-8 h-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-                                        </svg>
-                                    </div>
-                                    <h3 className="text-sm font-medium text-gray-400 mb-1">RAM</h3>
-                                    <div className="text-4xl font-bold text-white mb-2">
-                                        {server.ramMb / 1024}<span className="text-2xl text-gray-400">GB</span>
-                                    </div>
-                                    {usage && (
-                                        <div className="mt-4">
-                                            <div className="flex justify-between text-sm mb-2">
-                                                <span className="text-gray-400">Usage</span>
-                                                <span className="text-blue-400 font-bold">
-                                                    {usage?.memory_bytes ? (usage.memory_bytes / 1024 / 1024 / 1024).toFixed(2) : '0'}GB
-                                                </span>
-                                            </div>
-                                            <div className="w-full bg-white/10 rounded-full h-2">
-                                                <div
-                                                    className="bg-gradient-to-r from-blue-500 to-blue-400 h-2 rounded-full transition-all"
-                                                    style={{ width: `${usage?.memory_bytes && server.ramMb ? Math.min((usage.memory_bytes / (server.ramMb * 1024 * 1024)) * 100, 100) : 0}%` }}
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </motion.div>
 
-                            {/* CPU Card */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.2 }}
-                                className="bg-gradient-to-br from-purple-600/10 to-purple-900/10 border border-purple-500/20 rounded-2xl p-8 relative overflow-hidden group hover:border-purple-500/40 transition"
-                            >
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition" />
-                                <div className="relative">
-                                    <div className="w-16 h-16 bg-purple-500/20 rounded-xl flex items-center justify-center mb-4">
-                                        <svg className="w-8 h-8 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-                                        </svg>
-                                    </div>
-                                    <h3 className="text-sm font-medium text-gray-400 mb-1">CPU</h3>
-                                    <div className="text-4xl font-bold text-white mb-2">
-                                        {server.cpuCores}<span className="text-2xl text-gray-400"> Cores</span>
-                                    </div>
-                                    {usage && (
-                                        <div className="mt-4">
-                                            <div className="flex justify-between text-sm mb-2">
-                                                <span className="text-gray-400">Usage</span>
-                                                <span className="text-purple-400 font-bold">
-                                                    {usage?.cpu_absolute !== undefined ? Math.round(usage.cpu_absolute) : 0}%
-                                                </span>
-                                            </div>
-                                            <div className="w-full bg-white/10 rounded-full h-2">
-                                                <div
-                                                    className="bg-gradient-to-r from-purple-500 to-purple-400 h-2 rounded-full transition-all"
-                                                    style={{ width: `${usage?.cpu_absolute !== undefined ? Math.min(usage.cpu_absolute, 100) : 0}%` }}
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </motion.div>
-
-                            {/* Disk Card */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.3 }}
-                                className="bg-gradient-to-br from-green-600/10 to-green-900/10 border border-green-500/20 rounded-2xl p-8 relative overflow-hidden group hover:border-green-500/40 transition"
-                            >
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full blur-2xl group-hover:bg-green-500/20 transition" />
-                                <div className="relative">
-                                    <div className="w-16 h-16 bg-green-500/20 rounded-xl flex items-center justify-center mb-4">
-                                        <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7C5 4 4 5 4 7z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10h6M9 14h6" />
-                                        </svg>
-                                    </div>
-                                    <h3 className="text-sm font-medium text-gray-400 mb-1">Disk</h3>
-                                    <div className="text-4xl font-bold text-white mb-2">
-                                        {server.diskMb / 1024}<span className="text-2xl text-gray-400">GB</span>
-                                    </div>
-                                    {usage && (
-                                        <div className="mt-4">
-                                            <div className="flex justify-between text-sm mb-2">
-                                                <span className="text-gray-400">Usage</span>
-                                                <span className="text-green-400 font-bold">
-                                                    {usage?.disk_bytes ? (usage.disk_bytes / 1024 / 1024 / 1024).toFixed(2) : '0'}GB
-                                                </span>
-                                            </div>
-                                            <div className="w-full bg-white/10 rounded-full h-2">
-                                                <div
-                                                    className="bg-gradient-to-r from-green-500 to-green-400 h-2 rounded-full transition-all"
-                                                    style={{ width: `${usage?.disk_bytes && server.diskMb ? Math.min((usage.disk_bytes / (server.diskMb * 1024 * 1024)) * 100, 100) : 0}%` }}
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </motion.div>
-                        </div>
-                    )}
 
                     {activeTab === 'shop' && (
                         <div className="bg-white/5 border border-white/10 rounded-2xl p-8">

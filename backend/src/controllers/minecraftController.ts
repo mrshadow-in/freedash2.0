@@ -64,7 +64,13 @@ export const getServerProperties = async (req: AuthRequest, res: Response) => {
             return res.status(403).json({ message: 'Unauthorized' });
         }
 
-        const content = await getFileContent(server.pteroIdentifier, 'server.properties') as string;
+        let content = '';
+        try {
+            content = await getFileContent(server.pteroIdentifier, 'server.properties') as string;
+        } catch (err) {
+            // If file doesn't exist, return empty properties
+            console.log('server.properties not found, returning empty');
+        }
         const properties = parseProperties(content);
         res.json(properties);
     } catch (error) {
@@ -87,7 +93,13 @@ export const updateServerProperties = async (req: AuthRequest, res: Response) =>
             return res.status(403).json({ message: 'Unauthorized' });
         }
 
-        const content = await getFileContent(server.pteroIdentifier, 'server.properties') as string;
+        let content = '';
+        try {
+            content = await getFileContent(server.pteroIdentifier, 'server.properties') as string;
+        } catch (err) {
+            // File doesn't exist, create new
+            console.log('server.properties not found, creating new');
+        }
 
         const stringUpdates: Record<string, string> = {};
         Object.entries(updates).forEach(([k, v]) => {

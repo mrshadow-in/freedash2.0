@@ -113,10 +113,22 @@ export const createServer = async (req: AuthRequest, res: Response) => {
                 }
             }
 
+            const node = pteroServer.relationships?.node?.attributes;
             const primaryAllocation = allocations.find((a: any) => a.attributes.is_default) || allocations[0];
-            const serverIp = primaryAllocation
-                ? `${primaryAllocation.attributes.ip}:${primaryAllocation.attributes.port}`
-                : 'Pending';
+
+            let ipToUse = 'Pending';
+            let portToUse = '';
+
+            if (primaryAllocation) {
+                ipToUse = primaryAllocation.attributes.ip;
+                portToUse = primaryAllocation.attributes.port;
+
+                if (ipToUse === '0.0.0.0' && node?.fqdn) {
+                    ipToUse = node.fqdn;
+                }
+            }
+
+            const serverIp = portToUse ? `${ipToUse}:${portToUse}` : 'Pending';
 
             // Extract server attributes from response
             const serverAttributes = pteroServer.attributes;
@@ -187,11 +199,24 @@ export const getMyServers = async (req: AuthRequest, res: Response) => {
                     const pteroData = await getPteroServer(server.pteroServerId);
 
                     // Extract latest IP
+                    // Extract latest IP
                     const allocations = pteroData.relationships?.allocations?.data || [];
+                    const node = pteroData.relationships?.node?.attributes;
                     const primaryAllocation = allocations.find((a: any) => a.attributes.is_default) || allocations[0];
-                    const newIp = primaryAllocation
-                        ? `${primaryAllocation.attributes.ip}:${primaryAllocation.attributes.port}`
-                        : 'Pending';
+
+                    let ipToUse = 'Pending';
+                    let portToUse = '';
+
+                    if (primaryAllocation) {
+                        ipToUse = primaryAllocation.attributes.ip;
+                        portToUse = primaryAllocation.attributes.port;
+
+                        if (ipToUse === '0.0.0.0' && node?.fqdn) {
+                            ipToUse = node.fqdn;
+                        }
+                    }
+
+                    const newIp = portToUse ? `${ipToUse}:${portToUse}` : 'Pending';
 
                     let newStatus = server.status;
 
@@ -315,11 +340,18 @@ export const getServer = async (req: AuthRequest, res: Response) => {
                 const pteroStatus = pteroServer.status || (pteroServer.suspended ? 'suspended' : 'active');
 
                 // basic allocation check
+                // basic allocation check
                 const allocations = pteroServer.relationships?.allocations?.data || [];
+                const node = pteroServer.relationships?.node?.attributes;
                 const defaultAlloc = allocations.find((a: any) => a.attributes.is_default) || allocations[0];
                 let serverIp = server.serverIp;
+
                 if (defaultAlloc) {
-                    serverIp = `${defaultAlloc.attributes.ip}:${defaultAlloc.attributes.port}`;
+                    let ipToUse = defaultAlloc.attributes.ip;
+                    if (ipToUse === '0.0.0.0' && node?.fqdn) {
+                        ipToUse = node.fqdn;
+                    }
+                    serverIp = `${ipToUse}:${defaultAlloc.attributes.port}`;
                 }
 
                 if (server.status !== pteroStatus || server.serverIp !== serverIp) {

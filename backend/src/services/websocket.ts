@@ -78,13 +78,15 @@ export const initWebSocketServer = (server: Server) => {
             // Proxy Messages: Ptero -> Client
             pteroWs.on('message', (data) => {
                 if (ws.readyState === WebSocket.OPEN) {
-                    ws.send(data.toString());
+                    // Force CRLF for xterm.js compatibility and toString for Blob fix
+                    ws.send(data.toString().replace(/\n/g, '\r\n'));
                 }
             });
 
             // Proxy Messages: Client -> Ptero
-            ws.on('message', (data) => {
+            ws.on('message', (data: any) => {
                 if (pteroWs.readyState === WebSocket.OPEN) {
+                    // Pterodactyl expects strings for commands
                     pteroWs.send(data.toString());
                 }
             });

@@ -112,7 +112,7 @@ export const createPteroServer = async (
     const config = await getPteroConfig();
 
     const response = await axios.post(
-        `${config.url}/api/application/servers?include=allocations`,
+        `${config.url}/api/application/servers?include=allocations,node`,
         {
             name,
             user: userId,
@@ -206,7 +206,7 @@ export const getPteroServer = async (serverId: number) => {
     const config = await getPteroConfig();
 
     const response = await axios.get(
-        `${config.url}/api/application/servers/${serverId}?include=allocations`,
+        `${config.url}/api/application/servers/${serverId}?include=allocations,node`,
         {
             headers: {
                 Authorization: `Bearer ${config.key}`,
