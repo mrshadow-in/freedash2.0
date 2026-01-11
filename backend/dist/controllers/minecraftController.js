@@ -41,6 +41,7 @@ const pterodactyl_1 = require("../services/pterodactyl");
 const prisma_1 = require("../prisma");
 const axios_1 = __importDefault(require("axios"));
 // Helper to parse properties file
+const CURSEFORGE_API_KEY = process.env.CURSEFORGE_API_KEY;
 const parseProperties = (content) => {
     const lines = content.split('\n');
     const properties = {};
@@ -166,6 +167,26 @@ const searchPlugins = async (req, res) => {
             }));
             res.json(plugins);
         }
+        else if (provider === 'curseforge') {
+            // CurseForge Search
+            if (!CURSEFORGE_API_KEY) {
+                return res.json([]); // Or error
+            }
+            // gameId=432 (Minecraft), classId=5 (Bukkit Plugins)
+            const url = `https://api.curseforge.com/v1/mods/search?gameId=432&classId=5&searchFilter=${q}&sortField=2&sortOrder=desc&pageSize=20`;
+            const response = await axios_1.default.get(url, { headers: { 'x-api-key': CURSEFORGE_API_KEY } });
+            const plugins = (response.data.data || []).map((p) => ({
+                id: p.id,
+                name: p.name,
+                tag: p.summary,
+                likes: p.downloadCount, // Approximate likes with downloads
+                downloads: p.downloadCount,
+                icon: p.logo?.url,
+                provider: 'curseforge',
+                testedVersions: [] // CF versions strictly tied to files
+            }));
+            res.json(plugins);
+        }
         else {
             // Spigot Search (Default)
             const response = await axios_1.default.get(`https://api.spiget.org/v2/search/resources/${q}?size=20&sort=-likes`);
@@ -209,24 +230,50 @@ const installPlugin = async (req, res) => {
             if (!versions || versions.length === 0) {
                 return res.status(404).json({ message: 'No versions found for this plugin' });
             }
-            // Pick the first one (latest)
             const latestVersion = versions[0];
             const file = latestVersion.files.find((f) => f.primary) || latestVersion.files[0];
             await (0, pterodactyl_1.pullPteroFile)(server.pteroIdentifier, file.url, '/plugins');
+        }
+        else if (provider === 'curseforge') {
+            // CurseForge: Fetch Files
+            if (!CURSEFORGE_API_KEY)
+                throw new Error('CurseForge API Key not configured');
+            const filesRes = await axios_1.default.get(`https://api.curseforge.com/v1/mods/${resourceId}/files?pageSize=1`, {
+                headers: { 'x-api-key': CURSEFORGE_API_KEY }
+            });
+            const files = filesRes.data.data;
+            if (!files || files.length === 0)
+                return res.status(404).json({ message: 'No files found' });
+            const file = files[0];
+            const downloadUrl = file.downloadUrl;
+            await (0, pterodactyl_1.pullPteroFile)(server.pteroIdentifier, downloadUrl, '/plugins');
         }
         else {
             // Spigot: Proxy Download (Backend -> Ptero)
             const downloadUrl = `https://api.spiget.org/v2/resources/${resourceId}/download`;
             console.log(`[Plugin] Proxy downloading Spigot resource ${resourceId}...`);
-            // 1. Download to memory
-            const dlResponse = await axios_1.default.get(downloadUrl, {
-                responseType: 'arraybuffer',
-                headers: { 'User-Agent': 'FreeDash/2.0' }
-            });
-            // 2. Upload to Server
-            // Use fileName from body
-            const finalName = req.body.fileName || `${resourceId}.jar`;
-            await (0, pterodactyl_1.uploadFileToPtero)(server.pteroIdentifier, '/plugins', finalName, Buffer.from(dlResponse.data));
+            try {
+                // 1. Download to memory
+                const dlResponse = await axios_1.default.get(downloadUrl, {
+                    responseType: 'arraybuffer',
+                    headers: { 'User-Agent': 'FreeDash/2.0' }
+                });
+                if (!dlResponse.data)
+                    throw new Error('Empty response from Spigot');
+                // 2. Upload to Server
+                const finalName = req.body.fileName || `${resourceId}.jar`;
+                const buf = Buffer.from(dlResponse.data);
+                console.log(`[Plugin] Uploading ${finalName} (${buf.length} bytes) to Pterodactyl...`);
+                await (0, pterodactyl_1.uploadFileToPtero)(server.pteroIdentifier, '/plugins', finalName, buf);
+                console.log(`[Plugin] Upload success.`);
+            }
+            catch (err) {
+                console.error('[Plugin] Proxy Download/Upload Failed:', err.message);
+                if (err.response) {
+                    console.error('Upstream Response:', err.response.status, err.response.data instanceof Buffer ? err.response.data.toString('utf8').substring(0, 100) : err.response.data);
+                }
+                throw new Error('Failed to proxy download/upload plugin: ' + err.message);
+            }
         }
         res.json({ message: `Plugin installation started from ${provider}` });
     }
