@@ -33,7 +33,7 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
         setStatus('connecting');
         try {
             // Get auth token from localStorage
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('accessToken');
             if (!token) {
                 console.error('[Console] No auth token');
                 setStatus('error');
