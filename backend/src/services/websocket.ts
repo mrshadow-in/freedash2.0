@@ -10,7 +10,7 @@ interface ExtWebSocket extends WebSocket {
     userId?: string;
 }
 
-export const setupWebSocket = (server: Server) => {
+export const initWebSocketServer = (server: Server) => {
     const wss = new WebSocketServer({ server, path: '/api/ws/console' });
 
     wss.on('connection', async (ws: ExtWebSocket, req) => {
