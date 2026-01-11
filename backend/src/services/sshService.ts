@@ -1,5 +1,12 @@
 import { Client, ClientChannel, SFTPWrapper } from 'ssh2';
 import { prisma } from '../prisma';
+import { exec as localExec } from 'child_process';
+import util from 'util';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+
+const execPromise = util.promisify(localExec);
 
 interface SSHConnectionOptions {
     host: string;
@@ -234,6 +241,24 @@ class SSHService {
             client.end();
         }
         this.connectionPool.clear();
+    }
+    /**
+     * Get system public key (for auto-deploying nodes)
+     */
+    async getSystemPublicKey(): Promise<string> {
+        const keyPath = path.join(os.homedir(), '.ssh', 'id_rsa');
+        const pubKeyPath = keyPath + '.pub';
+
+        if (!fs.existsSync(pubKeyPath)) {
+            console.log('[SSH] Generating system SSH key pair...');
+            const sshDir = path.dirname(keyPath);
+            if (!fs.existsSync(sshDir)) fs.mkdirSync(sshDir, { recursive: true });
+
+            // Generate key without passphrase
+            await execPromise(`ssh-keygen -t rsa -b 4096 -f "${keyPath}" -N "" -C "freedash-panel"`);
+        }
+
+        return fs.readFileSync(pubKeyPath, 'utf8').trim();
     }
 }
 

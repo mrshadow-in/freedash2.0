@@ -1,65 +1,85 @@
 #!/bin/bash
-
-# FreeDash Remote Node Setup Script
-# This script prepares a fresh VPS to be used as a Node for FreeDash.
+# FreeDash Wings Installer
+# Usage: curl -sL <URL>/setup.sh | bash -s <TOKEN> <PANEL_URL>
 
 set -e
 
-# Check for root
-if [ "$EUID" -ne 0 ]; then 
-  echo "Please run as root"
+TOKEN=$1
+PANEL_URL=$2
+
+if [ -z "$TOKEN" ] || [ -z "$PANEL_URL" ]; then
+  echo "Usage: setup.sh <TOKEN> <PANEL_URL>"
+  echo "This script is intended to be run via the Auto-Deploy command in the Panel."
   exit 1
 fi
 
 echo "======================================"
-echo " FreeDash Node Installer"
+echo " FreeDash Wings Installer"
 echo "======================================"
 
-# 1. Update System
-echo "[+] Updating system packages..."
+# 1. Update & Install Dependencies
+echo "[+] Installing Dependencies..."
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash - > /dev/null
 apt-get update -qq
+apt-get install -y nodejs docker.io tar unzip git
 
-# 2. Install Docker
-echo "[+] Installing Docker..."
-if ! command -v docker &> /dev/null; then
-    apt-get install -y docker.io
-    systemctl enable --now docker
-else
-    echo "Docker already installed."
+systemctl enable --now docker
+
+# 2. Setup Wings Directory
+echo "[+] Setting up Wings..."
+mkdir -p /opt/freedash-wings
+cd /opt/freedash-wings
+
+# 3. Download Wings Source
+echo "[+] Downloading Agent Code..."
+# Attempt to download from Panel
+curl -sL "$PANEL_URL/static/wings.tar.gz" -o wings.tar.gz
+if [ ! -s wings.tar.gz ]; then
+    echo "Failed to download wings.tar.gz from $PANEL_URL/static/wings.tar.gz"
+    echo "Please ensure the Panel is reachable."
+    exit 1
 fi
 
-# 3. Enable Swap (Optional but recommended for game servers)
-if [ ! -f /swapfile ]; then
-    echo "[+] Configuring Swap (2GB)..."
-    fallocate -l 2G /swapfile
-    chmod 600 /swapfile
-    mkswap /swapfile
-    swapon /swapfile
-    echo '/swapfile none swap sw 0 0' | tee -a /etc/fstab
-else
-    echo "Swap already configured."
-fi
+tar -xzf wings.tar.gz --strip-components=1
+rm wings.tar.gz
 
-# 4. Configure Firewall (UFW) if active
-if command -v ufw &> /dev/null; then
-    if ufw status | grep -q "Status: active"; then
-        echo "[+] Allowing SSH and Ports..."
-        ufw allow 22/tcp
-        ufw allow 25565:25600/tcp # Game ports
-        ufw allow 25565:25600/udp
-        ufw reload
-    fi
-fi
+# 4. Install NPM Packages
+echo "[+] Installing NPM Packages..."
+npm install --silent
+npm run build
 
-# 5. Output Info
-IP=$(curl -s ifconfig.me)
+# 5. Write Config
+echo "[+] Configuring..."
+cat > config.json <<EOF
+{
+  "port": 3005,
+  "token": "$TOKEN",
+  "panelUrl": "$PANEL_URL"
+}
+EOF
+
+# 6. Create Systemd Service
+echo "[+] Installing Systemd Service..."
+cat > /etc/systemd/system/freedash-wings.service <<EOF
+[Unit]
+Description=FreeDash Wings Agent
+After=docker.service network.target
+
+[Service]
+User=root
+WorkingDirectory=/opt/freedash-wings
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable --now freedash-wings
+
 echo "======================================"
-echo " Setup Complete!"
-echo "======================================"
-echo "Node IP: $IP"
-echo "SSH Port: 22"
-echo "SSH User: root"
-echo ""
-echo "Go to your Admin Panel -> Nodes -> Create New"
-echo "Enter the IP and credentials above."
+echo " Wings Installed & Started!"
+echo " Wings Port: 3005"
 echo "======================================"

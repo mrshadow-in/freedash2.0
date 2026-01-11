@@ -391,11 +391,22 @@ export const deleteNodeAllocation = async (req: AuthRequest, res: Response) => {
             return res.status(400).json({ message: 'Cannot delete assigned allocation' });
         }
 
-        await prisma.allocation.delete({ where: { id: allocationId } });
-
         res.json({ message: 'Allocation deleted' });
     } catch (error: any) {
         console.error('Delete allocation error:', error);
         res.status(500).json({ message: 'Failed to delete allocation' });
+    }
+};
+
+/**
+ * Get deployment SSH key (Admin only)
+ */
+export const getDeploymentKey = async (req: AuthRequest, res: Response) => {
+    try {
+        const key = await sshService.getSystemPublicKey();
+        res.json({ key });
+    } catch (error: any) {
+        console.error('Get deployment key error:', error);
+        res.status(500).json({ message: 'Failed to get deployment key' });
     }
 };

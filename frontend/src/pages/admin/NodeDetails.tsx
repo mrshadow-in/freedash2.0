@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/client';
 import {
-    Activity, Trash2
+    Activity, Trash2, Terminal, Copy, Check
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -12,7 +12,8 @@ interface NodeDetailsProps {
 }
 
 const NodeDetails = ({ nodeId, onBack }: NodeDetailsProps) => {
-    const [activeTab, setActiveTab] = useState<'about' | 'allocation' | 'servers'>('about');
+    const [activeTab, setActiveTab] = useState<'about' | 'allocation' | 'servers' | 'configuration'>('about');
+    const [showToken, setShowToken] = useState(false);
     const queryClient = useQueryClient();
 
     // Fetch node details
@@ -32,6 +33,16 @@ const NodeDetails = ({ nodeId, onBack }: NodeDetailsProps) => {
             return res.data;
         },
         enabled: activeTab === 'allocation'
+    });
+
+    // Fetch Deployment Key
+    const { data: deploymentKey } = useQuery({
+        queryKey: ['admin-deployment-key'],
+        queryFn: async () => {
+            const res = await api.get('/admin/nodes/deployment-key');
+            return res.data.key;
+        },
+        enabled: activeTab === 'configuration'
     });
 
     // Create Allocations Mutation
@@ -67,6 +78,13 @@ const NodeDetails = ({ nodeId, onBack }: NodeDetailsProps) => {
         }
     });
 
+    const copyCommand = () => {
+        const baseUrl = `${window.location.protocol}//${window.location.hostname}:3001`;
+        const cmd = `curl -sL ${baseUrl}/static/setup.sh | bash -s "${deploymentKey}" "${baseUrl}"`;
+        navigator.clipboard.writeText(cmd);
+        toast.success('Command copied to clipboard');
+    };
+
     if (isLoading) return <div className="p-8 text-center text-gray-400">Loading node details...</div>;
 
     return (
@@ -99,7 +117,7 @@ const NodeDetails = ({ nodeId, onBack }: NodeDetailsProps) => {
 
             {/* Tabs */}
             <div className="flex border-b border-white/10">
-                {['about', 'allocation', 'servers'].map(tab => (
+                {['about', 'allocation', 'servers', 'configuration'].map(tab => (
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab as any)}
@@ -235,6 +253,76 @@ const NodeDetails = ({ nodeId, onBack }: NodeDetailsProps) => {
                                 )}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            )}
+
+            {/* Tab: Configuration (Pterodactyl Style) */}
+            {activeTab === 'configuration' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="bg-[#1a1b2e] border border-white/10 rounded-xl p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-lg font-bold text-white">Configuration File</h3>
+                            <button
+                                onClick={() => setShowToken(true)}
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold transition"
+                            >
+                                Generate Token
+                            </button>
+                        </div>
+
+                        {showToken ? (
+                            <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                                <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 flex items-center gap-3">
+                                    <div className="p-2 bg-green-500 rounded-full text-white">
+                                        <Check size={16} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-green-400 font-bold text-sm">Token created.</h4>
+                                        <p className="text-gray-400 text-xs">
+                                            To auto-configure your node run the following command:
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="relative group">
+                                    <div className="absolute right-2 top-2">
+                                        <button onClick={copyCommand} className="p-2 bg-white/10 hover:bg-white/20 rounded text-white transition">
+                                            <Copy size={16} />
+                                        </button>
+                                    </div>
+                                    <pre className="bg-black/50 border border-white/10 rounded-xl p-4 text-xs font-mono text-gray-300 overflow-x-auto whitespace-pre-wrap break-all">
+                                        curl -sL {window.location.protocol}//{window.location.hostname}:3001/static/setup.sh | bash -s "{deploymentKey || 'LOADING_KEY...'}"
+                                    </pre>
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                    This command will configure Docker and authorize the Panel to access this node.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="bg-white/5 border border-white/10 rounded-xl p-8 text-center">
+                                <Terminal size={48} className="mx-auto text-gray-600 mb-4" />
+                                <h4 className="text-gray-400 font-bold mb-2">Auto-Deploy</h4>
+                                <p className="text-sm text-gray-500 max-w-sm mx-auto">
+                                    Use the button above to generate a custom deployment command that can be used to configure
+                                    your node on the target server with a single command.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="bg-[#1a1b2e] border border-white/10 rounded-xl p-6 h-fit opacity-50 cursor-not-allowed">
+                        <h3 className="text-lg font-bold text-white mb-4">Manual Configuration</h3>
+                        <p className="text-sm text-gray-400">
+                            Manual configuration yaml (Not used in this SSH-based panel architecture).
+                            Please use the Auto-Deploy method.
+                        </p>
+                        <pre className="mt-4 bg-black/50 p-4 rounded text-xs text-gray-500">
+                            # wings equivalent config
+                            debug: false
+                            uuid: {nodeId}
+                            ...
+                        </pre>
                     </div>
                 </div>
             )}

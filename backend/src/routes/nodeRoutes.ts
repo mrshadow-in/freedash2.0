@@ -10,7 +10,8 @@ import {
     getNodeStats,
     getNodeAllocations,
     createNodeAllocations,
-    deleteNodeAllocation
+    deleteNodeAllocation,
+    getDeploymentKey
 } from '../controllers/nodeController';
 
 const router = express.Router();
@@ -18,6 +19,9 @@ const router = express.Router();
 // All routes require admin authentication
 router.use(authenticate as any);
 router.use(requireAdmin as any);
+
+// System Routes (Must act before /:id)
+router.get('/deployment-key', getDeploymentKey as any);
 
 // Node CRUD
 router.get('/', listNodes as any);
