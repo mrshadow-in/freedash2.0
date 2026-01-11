@@ -1,15 +1,43 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.startDiscordBot = startDiscordBot;
 exports.stopDiscordBot = stopDiscordBot;
 exports.getBotStatus = getBotStatus;
 const discord_js_1 = require("discord.js");
-const Settings_1 = __importDefault(require("../models/Settings"));
-const InviteClaim_1 = __importDefault(require("../models/InviteClaim"));
-const RedeemCode_1 = __importDefault(require("../models/RedeemCode"));
+const prisma_1 = require("../prisma");
 let client = null;
 let inviteCache = new Map(); // guildId -> (inviterId -> uses)
 // Generate random code
@@ -85,19 +113,24 @@ async function getUserInvites(guild, userId) {
 // Create reward code in database
 async function createRewardCode(coins, prefix) {
     const code = generateCode(prefix);
-    await RedeemCode_1.default.create({
-        code,
-        amount: coins,
-        maxUses: 1,
-        usedCount: 0
+    await prisma_1.prisma.redeemCode.create({
+        data: {
+            code,
+            amount: coins,
+            maxUses: 1,
+            usedCount: 0
+        }
     });
     return code;
 }
 // Start Discord Bot
 async function startDiscordBot() {
     try {
-        const settings = await Settings_1.default.findOne();
-        if (!settings?.discordBot?.enabled || !settings?.discordBot?.token || !settings?.discordBot?.guildId) {
+        const { getSettings } = await Promise.resolve().then(() => __importStar(require('./settingsService')));
+        const settings = await getSettings();
+        const discordBot = settings?.discordBot;
+        const token = settings?.discordBot?.token;
+        if (!discordBot?.enabled || !discordBot?.token || !discordBot?.guildId) {
             console.log('⚠️ Discord bot is disabled or not configured');
             return;
         }
@@ -117,18 +150,19 @@ async function startDiscordBot() {
         client.once(discord_js_1.Events.ClientReady, async (c) => {
             console.log(`🤖 Discord bot logged in as ${c.user.tag}`);
             // Cache invites
-            const guild = c.guilds.cache.get(settings.discordBot.guildId);
+            const guild = c.guilds.cache.get(discordBot.guildId);
             if (guild) {
                 await cacheInvites(guild);
                 // Register commands
-                await registerCommands(settings.discordBot.token, c.user.id, settings.discordBot.guildId);
+                await registerCommands(discordBot.token, c.user.id, discordBot.guildId);
             }
         });
         // Member join - track invites
         client.on(discord_js_1.Events.GuildMemberAdd, async (member) => {
             try {
-                const settings = await Settings_1.default.findOne();
-                if (!settings?.discordBot?.guildId)
+                const settings = await prisma_1.prisma.settings.findFirst();
+                const discordBot = settings?.discordBot;
+                if (!discordBot?.guildId)
                     return;
                 const oldInvites = inviteCache.get(member.guild.id) || new Map();
                 const newInvites = await member.guild.invites.fetch();
@@ -148,9 +182,9 @@ async function startDiscordBot() {
                 // Update cache
                 await cacheInvites(member.guild);
                 // Send message if channel is configured (optional - don't fail if no permission)
-                if (settings.discordBot?.inviteChannelId && inviter) {
+                if (discordBot?.inviteChannelId && inviter) {
                     try {
-                        const channel = member.guild.channels.cache.get(settings.discordBot.inviteChannelId);
+                        const channel = member.guild.channels.cache.get(discordBot.inviteChannelId);
                         if (channel?.isTextBased()) {
                             const inviteCount = await getUserInvites(member.guild, inviter);
                             const embed = new discord_js_1.EmbedBuilder()
@@ -176,18 +210,19 @@ async function startDiscordBot() {
         // Boost event
         client.on(discord_js_1.Events.GuildMemberUpdate, async (oldMember, newMember) => {
             try {
-                const settings = await Settings_1.default.findOne();
-                if (!settings?.discordBot?.guildId)
+                const settings = await prisma_1.prisma.settings.findFirst();
+                const discordBot = settings?.discordBot;
+                if (!discordBot?.guildId)
                     return;
                 // Check if user started boosting
                 const wasBoosting = oldMember.premiumSince !== null;
                 const isBoosting = newMember.premiumSince !== null;
                 if (!wasBoosting && isBoosting) {
                     console.log(`🚀 ${newMember.user.tag} started boosting!`);
-                    // Send message if channel is configured (optional)
-                    if (settings.discordBot?.boostChannelId) {
+                    // Send message if channel is configured
+                    if (discordBot?.boostChannelId) {
                         try {
-                            const channel = newMember.guild.channels.cache.get(settings.discordBot.boostChannelId);
+                            const channel = newMember.guild.channels.cache.get(discordBot.boostChannelId);
                             if (channel?.isTextBased()) {
                                 const embed = new discord_js_1.EmbedBuilder()
                                     .setColor(0xf47fff)
@@ -214,9 +249,11 @@ async function startDiscordBot() {
         client.on(discord_js_1.Events.InteractionCreate, async (interaction) => {
             if (!interaction.isChatInputCommand())
                 return;
-            const settings = await Settings_1.default.findOne();
+            const settings = await prisma_1.prisma.settings.findFirst();
             if (!settings)
                 return;
+            const inviteRewards = settings.inviteRewards || [];
+            const boostRewards = settings.boostRewards || [];
             // /invite-code command
             if (interaction.commandName === 'invite-code') {
                 await interaction.deferReply({ ephemeral: true });
@@ -227,18 +264,23 @@ async function startDiscordBot() {
                         return;
                     }
                     const inviteCount = await getUserInvites(guild, interaction.user.id);
-                    if (!settings.inviteRewards || settings.inviteRewards.length === 0) {
+                    if (!inviteRewards || inviteRewards.length === 0) {
                         await interaction.editReply('❌ No invite rewards are configured.');
                         return;
                     }
                     // Find eligible reward
-                    const sortedRewards = settings.inviteRewards.sort((a, b) => b.invites - a.invites);
+                    const sortedRewards = inviteRewards.sort((a, b) => b.invites - a.invites);
                     let eligibleReward = null;
                     for (const reward of sortedRewards) {
                         if (inviteCount >= reward.invites) {
-                            const existingClaim = await InviteClaim_1.default.findOne({
-                                discordUserId: interaction.user.id,
-                                invitesRequired: reward.invites
+                            // Check constraint composite
+                            const existingClaim = await prisma_1.prisma.inviteClaim.findUnique({
+                                where: {
+                                    discordUserId_invitesRequired: {
+                                        discordUserId: interaction.user.id,
+                                        invitesRequired: reward.invites
+                                    }
+                                }
                             });
                             if (!existingClaim) {
                                 eligibleReward = reward;
@@ -247,9 +289,8 @@ async function startDiscordBot() {
                         }
                     }
                     if (!eligibleReward) {
-                        // Show progress
                         const nextReward = sortedRewards
-                            .filter(r => r.invites > inviteCount)
+                            .filter((r) => r.invites > inviteCount)
                             .sort((a, b) => a.invites - b.invites)[0];
                         if (nextReward) {
                             await interaction.editReply(`📊 You have **${inviteCount}** invites.\n` +
@@ -263,10 +304,12 @@ async function startDiscordBot() {
                     }
                     // Create code and claim
                     const code = await createRewardCode(eligibleReward.coins, 'INV');
-                    await InviteClaim_1.default.create({
-                        discordUserId: interaction.user.id,
-                        invitesRequired: eligibleReward.invites,
-                        code
+                    await prisma_1.prisma.inviteClaim.create({
+                        data: {
+                            discordUserId: interaction.user.id,
+                            invitesRequired: eligibleReward.invites,
+                            code
+                        }
                     });
                     const embed = new discord_js_1.EmbedBuilder()
                         .setColor(0x00ff00)
@@ -291,20 +334,25 @@ async function startDiscordBot() {
                         await interaction.editReply('❌ You need to be a server booster to claim this reward!');
                         return;
                     }
-                    if (!settings.boostRewards || settings.boostRewards.length === 0) {
+                    if (!boostRewards || boostRewards.length === 0) {
                         await interaction.editReply('❌ No boost rewards are configured.');
                         return;
                     }
                     // For boost, we give the first tier (1 boost = 1 claim)
-                    const boostReward = settings.boostRewards.find(r => r.boosts === 1);
+                    const boostReward = boostRewards.find((r) => r.boosts === 1);
                     if (!boostReward) {
                         await interaction.editReply('❌ No boost reward available.');
                         return;
                     }
                     // Check if already claimed
-                    const existingClaim = await InviteClaim_1.default.findOne({
-                        discordUserId: interaction.user.id,
-                        invitesRequired: -1 // Use -1 to indicate boost claim
+                    // Assuming invitesRequired = -1 for boosts
+                    const existingClaim = await prisma_1.prisma.inviteClaim.findUnique({
+                        where: {
+                            discordUserId_invitesRequired: {
+                                discordUserId: interaction.user.id,
+                                invitesRequired: -1
+                            }
+                        }
                     });
                     if (existingClaim) {
                         await interaction.editReply('✅ You have already claimed your boost reward!');
@@ -312,10 +360,12 @@ async function startDiscordBot() {
                     }
                     // Create code and save claim
                     const code = await createRewardCode(boostReward.coins, 'BOOST');
-                    await InviteClaim_1.default.create({
-                        discordUserId: interaction.user.id,
-                        invitesRequired: -1,
-                        code
+                    await prisma_1.prisma.inviteClaim.create({
+                        data: {
+                            discordUserId: interaction.user.id,
+                            invitesRequired: -1,
+                            code
+                        }
                     });
                     const embed = new discord_js_1.EmbedBuilder()
                         .setColor(0xf47fff)
@@ -393,7 +443,7 @@ async function startDiscordBot() {
             }
         });
         // Login
-        await client.login(settings.discordBot.token);
+        await client.login(discordBot.token);
     }
     catch (error) {
         console.error('❌ Failed to start Discord bot:', error);

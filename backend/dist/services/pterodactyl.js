@@ -3,19 +3,20 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getPteroServerResources = exports.powerPteroServer = exports.updatePteroServerBuild = exports.getPteroServer = exports.unsuspendPteroServer = exports.suspendPteroServer = exports.deletePteroServer = exports.createPteroServer = exports.updatePteroUserPassword = exports.createPteroUser = void 0;
+exports.updateStartupVariable = exports.getStartup = exports.pullPteroFile = exports.getPteroNodeConfiguration = exports.createPteroNode = exports.getPteroLocations = exports.getPteroNodes = exports.getPteroServerResources = exports.reinstallServer = exports.getUploadUrl = exports.createFolder = exports.deleteFile = exports.renameFile = exports.writeFileContent = exports.getFileContent = exports.listFiles = exports.getConsoleDetails = exports.powerPteroServer = exports.updatePteroServerBuild = exports.getPteroServer = exports.unsuspendPteroServer = exports.suspendPteroServer = exports.deletePteroServer = exports.createPteroServer = exports.updatePteroUserPassword = exports.createPteroUser = exports.getPteroUrl = void 0;
 const axios_1 = __importDefault(require("axios"));
 const env_1 = require("../config/env");
-const Settings_1 = __importDefault(require("../models/Settings"));
+const prisma_1 = require("../prisma");
 // Get Pterodactyl settings from database or fallback to env
 async function getPteroConfig() {
     try {
-        const settings = await Settings_1.default.findOne();
-        if (settings?.pterodactyl?.apiUrl && settings?.pterodactyl?.apiKey) {
+        const settings = await prisma_1.prisma.settings.findFirst();
+        const pterodactyl = settings?.pterodactyl;
+        if (pterodactyl?.apiUrl && pterodactyl?.apiKey) {
             return {
-                url: settings.pterodactyl.apiUrl,
-                key: settings.pterodactyl.apiKey,
-                clientKey: settings.pterodactyl.clientApiKey
+                url: pterodactyl.apiUrl,
+                key: pterodactyl.apiKey,
+                clientKey: pterodactyl.clientApiKey
             };
         }
     }
@@ -25,9 +26,15 @@ async function getPteroConfig() {
     // Fallback to env
     return {
         url: env_1.ENV.PTERODACTYL_URL,
-        key: env_1.ENV.PTERODACTYL_API_KEY
+        key: env_1.ENV.PTERODACTYL_API_KEY,
+        clientKey: undefined // Env doesn't have client key usually? Or add it if needed.
     };
 }
+const getPteroUrl = async () => {
+    const config = await getPteroConfig();
+    return config.url;
+};
+exports.getPteroUrl = getPteroUrl;
 const createPteroUser = async (email, username, password) => {
     const config = await getPteroConfig();
     try {
@@ -66,6 +73,7 @@ const createPteroUser = async (email, username, password) => {
     }
 };
 exports.createPteroUser = createPteroUser;
+// Reinstall server removed from here (duplicate)
 // Update Pterodactyl user password
 const updatePteroUserPassword = async (userId, password) => {
     const config = await getPteroConfig();
@@ -82,7 +90,7 @@ const updatePteroUserPassword = async (userId, password) => {
 exports.updatePteroUserPassword = updatePteroUserPassword;
 const createPteroServer = async (name, userId, eggId, nestId, memory, disk, cpu, locationId = 1) => {
     const config = await getPteroConfig();
-    const response = await axios_1.default.post(`${config.url}/api/application/servers?include=allocations`, {
+    const response = await axios_1.default.post(`${config.url}/api/application/servers?include=allocations,node`, {
         name,
         user: userId,
         egg: eggId,
@@ -158,7 +166,7 @@ const unsuspendPteroServer = async (serverId) => {
 exports.unsuspendPteroServer = unsuspendPteroServer;
 const getPteroServer = async (serverId) => {
     const config = await getPteroConfig();
-    const response = await axios_1.default.get(`${config.url}/api/application/servers/${serverId}`, {
+    const response = await axios_1.default.get(`${config.url}/api/application/servers/${serverId}?include=allocations,node`, {
         headers: {
             Authorization: `Bearer ${config.key}`,
             Accept: 'application/vnd.pterodactyl.v1+json'
@@ -204,7 +212,129 @@ const powerPteroServer = async (identifier, signal) => {
     });
 };
 exports.powerPteroServer = powerPteroServer;
+// Console / WebSocket Details
+const getConsoleDetails = async (identifier) => {
+    const config = await getPteroConfig();
+    const token = config.clientKey || config.key;
+    console.log(`[Console] Fetching WebSocket details for server: ${identifier}`);
+    const response = await axios_1.default.get(`${config.url}/api/client/servers/${identifier}/websocket`, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/vnd.pterodactyl.v1+json'
+        }
+    });
+    const data = response.data.data;
+    console.log(`[Console] Pterodactyl returned socket URL: ${data.socket}`);
+    console.log(`[Console] Token length: ${data.token?.length || 0}`);
+    return data;
+};
+exports.getConsoleDetails = getConsoleDetails;
+// File Manager Functions
+const listFiles = async (identifier, directory = '') => {
+    const config = await getPteroConfig();
+    const token = config.clientKey || config.key;
+    const response = await axios_1.default.get(`${config.url}/api/client/servers/${identifier}/files/list?directory=${encodeURIComponent(directory)}`, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/vnd.pterodactyl.v1+json'
+        }
+    });
+    return response.data.data;
+};
+exports.listFiles = listFiles;
+const getFileContent = async (identifier, file) => {
+    const config = await getPteroConfig();
+    const token = config.clientKey || config.key;
+    const response = await axios_1.default.get(`${config.url}/api/client/servers/${identifier}/files/contents?file=${encodeURIComponent(file)}`, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'text/plain'
+        }
+    });
+    return response.data;
+};
+exports.getFileContent = getFileContent;
+const writeFileContent = async (identifier, file, content) => {
+    const config = await getPteroConfig();
+    const token = config.clientKey || config.key;
+    await axios_1.default.post(`${config.url}/api/client/servers/${identifier}/files/write?file=${encodeURIComponent(file)}`, content, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/vnd.pterodactyl.v1+json',
+            'Content-Type': 'text/plain'
+        }
+    });
+};
+exports.writeFileContent = writeFileContent;
+const renameFile = async (identifier, root, files) => {
+    const config = await getPteroConfig();
+    const token = config.clientKey || config.key;
+    await axios_1.default.put(`${config.url}/api/client/servers/${identifier}/files/rename`, { root, files }, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/vnd.pterodactyl.v1+json'
+        }
+    });
+};
+exports.renameFile = renameFile;
+const deleteFile = async (identifier, root, files) => {
+    const config = await getPteroConfig();
+    const token = config.clientKey || config.key;
+    await axios_1.default.post(`${config.url}/api/client/servers/${identifier}/files/delete`, { root: root || '/', files }, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/vnd.pterodactyl.v1+json'
+        }
+    });
+};
+exports.deleteFile = deleteFile;
+const createFolder = async (identifier, root, name) => {
+    const config = await getPteroConfig();
+    const token = config.clientKey || config.key;
+    await axios_1.default.post(`${config.url}/api/client/servers/${identifier}/files/create-folder`, { root, name }, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/vnd.pterodactyl.v1+json'
+        }
+    });
+};
+exports.createFolder = createFolder;
+const getUploadUrl = async (identifier) => {
+    const config = await getPteroConfig();
+    const token = config.clientKey || config.key;
+    const response = await axios_1.default.get(`${config.url}/api/client/servers/${identifier}/files/upload`, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/vnd.pterodactyl.v1+json'
+        }
+    });
+    return response.data.attributes.url;
+};
+exports.getUploadUrl = getUploadUrl;
+// Reinstall
+const reinstallServer = async (identifier) => {
+    const config = await getPteroConfig();
+    const token = config.clientKey || config.key;
+    await axios_1.default.post(`${config.url}/api/client/servers/${identifier}/settings/reinstall`, {}, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/vnd.pterodactyl.v1+json'
+        }
+    });
+};
+exports.reinstallServer = reinstallServer;
+const redis_1 = __importDefault(require("../redis"));
+// ... (existing imports)
 const getPteroServerResources = async (identifier) => {
+    const CACHE_KEY = `ptero:resources:${identifier}`;
+    const cached = await redis_1.default.get(CACHE_KEY);
+    if (cached) {
+        return JSON.parse(cached);
+    }
     const config = await getPteroConfig();
     const token = config.clientKey || config.key;
     const response = await axios_1.default.get(`${config.url}/api/client/servers/${identifier}/resources`, {
@@ -213,6 +343,126 @@ const getPteroServerResources = async (identifier) => {
             Accept: 'application/vnd.pterodactyl.v1+json'
         }
     });
-    return response.data.attributes;
+    const data = response.data.attributes;
+    // Cache for 1 second (almost real-time)
+    await redis_1.default.set(CACHE_KEY, JSON.stringify(data), 'EX', 1);
+    return data;
 };
 exports.getPteroServerResources = getPteroServerResources;
+// ==========================================
+// Node Management (Wings)
+// ==========================================
+const getPteroNodes = async () => {
+    const config = await getPteroConfig();
+    try {
+        const response = await axios_1.default.get(`${config.url}/api/application/nodes?include=location`, {
+            headers: {
+                Authorization: `Bearer ${config.key}`,
+                Accept: 'application/vnd.pterodactyl.v1+json'
+            }
+        });
+        return response.data.data.map((item) => item.attributes);
+    }
+    catch (error) {
+        console.error('Error fetching nodes:', error);
+        throw error;
+    }
+};
+exports.getPteroNodes = getPteroNodes;
+const getPteroLocations = async () => {
+    const config = await getPteroConfig();
+    try {
+        const response = await axios_1.default.get(`${config.url}/api/application/locations`, {
+            headers: {
+                Authorization: `Bearer ${config.key}`,
+                Accept: 'application/vnd.pterodactyl.v1+json'
+            }
+        });
+        return response.data.data.map((item) => item.attributes);
+    }
+    catch (error) {
+        console.error('Error fetching locations:', error);
+        throw error;
+    }
+};
+exports.getPteroLocations = getPteroLocations;
+const createPteroNode = async (data) => {
+    const config = await getPteroConfig();
+    try {
+        const response = await axios_1.default.post(`${config.url}/api/application/nodes`, data, {
+            headers: {
+                Authorization: `Bearer ${config.key}`,
+                'Content-Type': 'application/json',
+                Accept: 'application/vnd.pterodactyl.v1+json'
+            }
+        });
+        return response.data.attributes;
+    }
+    catch (error) {
+        console.error('Error creating node:', error);
+        throw error;
+    }
+};
+exports.createPteroNode = createPteroNode;
+const getPteroNodeConfiguration = async (id) => {
+    const config = await getPteroConfig();
+    try {
+        const response = await axios_1.default.get(`${config.url}/api/application/nodes/${id}/configuration`, {
+            headers: {
+                Authorization: `Bearer ${config.key}`,
+                Accept: 'application/vnd.pterodactyl.v1+json'
+            }
+        });
+        return response.data;
+    }
+    catch (error) {
+        console.error('Error fetching node config:', error);
+        throw error;
+    }
+};
+exports.getPteroNodeConfiguration = getPteroNodeConfiguration;
+const pullPteroFile = async (pteroIdentifier, url, directory = '/') => {
+    const config = await getPteroConfig();
+    const token = config.clientKey || config.key;
+    try {
+        await axios_1.default.post(`${config.url}/api/client/servers/${pteroIdentifier}/files/pull`, { url, root: directory }, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                Accept: 'application/vnd.pterodactyl.v1+json'
+            }
+        });
+        return true;
+    }
+    catch (error) {
+        console.error('Error pulling file:', error);
+        throw error;
+    }
+};
+exports.pullPteroFile = pullPteroFile;
+// Startup
+const getStartup = async (identifier) => {
+    const config = await getPteroConfig();
+    const token = config.clientKey || config.key;
+    const response = await axios_1.default.get(`${config.url}/api/client/servers/${identifier}/startup`, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/vnd.pterodactyl.v1+json'
+        }
+    });
+    return response.data;
+};
+exports.getStartup = getStartup;
+const updateStartupVariable = async (identifier, key, value) => {
+    const config = await getPteroConfig();
+    const token = config.clientKey || config.key;
+    const response = await axios_1.default.put(`${config.url}/api/client/servers/${identifier}/startup/variable`, { key, value }, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/vnd.pterodactyl.v1+json'
+        }
+    });
+    return response.data;
+};
+exports.updateStartupVariable = updateStartupVariable;

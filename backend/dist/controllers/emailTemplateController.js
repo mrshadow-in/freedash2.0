@@ -1,15 +1,12 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendTestTemplateEmail = exports.updateTemplate = exports.getTemplate = exports.getAllTemplates = void 0;
-const EmailTemplate_1 = __importDefault(require("../models/EmailTemplate"));
+const prisma_1 = require("../prisma");
 const emailService_1 = require("../services/emailService");
 // Get all email templates
 const getAllTemplates = async (req, res) => {
     try {
-        const templates = await EmailTemplate_1.default.find();
+        const templates = await prisma_1.prisma.emailTemplate.findMany();
         res.json(templates);
     }
     catch (error) {
@@ -21,7 +18,9 @@ exports.getAllTemplates = getAllTemplates;
 const getTemplate = async (req, res) => {
     try {
         const { templateName } = req.params;
-        const template = await EmailTemplate_1.default.findOne({ name: templateName });
+        const template = await prisma_1.prisma.emailTemplate.findUnique({
+            where: { name: templateName }
+        });
         if (!template) {
             return res.status(404).json({ message: 'Template not found' });
         }
@@ -37,23 +36,32 @@ const updateTemplate = async (req, res) => {
     try {
         const { templateName } = req.params;
         const { subject, htmlBody, textBody } = req.body;
-        let template = await EmailTemplate_1.default.findOne({ name: templateName });
+        const variables = extractVariables(htmlBody);
+        let template = await prisma_1.prisma.emailTemplate.findUnique({
+            where: { name: templateName }
+        });
         if (!template) {
             // Create template if it doesn't exist
-            template = await EmailTemplate_1.default.create({
-                name: templateName,
-                subject,
-                htmlBody,
-                textBody,
-                variables: extractVariables(htmlBody)
+            template = await prisma_1.prisma.emailTemplate.create({
+                data: {
+                    name: templateName,
+                    subject,
+                    htmlBody,
+                    textBody,
+                    variables
+                }
             });
         }
         else {
-            template.subject = subject;
-            template.htmlBody = htmlBody;
-            template.textBody = textBody;
-            template.variables = extractVariables(htmlBody);
-            await template.save();
+            template = await prisma_1.prisma.emailTemplate.update({
+                where: { name: templateName },
+                data: {
+                    subject,
+                    htmlBody,
+                    textBody,
+                    variables
+                }
+            });
         }
         res.json({ message: 'Template updated', template });
     }
@@ -67,7 +75,9 @@ const sendTestTemplateEmail = async (req, res) => {
     try {
         const { templateName } = req.params;
         const { testEmail, testData } = req.body;
-        const template = await EmailTemplate_1.default.findOne({ name: templateName });
+        const template = await prisma_1.prisma.emailTemplate.findUnique({
+            where: { name: templateName }
+        });
         if (!template) {
             return res.status(404).json({ message: 'Template not found' });
         }

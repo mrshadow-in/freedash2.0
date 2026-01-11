@@ -1,15 +1,10 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getUsers = exports.createRedeemCode = exports.createPlan = void 0;
-const Plan_1 = __importDefault(require("../models/Plan"));
-const RedeemCode_1 = __importDefault(require("../models/RedeemCode"));
-const User_1 = __importDefault(require("../models/User"));
+const prisma_1 = require("../prisma");
 const createPlan = async (req, res) => {
     try {
-        const plan = await Plan_1.default.create(req.body);
+        const plan = await prisma_1.prisma.plan.create({ data: req.body });
         res.status(201).json(plan);
     }
     catch (err) {
@@ -19,7 +14,7 @@ const createPlan = async (req, res) => {
 exports.createPlan = createPlan;
 const createRedeemCode = async (req, res) => {
     try {
-        const code = await RedeemCode_1.default.create(req.body);
+        const code = await prisma_1.prisma.redeemCode.create({ data: req.body });
         res.status(201).json(code);
     }
     catch (err) {
@@ -29,7 +24,21 @@ const createRedeemCode = async (req, res) => {
 exports.createRedeemCode = createRedeemCode;
 const getUsers = async (req, res) => {
     try {
-        const users = await User_1.default.find().select('-password_hash');
+        // Exclude password manually or use select
+        const users = await prisma_1.prisma.user.findMany({
+            select: {
+                id: true,
+                email: true,
+                username: true,
+                role: true,
+                coins: true,
+                discordId: true,
+                isBanned: true,
+                createdAt: true,
+                updatedAt: true,
+                // exclude password
+            }
+        });
         res.json(users);
     }
     catch (err) {

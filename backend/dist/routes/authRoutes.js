@@ -43,25 +43,25 @@ router.post('/login', authController_1.login);
 router.post('/forgot-password', async (req, res) => {
     try {
         const { email } = req.body;
-        const User = (await Promise.resolve().then(() => __importStar(require('../models/User')))).default;
-        const PasswordReset = (await Promise.resolve().then(() => __importStar(require('../models/PasswordReset')))).default;
-        const Settings = (await Promise.resolve().then(() => __importStar(require('../models/Settings')))).default;
+        const { prisma } = await Promise.resolve().then(() => __importStar(require('../prisma')));
         const { sendEmail } = await Promise.resolve().then(() => __importStar(require('../services/emailService')));
         const crypto = await Promise.resolve().then(() => __importStar(require('crypto')));
-        const user = await User.findOne({ email });
+        const user = await prisma.user.findUnique({ where: { email } });
         if (!user) {
             return res.json({ message: 'If an account exists, a reset link has been sent' });
         }
         // Generate reset token
         const token = crypto.randomBytes(32).toString('hex');
         const expiresAt = new Date(Date.now() + 3600000); // 1 hour
-        await PasswordReset.create({
-            userId: user._id,
-            token,
-            expiresAt,
-            used: false
+        await prisma.passwordReset.create({
+            data: {
+                userId: user.id,
+                token,
+                expiresAt,
+                used: false
+            }
         });
-        const settings = await Settings.findOne();
+        const settings = await prisma.settings.findFirst();
         const panelName = settings?.panelName || 'Panel';
         const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
         // Dark themed email with reset button
@@ -77,21 +77,31 @@ router.post('/forgot-password', async (req, res) => {
 router.post('/reset-password', async (req, res) => {
     try {
         const { token, newPassword } = req.body;
-        const PasswordReset = (await Promise.resolve().then(() => __importStar(require('../models/PasswordReset')))).default;
-        const User = (await Promise.resolve().then(() => __importStar(require('../models/User')))).default;
+        const { prisma } = await Promise.resolve().then(() => __importStar(require('../prisma')));
         const bcrypt = await Promise.resolve().then(() => __importStar(require('bcrypt')));
-        const resetRequest = await PasswordReset.findOne({ token, used: false });
-        if (!resetRequest || resetRequest.expiresAt < new Date()) {
+        const resetRequest = await prisma.passwordReset.findFirst({
+            where: {
+                token,
+                used: false,
+                expiresAt: { gt: new Date() }
+            }
+        });
+        if (!resetRequest) {
             return res.status(400).json({ message: 'Invalid or expired reset token' });
         }
-        const user = await User.findById(resetRequest.userId);
+        const user = await prisma.user.findUnique({ where: { id: resetRequest.userId } });
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
-        user.password_hash = await bcrypt.hash(newPassword, 10);
-        await user.save();
-        resetRequest.used = true;
-        await resetRequest.save();
+        const password_hash = await bcrypt.hash(newPassword, 10);
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { password: password_hash }
+        });
+        await prisma.passwordReset.update({
+            where: { id: resetRequest.id },
+            data: { used: true }
+        });
         res.json({ message: 'Password reset successfully' });
     }
     catch (error) {

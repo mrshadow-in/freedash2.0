@@ -32,29 +32,22 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.purchaseItem = exports.estimateCost = void 0;
-const Server_1 = __importDefault(require("../models/Server"));
-const User_1 = __importDefault(require("../models/User"));
-const Settings_1 = __importDefault(require("../models/Settings"));
-const Transaction_1 = __importDefault(require("../models/Transaction"));
+const prisma_1 = require("../prisma");
 const pterodactyl_1 = require("../services/pterodactyl");
-const mongoose_1 = __importDefault(require("mongoose"));
 // Calculate cost helper
 const calculateCost = (item, quantity, pricing) => {
     switch (item) {
-        case 'ram': // quantity in MB? No, let's say quantity in GB units or MB
-            // Pricing is usually per GB. Let's assume quantity is MB upgrade amount.
+        case 'ram': // quantity in MB
+            // Pricing is usually per GB.
             return (quantity / 1024) * pricing.ramPerGB;
         case 'disk': // quantity in MB
             return (quantity / 1024) * pricing.diskPerGB;
-        case 'cpu': // quantity in Cores (100%)
+        case 'cpu': // quantity in Cores
             return quantity * pricing.cpuPerCore;
         case 'slots': // quantity is number of slots
-            return quantity * (pricing.slotPrice || 0); // Need to add slotPrice to settings
+            return quantity * (pricing.slotPrice || 0);
         case 'backup': // quantity is number of backups
             return quantity * (pricing.backupPrice || 0);
         default:
@@ -64,7 +57,7 @@ const calculateCost = (item, quantity, pricing) => {
 const estimateCost = async (req, res) => {
     try {
         const { itemId, quantity } = req.body;
-        const settings = await Settings_1.default.findOne();
+        const settings = await prisma_1.prisma.settings.findFirst();
         const pricing = settings?.upgradePricing || { ramPerGB: 0, diskPerGB: 0, cpuPerCore: 0 };
         // Add slot/backup pricing fallbacks if not yet in DB schema
         const extendedPricing = { ...pricing, slotPrice: 50, backupPrice: 20 }; // default fallbacks
@@ -77,100 +70,104 @@ const estimateCost = async (req, res) => {
 };
 exports.estimateCost = estimateCost;
 const purchaseItem = async (req, res) => {
-    const session = await mongoose_1.default.startSession();
-    session.startTransaction();
     try {
         const { serverId, itemId, quantity, paymentMethod } = req.body;
         const userId = req.user.userId;
         console.log('🛒 Purchase request:', { serverId, itemId, quantity, paymentMethod, userId });
         if (paymentMethod !== 'coins') {
-            await session.abortTransaction();
             console.log('❌ Invalid payment method:', paymentMethod);
             return res.status(400).json({ message: 'Only coin payments supported currently' });
         }
-        const server = await Server_1.default.findOne({ _id: serverId, ownerId: userId }).session(session);
-        if (!server) {
-            await session.abortTransaction();
-            console.log('❌ Server not found or not owned by user');
-            return res.status(404).json({ message: 'Server not found' });
-        }
-        const user = await User_1.default.findById(userId).session(session);
-        if (!user) {
-            await session.abortTransaction();
-            console.log('❌ User not found');
-            return res.status(404).json({ message: 'User not found' });
-        }
-        const settings = await Settings_1.default.findOne();
-        const pricing = settings?.upgradePricing || { ramPerGB: 0, diskPerGB: 0, cpuPerCore: 0 };
-        const extendedPricing = { ...pricing, slotPrice: 50, backupPrice: 20 };
-        const cost = Math.ceil(calculateCost(itemId, quantity, extendedPricing));
-        console.log('💰 Purchase details:', {
-            userBalance: user.coins,
-            itemCost: cost,
-            itemId,
-            quantity
+        const result = await prisma_1.prisma.$transaction(async (tx) => {
+            const server = await tx.server.findUnique({
+                where: { id: serverId }
+            });
+            if (!server || server.ownerId !== userId) {
+                throw new Error('Server not found or not owned by user');
+            }
+            const user = await tx.user.findUnique({
+                where: { id: userId }
+            });
+            if (!user) {
+                throw new Error('User not found');
+            }
+            const settings = await tx.settings.findFirst();
+            const pricing = settings?.upgradePricing || { ramPerGB: 0, diskPerGB: 0, cpuPerCore: 0 };
+            const extendedPricing = { ...pricing, slotPrice: 50, backupPrice: 20 };
+            const cost = Math.ceil(calculateCost(itemId, quantity, extendedPricing));
+            console.log('💰 Purchase details:', {
+                userBalance: user.coins,
+                itemCost: cost,
+                itemId,
+                quantity
+            });
+            if (user.coins < cost) {
+                throw new Error('Insufficient coins');
+            }
+            // Deduct coins
+            await tx.user.update({
+                where: { id: userId },
+                data: { coins: { decrement: cost } }
+            });
+            // Record Transaction
+            await tx.transaction.create({
+                data: {
+                    userId: userId,
+                    amount: cost,
+                    description: `Purchased ${quantity} units of ${itemId} for server ${server.name}`,
+                    type: 'debit',
+                    balanceAfter: user.coins - cost
+                }
+            });
+            // Apply Upgrade
+            let newRam = server.ramMb;
+            let newDisk = server.diskMb;
+            let newCpu = server.cpuCores;
+            let newItemApplied = false;
+            if (itemId === 'ram') {
+                newRam += quantity;
+                newItemApplied = true;
+            }
+            else if (itemId === 'disk') {
+                newDisk += quantity;
+                newItemApplied = true;
+            }
+            else if (itemId === 'cpu') {
+                newCpu += quantity;
+                newItemApplied = true;
+            }
+            if (newItemApplied) {
+                await tx.server.update({
+                    where: { id: serverId },
+                    data: {
+                        ramMb: newRam,
+                        diskMb: newDisk,
+                        cpuCores: newCpu
+                    }
+                });
+                // Get current allocation from Pterodactyl and update
+                // Note: We are doing this INSIDE transaction so if it fails, we rollback coins
+                // Only apply to Pterodactyl if server has Pterodactyl config
+                if (server.pteroServerId) {
+                    const { getPteroServer } = await Promise.resolve().then(() => __importStar(require('../services/pterodactyl')));
+                    const pteroServer = await getPteroServer(server.pteroServerId);
+                    const currentAllocationId = pteroServer.allocation;
+                    await (0, pterodactyl_1.updatePteroServerBuild)(server.pteroServerId, newRam, newDisk, newCpu * 100, currentAllocationId);
+                }
+            }
+            return user.coins - cost;
         });
-        if (user.coins < cost) {
-            await session.abortTransaction();
-            console.log('❌ Insufficient coins');
-            return res.status(400).json({ message: 'Insufficient coins' });
-        }
-        // Deduct coins
-        user.coins -= cost;
-        await user.save({ session });
-        // Record Transaction
-        await Transaction_1.default.create([{
-                userId: userId,
-                amount: cost,
-                description: `Purchased ${quantity} units of ${itemId} for server ${server.name}`,
-                type: 'debit',
-                balanceAfter: user.coins
-            }], { session });
-        // Apply Upgrade
-        let newRam = server.ramMb;
-        let newDisk = server.diskMb;
-        let newCpu = server.cpuCores;
-        let newItemApplied = false;
-        if (itemId === 'ram') {
-            newRam += quantity;
-            server.ramMb = newRam;
-            newItemApplied = true;
-        }
-        else if (itemId === 'disk') {
-            newDisk += quantity;
-            server.diskMb = newDisk;
-            newItemApplied = true;
-        }
-        else if (itemId === 'cpu') {
-            newCpu += quantity;
-            server.cpuCores = newCpu;
-            newItemApplied = true;
-        }
-        if (newItemApplied) {
-            await server.save({ session });
-            // Get current allocation from Pterodactyl
-            const { getPteroServer } = await Promise.resolve().then(() => __importStar(require('../services/pterodactyl')));
-            const pteroServer = await getPteroServer(server.pteroServerId);
-            const currentAllocationId = pteroServer.allocation;
-            // Update Pterodactyl with current allocation
-            await (0, pterodactyl_1.updatePteroServerBuild)(server.pteroServerId, newRam, newDisk, newCpu * 100, currentAllocationId);
-        }
-        await session.commitTransaction();
-        res.json({ success: true, message: 'Purchase successful', newBalance: user.coins });
+        res.json({ success: true, message: 'Purchase successful', newBalance: result });
     }
     catch (error) {
-        if (session.inTransaction()) {
-            await session.abortTransaction();
-        }
         console.error('Purchase failed:', error);
         // Log Pterodactyl-specific errors
         if (error.response?.data?.errors) {
             console.error('Pterodactyl validation errors:', JSON.stringify(error.response.data.errors, null, 2));
         }
-        res.status(500).json({ message: error.message || 'Purchase failed' });
-    }
-    finally {
-        session.endSession();
+        const msg = error.message || 'Purchase failed';
+        const status = msg === 'Insufficient coins' || msg === 'Server not found or not owned by user' ? 400 : 500;
+        res.status(status).json({ message: msg });
     }
 };
 exports.purchaseItem = purchaseItem;

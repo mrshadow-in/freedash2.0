@@ -36,21 +36,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateSocialMedia = exports.updateUser = exports.updateUserRole = exports.createUserByAdmin = exports.updatePlan = exports.deletePlan = exports.createPlan = exports.updateRedeemCode = exports.deleteRedeemCode = exports.createRedeemCode = exports.getAllCodes = exports.deleteServerAdmin = exports.unsuspendServer = exports.suspendServer = exports.getAllServers = exports.deleteUser = exports.unbanUser = exports.banUser = exports.editUserCoins = exports.getAllUsers = exports.removeWebhook = exports.addWebhook = exports.testPterodactylConnection = exports.updatePterodactylSettings = exports.updateUpgradePricing = exports.updateAFKSettings = exports.sendTestEmail = exports.testSmtpConnection = exports.toggleBot = exports.getBotStatus = exports.regenerateBotKey = exports.updateBotSettings = exports.updateSmtpSettings = exports.updateThemeSettings = exports.updatePanelSettings = exports.getSettings = void 0;
-const Settings_1 = __importDefault(require("../models/Settings"));
-const User_1 = __importDefault(require("../models/User"));
-const Server_1 = __importDefault(require("../models/Server"));
-const RedeemCode_1 = __importDefault(require("../models/RedeemCode"));
-const Plan_1 = __importDefault(require("../models/Plan"));
+exports.updateBillingSettings = exports.updateSocialMedia = exports.updateUser = exports.updateUserRole = exports.createUserByAdmin = exports.updatePlan = exports.deletePlan = exports.createPlan = exports.updateRedeemCode = exports.deleteRedeemCode = exports.createRedeemCode = exports.getAllCodes = exports.deleteServerAdmin = exports.unsuspendServer = exports.suspendServer = exports.getAllServers = exports.deleteUser = exports.unbanUser = exports.banUser = exports.editUserCoins = exports.getAllUsers = exports.removeWebhook = exports.addWebhook = exports.testPterodactylConnection = exports.updatePterodactylSettings = exports.updateUpgradePricing = exports.updateAFKSettings = exports.sendTestEmail = exports.testSmtpConnection = exports.toggleBot = exports.getBotStatus = exports.regenerateBotKey = exports.updateBotSettings = exports.updateSmtpSettings = exports.updateThemeSettings = exports.updatePanelSettings = exports.getSettings = void 0;
+const prisma_1 = require("../prisma");
 const pterodactyl_1 = require("../services/pterodactyl");
 const bcrypt_1 = __importDefault(require("bcrypt"));
+const settingsService_1 = require("../services/settingsService");
+// (Removed local getSettingsOrCreate helper as we import it)
 // Get settings
 const getSettings = async (req, res) => {
     try {
-        let settings = await Settings_1.default.findOne();
-        if (!settings) {
-            settings = await Settings_1.default.create({});
-        }
+        const settings = await (0, settingsService_1.getSettingsOrCreate)();
         res.json(settings);
     }
     catch (error) {
@@ -62,25 +57,20 @@ exports.getSettings = getSettings;
 const updatePanelSettings = async (req, res) => {
     try {
         const { panelName, panelLogo, backgroundImage, loginBackgroundImage, logoSize, bgColor, supportEmail } = req.body;
-        let settings = await Settings_1.default.findOne();
-        if (!settings) {
-            settings = await Settings_1.default.create({});
-        }
-        if (panelName)
-            settings.panelName = panelName;
-        if (panelLogo !== undefined)
-            settings.panelLogo = panelLogo;
-        if (supportEmail !== undefined)
-            settings.supportEmail = supportEmail;
-        if (backgroundImage !== undefined)
-            settings.backgroundImage = backgroundImage;
-        if (loginBackgroundImage !== undefined)
-            settings.loginBackgroundImage = loginBackgroundImage;
-        if (logoSize !== undefined)
-            settings.logoSize = logoSize;
-        if (bgColor !== undefined)
-            settings.bgColor = bgColor;
-        await settings.save();
+        const currentSettings = await (0, settingsService_1.getSettingsOrCreate)();
+        const settings = await prisma_1.prisma.settings.update({
+            where: { id: currentSettings.id },
+            data: {
+                panelName: panelName ?? undefined,
+                panelLogo: panelLogo ?? undefined,
+                supportEmail: supportEmail ?? undefined,
+                backgroundImage: backgroundImage ?? undefined,
+                loginBackgroundImage: loginBackgroundImage ?? undefined,
+                logoSize: logoSize ?? undefined,
+                bgColor: bgColor ?? undefined
+            }
+        });
+        await (0, settingsService_1.invalidateSettingsCache)();
         res.json({ message: 'Panel settings updated', settings });
     }
     catch (error) {
@@ -92,38 +82,34 @@ exports.updatePanelSettings = updatePanelSettings;
 const updateThemeSettings = async (req, res) => {
     try {
         const { primaryColor, secondaryColor, cardBgColor, textColor, borderColor, gradientStart, gradientEnd, bgColor } = req.body;
-        let settings = await Settings_1.default.findOne();
-        if (!settings) {
-            settings = await Settings_1.default.create({});
-        }
-        if (bgColor !== undefined)
-            settings.bgColor = bgColor;
-        if (!settings.theme) {
-            settings.theme = {
-                primaryColor: '#7c3aed',
-                secondaryColor: '#3b82f6',
-                cardBgColor: 'rgba(255,255,255,0.05)',
-                textColor: '#ffffff',
-                borderColor: 'rgba(255,255,255,0.1)',
-                gradientStart: '#7c3aed',
-                gradientEnd: '#3b82f6'
-            };
-        }
-        if (primaryColor !== undefined)
-            settings.theme.primaryColor = primaryColor;
-        if (secondaryColor !== undefined)
-            settings.theme.secondaryColor = secondaryColor;
-        if (cardBgColor !== undefined)
-            settings.theme.cardBgColor = cardBgColor;
-        if (textColor !== undefined)
-            settings.theme.textColor = textColor;
-        if (borderColor !== undefined)
-            settings.theme.borderColor = borderColor;
-        if (gradientStart !== undefined)
-            settings.theme.gradientStart = gradientStart;
-        if (gradientEnd !== undefined)
-            settings.theme.gradientEnd = gradientEnd;
-        await settings.save();
+        const currentSettings = await (0, settingsService_1.getSettingsOrCreate)();
+        const currentTheme = currentSettings.theme || {
+            primaryColor: '#7c3aed',
+            secondaryColor: '#3b82f6',
+            cardBgColor: 'rgba(255,255,255,0.05)',
+            textColor: '#ffffff',
+            borderColor: 'rgba(255,255,255,0.1)',
+            gradientStart: '#7c3aed',
+            gradientEnd: '#3b82f6'
+        };
+        const newTheme = {
+            ...currentTheme,
+            primaryColor: primaryColor ?? currentTheme.primaryColor,
+            secondaryColor: secondaryColor ?? currentTheme.secondaryColor,
+            cardBgColor: cardBgColor ?? currentTheme.cardBgColor,
+            textColor: textColor ?? currentTheme.textColor,
+            borderColor: borderColor ?? currentTheme.borderColor,
+            gradientStart: gradientStart ?? currentTheme.gradientStart,
+            gradientEnd: gradientEnd ?? currentTheme.gradientEnd
+        };
+        const settings = await prisma_1.prisma.settings.update({
+            where: { id: currentSettings.id },
+            data: {
+                bgColor: bgColor ?? undefined,
+                theme: newTheme
+            }
+        });
+        await (0, settingsService_1.invalidateSettingsCache)();
         res.json({ message: 'Theme settings updated', settings });
     }
     catch (error) {
@@ -135,20 +121,22 @@ exports.updateThemeSettings = updateThemeSettings;
 const updateSmtpSettings = async (req, res) => {
     try {
         const { host, port, secure, username, password, fromEmail, fromName } = req.body;
-        let settings = await Settings_1.default.findOne();
-        if (!settings) {
-            settings = await Settings_1.default.create({});
-        }
-        settings.smtp = {
-            host,
-            port,
-            secure,
-            username,
-            password,
-            fromEmail,
-            fromName
-        };
-        await settings.save();
+        const currentSettings = await (0, settingsService_1.getSettingsOrCreate)();
+        const settings = await prisma_1.prisma.settings.update({
+            where: { id: currentSettings.id },
+            data: {
+                smtp: {
+                    host,
+                    port,
+                    secure,
+                    username,
+                    password,
+                    fromEmail,
+                    fromName
+                }
+            }
+        });
+        await (0, settingsService_1.invalidateSettingsCache)();
         res.json({ message: 'SMTP settings updated', settings });
     }
     catch (error) {
@@ -160,28 +148,27 @@ exports.updateSmtpSettings = updateSmtpSettings;
 const updateBotSettings = async (req, res) => {
     try {
         const { inviteRewards, boostRewards, discordBot } = req.body;
-        let settings = await Settings_1.default.findOne();
-        if (!settings)
-            settings = await Settings_1.default.create({});
-        if (inviteRewards !== undefined) {
-            settings.inviteRewards = inviteRewards;
-        }
-        if (boostRewards !== undefined) {
-            settings.boostRewards = boostRewards;
-        }
+        const currentSettings = await (0, settingsService_1.getSettingsOrCreate)();
+        const data = {};
+        if (inviteRewards !== undefined)
+            data.inviteRewards = inviteRewards;
+        if (boostRewards !== undefined)
+            data.boostRewards = boostRewards;
         if (discordBot !== undefined) {
-            if (!settings.discordBot) {
-                settings.discordBot = {
-                    token: '',
-                    guildId: '',
-                    enabled: false,
-                    inviteChannelId: '',
-                    boostChannelId: ''
-                };
-            }
-            Object.assign(settings.discordBot, discordBot);
+            const currentBot = currentSettings.discordBot || {
+                token: '',
+                guildId: '',
+                enabled: false,
+                inviteChannelId: '',
+                boostChannelId: ''
+            };
+            data.discordBot = { ...currentBot, ...discordBot };
         }
-        await settings.save();
+        const settings = await prisma_1.prisma.settings.update({
+            where: { id: currentSettings.id },
+            data
+        });
+        await (0, settingsService_1.invalidateSettingsCache)();
         // Restart bot if config changed
         if (discordBot !== undefined) {
             const { startDiscordBot, stopDiscordBot } = await Promise.resolve().then(() => __importStar(require('../services/discordBot')));
@@ -202,12 +189,14 @@ const updateBotSettings = async (req, res) => {
 exports.updateBotSettings = updateBotSettings;
 const regenerateBotKey = async (req, res) => {
     try {
-        let settings = await Settings_1.default.findOne();
-        if (!settings)
-            settings = await Settings_1.default.create({});
+        const currentSettings = await (0, settingsService_1.getSettingsOrCreate)();
         const crypto = require('crypto');
-        settings.botApiKey = 'lc_bot_' + crypto.randomBytes(24).toString('hex');
-        await settings.save();
+        const botApiKey = 'lc_bot_' + crypto.randomBytes(24).toString('hex');
+        const settings = await prisma_1.prisma.settings.update({
+            where: { id: currentSettings.id },
+            data: { botApiKey }
+        });
+        await (0, settingsService_1.invalidateSettingsCache)();
         res.json({ message: 'Bot key regenerated', apiKey: settings.botApiKey });
     }
     catch (error) {
@@ -249,7 +238,6 @@ const toggleBot = async (req, res) => {
     }
 };
 exports.toggleBot = toggleBot;
-// Update SMTP settings
 // Test SMTP connection
 const testSmtpConnection = async (req, res) => {
     try {
@@ -270,7 +258,7 @@ const sendTestEmail = async (req, res) => {
             return res.status(400).json({ message: 'Test email address is required' });
         }
         // Get panel name for branding
-        const settings = await Settings_1.default.findOne();
+        const settings = await (0, settingsService_1.getSettingsOrCreate)();
         const panelName = settings?.panelName || 'Panel';
         const { sendEmail } = await Promise.resolve().then(() => __importStar(require('../services/emailService')));
         await sendEmail(testEmail, `Test Email from ${panelName}`, `<h1>Test Email</h1><p>This is a test email from your ${panelName} panel. If you received this, your SMTP configuration is working correctly!</p>`, `Test Email - This is a test email from your ${panelName} panel.`);
@@ -284,18 +272,22 @@ exports.sendTestEmail = sendTestEmail;
 // Update AFK settings
 const updateAFKSettings = async (req, res) => {
     try {
-        const { enabled, coinsPerMinute, maxCoinsPerDay } = req.body;
-        let settings = await Settings_1.default.findOne();
-        if (!settings) {
-            settings = await Settings_1.default.create({});
-        }
-        if (enabled !== undefined)
-            settings.afk.enabled = enabled;
-        if (coinsPerMinute !== undefined)
-            settings.afk.coinsPerMinute = coinsPerMinute;
-        if (maxCoinsPerDay !== undefined)
-            settings.afk.maxCoinsPerDay = maxCoinsPerDay;
-        await settings.save();
+        const { enabled, coinsPerMinute, maxCoinsPerDay, rotationInterval, saturationMode } = req.body;
+        const currentSettings = await (0, settingsService_1.getSettingsOrCreate)();
+        const currentAFK = currentSettings.afk || { enabled: false, coinsPerMinute: 1, maxCoinsPerDay: 100, rotationInterval: 30, saturationMode: false };
+        const newAFK = {
+            ...currentAFK,
+            enabled: enabled ?? currentAFK.enabled,
+            coinsPerMinute: coinsPerMinute ?? currentAFK.coinsPerMinute,
+            maxCoinsPerDay: maxCoinsPerDay ?? currentAFK.maxCoinsPerDay,
+            rotationInterval: rotationInterval ?? currentAFK.rotationInterval,
+            saturationMode: saturationMode ?? currentAFK.saturationMode
+        };
+        const settings = await prisma_1.prisma.settings.update({
+            where: { id: currentSettings.id },
+            data: { afk: newAFK }
+        });
+        await (0, settingsService_1.invalidateSettingsCache)();
         res.json({ message: 'AFK settings updated', settings });
     }
     catch (error) {
@@ -307,17 +299,19 @@ exports.updateAFKSettings = updateAFKSettings;
 const updateUpgradePricing = async (req, res) => {
     try {
         const { ramPerGB, diskPerGB, cpuPerCore } = req.body;
-        let settings = await Settings_1.default.findOne();
-        if (!settings) {
-            settings = await Settings_1.default.create({});
-        }
-        if (ramPerGB !== undefined)
-            settings.upgradePricing.ramPerGB = ramPerGB;
-        if (diskPerGB !== undefined)
-            settings.upgradePricing.diskPerGB = diskPerGB;
-        if (cpuPerCore !== undefined)
-            settings.upgradePricing.cpuPerCore = cpuPerCore;
-        await settings.save();
+        const currentSettings = await (0, settingsService_1.getSettingsOrCreate)();
+        const currentPricing = currentSettings.upgradePricing || { ramPerGB: 100, diskPerGB: 50, cpuPerCore: 20 };
+        const newPricing = {
+            ...currentPricing,
+            ramPerGB: ramPerGB ?? currentPricing.ramPerGB,
+            diskPerGB: diskPerGB ?? currentPricing.diskPerGB,
+            cpuPerCore: cpuPerCore ?? currentPricing.cpuPerCore
+        };
+        const settings = await prisma_1.prisma.settings.update({
+            where: { id: currentSettings.id },
+            data: { upgradePricing: newPricing }
+        });
+        await (0, settingsService_1.invalidateSettingsCache)();
         res.json({ message: 'Upgrade pricing updated', settings });
     }
     catch (error) {
@@ -329,43 +323,29 @@ exports.updateUpgradePricing = updateUpgradePricing;
 const updatePterodactylSettings = async (req, res) => {
     try {
         const { apiUrl, apiKey, clientApiKey, defaultEggId, defaultNestId, defaultLocationId } = req.body;
-        let settings = await Settings_1.default.findOne();
-        if (!settings) {
-            settings = await Settings_1.default.create({
-                pterodactyl: {
-                    apiUrl: '',
-                    apiKey: '',
-                    clientApiKey: '',
-                    defaultEggId: 0,
-                    defaultNestId: 0,
-                    defaultLocationId: 0
-                }
-            });
-        }
-        // Ensure pterodactyl object exists
-        if (!settings.pterodactyl) {
-            settings.pterodactyl = {
-                apiUrl: '',
-                apiKey: '',
-                clientApiKey: '',
-                defaultEggId: 0,
-                defaultNestId: 0,
-                defaultLocationId: 0
-            };
-        }
-        if (apiUrl !== undefined)
-            settings.pterodactyl.apiUrl = apiUrl;
-        if (apiKey !== undefined)
-            settings.pterodactyl.apiKey = apiKey;
-        if (clientApiKey !== undefined)
-            settings.pterodactyl.clientApiKey = clientApiKey;
-        if (defaultEggId !== undefined)
-            settings.pterodactyl.defaultEggId = defaultEggId;
-        if (defaultNestId !== undefined)
-            settings.pterodactyl.defaultNestId = defaultNestId;
-        if (defaultLocationId !== undefined)
-            settings.pterodactyl.defaultLocationId = defaultLocationId;
-        await settings.save();
+        const currentSettings = await (0, settingsService_1.getSettingsOrCreate)();
+        const currentPtero = currentSettings.pterodactyl || {
+            apiUrl: '',
+            apiKey: '',
+            clientApiKey: '',
+            defaultEggId: 0,
+            defaultNestId: 0,
+            defaultLocationId: 0
+        };
+        const newPtero = {
+            ...currentPtero,
+            apiUrl: apiUrl ?? currentPtero.apiUrl,
+            apiKey: apiKey ?? currentPtero.apiKey,
+            clientApiKey: clientApiKey ?? currentPtero.clientApiKey,
+            defaultEggId: defaultEggId ?? currentPtero.defaultEggId,
+            defaultNestId: defaultNestId ?? currentPtero.defaultNestId,
+            defaultLocationId: defaultLocationId ?? currentPtero.defaultLocationId
+        };
+        const settings = await prisma_1.prisma.settings.update({
+            where: { id: currentSettings.id },
+            data: { pterodactyl: newPtero }
+        });
+        await (0, settingsService_1.invalidateSettingsCache)();
         res.json({ message: 'Pterodactyl settings updated', settings });
     }
     catch (error) {
@@ -434,15 +414,20 @@ const addWebhook = async (req, res) => {
         if (!url || !url.startsWith('https://discord.com/api/webhooks/')) {
             return res.status(400).json({ message: 'Invalid webhook URL' });
         }
-        let settings = await Settings_1.default.findOne();
-        if (!settings) {
-            settings = await Settings_1.default.create({});
+        const currentSettings = await (0, settingsService_1.getSettingsOrCreate)();
+        const hooks = currentSettings.discordWebhooks;
+        if (!hooks.includes(url)) {
+            const newHooks = [...hooks, url];
+            const settings = await prisma_1.prisma.settings.update({
+                where: { id: currentSettings.id },
+                data: {
+                    discordWebhooks: newHooks
+                }
+            });
+            await (0, settingsService_1.invalidateSettingsCache)();
+            return res.json({ message: 'Webhook added', settings });
         }
-        if (!settings.discordWebhooks.includes(url)) {
-            settings.discordWebhooks.push(url);
-            await settings.save();
-        }
-        res.json({ message: 'Webhook added', settings });
+        res.json({ message: 'Webhook already exists', settings: currentSettings });
     }
     catch (error) {
         res.status(500).json({ message: 'Failed to add webhook' });
@@ -453,12 +438,16 @@ exports.addWebhook = addWebhook;
 const removeWebhook = async (req, res) => {
     try {
         const { url } = req.body;
-        let settings = await Settings_1.default.findOne();
-        if (!settings) {
-            return res.status(404).json({ message: 'Settings not found' });
-        }
-        settings.discordWebhooks = settings.discordWebhooks.filter(w => w !== url);
-        await settings.save();
+        const currentSettings = await (0, settingsService_1.getSettingsOrCreate)();
+        const hooks = currentSettings.discordWebhooks;
+        const newHooks = hooks.filter((w) => w !== url);
+        const settings = await prisma_1.prisma.settings.update({
+            where: { id: currentSettings.id },
+            data: {
+                discordWebhooks: newHooks
+            }
+        });
+        await (0, settingsService_1.invalidateSettingsCache)();
         res.json({ message: 'Webhook removed', settings });
     }
     catch (error) {
@@ -472,13 +461,21 @@ const getAllUsers = async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
-        const users = await User_1.default.find()
-            .select('-password_hash')
-            .skip(skip)
-            .limit(limit)
-            .sort({ createdAt: -1 });
-        const total = await User_1.default.countDocuments();
-        res.json({ users, total, page, pages: Math.ceil(total / limit) });
+        const [users, total] = await prisma_1.prisma.$transaction([
+            prisma_1.prisma.user.findMany({
+                skip,
+                take: limit,
+                orderBy: { createdAt: 'desc' },
+                // select: { ... } // exclude password if desired, but maybe admin needs full view? Assuming full view minus password for safety
+            }),
+            prisma_1.prisma.user.count()
+        ]);
+        // Clean passwords
+        const safeUsers = users.map((u) => {
+            const { password, ...rest } = u;
+            return rest;
+        });
+        res.json({ users: safeUsers, total, page, pages: Math.ceil(total / limit) });
     }
     catch (error) {
         res.status(500).json({ message: 'Failed to fetch users' });
@@ -493,11 +490,12 @@ const editUserCoins = async (req, res) => {
         if (coins < 0) {
             return res.status(400).json({ message: 'Coins cannot be negative' });
         }
-        const user = await User_1.default.findByIdAndUpdate(userId, { coins }, { new: true }).select('-password_hash');
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-        res.json({ message: 'User coins updated', user });
+        const user = await prisma_1.prisma.user.update({
+            where: { id: userId },
+            data: { coins }
+        });
+        const { password, ...safeUser } = user;
+        res.json({ message: 'User coins updated', user: safeUser });
     }
     catch (error) {
         res.status(500).json({ message: 'Failed to update coins' });
@@ -509,15 +507,16 @@ const banUser = async (req, res) => {
     try {
         const { userId } = req.params;
         const adminId = req.user.userId;
-        const user = await User_1.default.findByIdAndUpdate(userId, {
-            isBanned: true,
-            bannedAt: new Date(),
-            bannedBy: adminId
-        }, { new: true }).select('-password_hash');
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-        res.json({ message: 'User banned', user });
+        const user = await prisma_1.prisma.user.update({
+            where: { id: userId },
+            data: {
+                isBanned: true,
+                bannedAt: new Date(),
+                bannedBy: adminId
+            }
+        });
+        const { password, ...safeUser } = user;
+        res.json({ message: 'User banned', user: safeUser });
     }
     catch (error) {
         res.status(500).json({ message: 'Failed to ban user' });
@@ -528,14 +527,16 @@ exports.banUser = banUser;
 const unbanUser = async (req, res) => {
     try {
         const { userId } = req.params;
-        const user = await User_1.default.findByIdAndUpdate(userId, {
-            isBanned: false,
-            $unset: { bannedAt: 1, bannedBy: 1 }
-        }, { new: true }).select('-password_hash');
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-        res.json({ message: 'User unbanned', user });
+        const user = await prisma_1.prisma.user.update({
+            where: { id: userId },
+            data: {
+                isBanned: false,
+                bannedAt: null,
+                bannedBy: null
+            }
+        });
+        const { password, ...safeUser } = user;
+        res.json({ message: 'User unbanned', user: safeUser });
     }
     catch (error) {
         res.status(500).json({ message: 'Failed to unban user' });
@@ -547,11 +548,8 @@ const deleteUser = async (req, res) => {
     try {
         const { userId } = req.params;
         // Delete user's servers first
-        await Server_1.default.deleteMany({ ownerId: userId });
-        const user = await User_1.default.findByIdAndDelete(userId);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
+        await prisma_1.prisma.server.deleteMany({ where: { ownerId: userId } });
+        await prisma_1.prisma.user.delete({ where: { id: userId } });
         res.json({ message: 'User deleted' });
     }
     catch (error) {
@@ -565,13 +563,19 @@ const getAllServers = async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
-        const servers = await Server_1.default.find({ status: { $ne: 'deleted' } }) // Exclude deleted servers
-            .populate('ownerId', 'username email')
-            .populate('planId', 'name')
-            .skip(skip)
-            .limit(limit)
-            .sort({ createdAt: -1 });
-        const total = await Server_1.default.countDocuments({ status: { $ne: 'deleted' } });
+        const [servers, total] = await prisma_1.prisma.$transaction([
+            prisma_1.prisma.server.findMany({
+                where: { status: { not: 'deleted' } },
+                skip,
+                take: limit,
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    owner: { select: { username: true, email: true } },
+                    plan: { select: { name: true } }
+                }
+            }),
+            prisma_1.prisma.server.count({ where: { status: { not: 'deleted' } } })
+        ]);
         res.json({ servers, total, page, pages: Math.ceil(total / limit) });
     }
     catch (error) {
@@ -584,7 +588,7 @@ const suspendServer = async (req, res) => {
     try {
         const { serverId } = req.params;
         const adminId = req.user.userId;
-        const server = await Server_1.default.findById(serverId);
+        const server = await prisma_1.prisma.server.findUnique({ where: { id: serverId } });
         if (!server) {
             return res.status(404).json({ message: 'Server not found' });
         }
@@ -592,20 +596,22 @@ const suspendServer = async (req, res) => {
         if (server.pteroServerId) {
             try {
                 await (0, pterodactyl_1.suspendPteroServer)(server.pteroServerId);
-                console.log(`✅ Pterodactyl server ${server.pteroServerId} suspended`);
             }
             catch (pteroError) {
                 console.error('⚠️  Failed to suspend Pterodactyl server:', pteroError.message);
-                // Continue with dashboard suspension even if Pterodactyl fails
             }
         }
         // Update in database
-        server.isSuspended = true;
-        server.suspendedAt = new Date();
-        server.suspendedBy = adminId;
-        server.status = 'suspended';
-        await server.save();
-        res.json({ message: 'Server suspended', server });
+        const updatedServer = await prisma_1.prisma.server.update({
+            where: { id: serverId },
+            data: {
+                isSuspended: true,
+                suspendedAt: new Date(),
+                suspendedBy: adminId,
+                status: 'suspended'
+            }
+        });
+        res.json({ message: 'Server suspended', server: updatedServer });
     }
     catch (error) {
         console.error('Suspend server error:', error);
@@ -617,7 +623,7 @@ exports.suspendServer = suspendServer;
 const unsuspendServer = async (req, res) => {
     try {
         const { serverId } = req.params;
-        const server = await Server_1.default.findById(serverId);
+        const server = await prisma_1.prisma.server.findUnique({ where: { id: serverId } });
         if (!server) {
             return res.status(404).json({ message: 'Server not found' });
         }
@@ -625,20 +631,22 @@ const unsuspendServer = async (req, res) => {
         if (server.pteroServerId) {
             try {
                 await (0, pterodactyl_1.unsuspendPteroServer)(server.pteroServerId);
-                console.log(`✅ Pterodactyl server ${server.pteroServerId} unsuspended`);
             }
             catch (pteroError) {
                 console.error('⚠️  Failed to unsuspend Pterodactyl server:', pteroError.message);
-                // Continue with dashboard unsuspension even if Pterodactyl fails
             }
         }
         // Update in database
-        server.isSuspended = false;
-        server.suspendedAt = undefined;
-        server.suspendedBy = undefined;
-        server.status = 'active';
-        await server.save();
-        res.json({ message: 'Server unsuspended', server });
+        const updatedServer = await prisma_1.prisma.server.update({
+            where: { id: serverId },
+            data: {
+                isSuspended: false,
+                suspendedAt: null,
+                suspendedBy: null,
+                status: 'active'
+            }
+        });
+        res.json({ message: 'Server unsuspended', server: updatedServer });
     }
     catch (error) {
         console.error('Unsuspend server error:', error);
@@ -650,7 +658,7 @@ exports.unsuspendServer = unsuspendServer;
 const deleteServerAdmin = async (req, res) => {
     try {
         const { serverId } = req.params;
-        const server = await Server_1.default.findById(serverId);
+        const server = await prisma_1.prisma.server.findUnique({ where: { id: serverId } });
         if (!server) {
             return res.status(404).json({ message: 'Server not found' });
         }
@@ -658,15 +666,13 @@ const deleteServerAdmin = async (req, res) => {
         if (server.pteroServerId) {
             try {
                 await (0, pterodactyl_1.deletePteroServer)(server.pteroServerId);
-                console.log(`✅ Pterodactyl server ${server.pteroServerId} deleted`);
             }
             catch (pteroError) {
                 console.error('⚠️  Failed to delete Pterodactyl server:', pteroError.message);
-                // Continue with dashboard deletion even if Pterodactyl fails
             }
         }
         // Delete from database
-        await Server_1.default.findByIdAndDelete(serverId);
+        await prisma_1.prisma.server.delete({ where: { id: serverId } });
         res.json({ message: 'Server deleted' });
     }
     catch (error) {
@@ -678,7 +684,7 @@ exports.deleteServerAdmin = deleteServerAdmin;
 // Get all redeem codes
 const getAllCodes = async (req, res) => {
     try {
-        const codes = await RedeemCode_1.default.find().sort({ createdAt: -1 });
+        const codes = await prisma_1.prisma.redeemCode.findMany({ orderBy: { createdAt: 'desc' } });
         res.json(codes);
     }
     catch (error) {
@@ -690,16 +696,18 @@ exports.getAllCodes = getAllCodes;
 const createRedeemCode = async (req, res) => {
     try {
         const { code, amount, expiresAt, maxUses } = req.body;
-        const existingCode = await RedeemCode_1.default.findOne({ code });
+        const existingCode = await prisma_1.prisma.redeemCode.findUnique({ where: { code } });
         if (existingCode) {
             return res.status(400).json({ message: 'Code already exists' });
         }
-        const newCode = await RedeemCode_1.default.create({
-            code,
-            amount,
-            expiresAt: expiresAt ? new Date(expiresAt) : null,
-            maxUses: maxUses || null,
-            usedCount: 0
+        const newCode = await prisma_1.prisma.redeemCode.create({
+            data: {
+                code,
+                amount,
+                expiresAt: expiresAt ? new Date(expiresAt) : null,
+                maxUses: maxUses || null,
+                usedCount: 0
+            }
         });
         res.status(201).json({ message: 'Code created', code: newCode });
     }
@@ -712,10 +720,7 @@ exports.createRedeemCode = createRedeemCode;
 const deleteRedeemCode = async (req, res) => {
     try {
         const { codeId } = req.params;
-        const code = await RedeemCode_1.default.findByIdAndDelete(codeId);
-        if (!code) {
-            return res.status(404).json({ message: 'Code not found' });
-        }
+        await prisma_1.prisma.redeemCode.delete({ where: { id: codeId } });
         res.json({ message: 'Code deleted' });
     }
     catch (error) {
@@ -730,15 +735,20 @@ const updateRedeemCode = async (req, res) => {
         const codeId = req.params.codeId;
         // Check if code name conflicts with another code
         if (code) {
-            const existingCode = await RedeemCode_1.default.findOne({ code, _id: { $ne: codeId } });
+            const existingCode = await prisma_1.prisma.redeemCode.findFirst({
+                where: {
+                    code,
+                    id: { not: codeId }
+                }
+            });
             if (existingCode) {
                 return res.status(400).json({ message: 'Code name already exists' });
             }
         }
-        const updatedCode = await RedeemCode_1.default.findByIdAndUpdate(codeId, { code, amount, maxUses }, { new: true, runValidators: true });
-        if (!updatedCode) {
-            return res.status(404).json({ message: 'Code not found' });
-        }
+        const updatedCode = await prisma_1.prisma.redeemCode.update({
+            where: { id: codeId },
+            data: { code, amount, maxUses }
+        });
         res.json(updatedCode);
     }
     catch (error) {
@@ -753,16 +763,18 @@ const createPlan = async (req, res) => {
         if (!name || !ramMb || !diskMb || !cpuPercent || !priceCoins || !pteroEggId || !pteroNestId) {
             return res.status(400).json({ message: 'Missing required fields' });
         }
-        const plan = await Plan_1.default.create({
-            name,
-            ramMb,
-            diskMb,
-            cpuPercent,
-            cpuCores: cpuCores || 1,
-            slots: slots || 1,
-            priceCoins,
-            pteroEggId,
-            pteroNestId
+        const plan = await prisma_1.prisma.plan.create({
+            data: {
+                name,
+                ramMb,
+                diskMb,
+                cpuPercent,
+                cpuCores: cpuCores || 1,
+                slots: slots || 1,
+                priceCoins,
+                pteroEggId,
+                pteroNestId
+            }
         });
         res.status(201).json(plan);
     }
@@ -775,11 +787,17 @@ exports.createPlan = createPlan;
 const deletePlan = async (req, res) => {
     try {
         const { planId } = req.params;
-        const plan = await Plan_1.default.findByIdAndDelete(planId);
-        if (!plan) {
-            return res.status(404).json({ message: 'Plan not found' });
+        // Check if any servers are using this plan
+        const serversUsingPlan = await prisma_1.prisma.server.count({
+            where: { planId: planId }
+        });
+        if (serversUsingPlan > 0) {
+            return res.status(400).json({
+                message: `Cannot delete plan: ${serversUsingPlan} server(s) are currently using this plan. Please delete or reassign those servers first.`
+            });
         }
-        res.json({ message: 'Plan deleted' });
+        await prisma_1.prisma.plan.delete({ where: { id: planId } });
+        res.json({ message: 'Plan deleted successfully' });
     }
     catch (error) {
         console.error('Delete plan error:', error);
@@ -791,10 +809,10 @@ const updatePlan = async (req, res) => {
     try {
         const { planId } = req.params;
         const { name, ramMb, diskMb, cpuPercent, cpuCores, priceCoins, pteroEggId, pteroNestId, eggImage } = req.body;
-        const plan = await Plan_1.default.findByIdAndUpdate(planId, { name, ramMb, diskMb, cpuPercent, cpuCores, priceCoins, pteroEggId, pteroNestId, eggImage }, { new: true });
-        if (!plan) {
-            return res.status(404).json({ message: 'Plan not found' });
-        }
+        const plan = await prisma_1.prisma.plan.update({
+            where: { id: planId },
+            data: { name, ramMb, diskMb, cpuPercent, cpuCores, priceCoins, pteroEggId, pteroNestId, eggImage }
+        });
         res.json(plan);
     }
     catch (error) {
@@ -811,7 +829,14 @@ const createUserByAdmin = async (req, res) => {
             return res.status(400).json({ message: 'Username, email, and password are required' });
         }
         // Check if user exists
-        const existingUser = await User_1.default.findOne({ $or: [{ email }, { username }] });
+        const existingUser = await prisma_1.prisma.user.findFirst({
+            where: {
+                OR: [
+                    { email },
+                    { username }
+                ]
+            }
+        });
         if (existingUser) {
             return res.status(400).json({ message: 'User with this email or username already exists' });
         }
@@ -829,18 +854,20 @@ const createUserByAdmin = async (req, res) => {
             // Continue with user creation even if Pterodactyl fails
         }
         // Create user
-        const user = await User_1.default.create({
-            username,
-            email,
-            password_hash,
-            coins: coins || 0,
-            role: role || 'user',
-            pteroUserId
+        const user = await prisma_1.prisma.user.create({
+            data: {
+                username,
+                email,
+                password: password_hash,
+                coins: coins || 0,
+                role: role || 'user',
+                pteroUserId // Optional in schema?
+            }
         });
         res.status(201).json({
             message: 'User created successfully',
             user: {
-                id: user._id,
+                id: user.id,
                 username: user.username,
                 email: user.email,
                 coins: user.coins,
@@ -863,11 +890,12 @@ const updateUserRole = async (req, res) => {
         if (!['user', 'mod', 'admin'].includes(role)) {
             return res.status(400).json({ message: 'Invalid role. Must be user, mod, or admin' });
         }
-        const user = await User_1.default.findByIdAndUpdate(userId, { role }, { new: true }).select('-password_hash');
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-        res.json({ message: 'User role updated', user });
+        const user = await prisma_1.prisma.user.update({
+            where: { id: userId },
+            data: { role }
+        });
+        const { password, ...safeUser } = user;
+        res.json({ message: 'User role updated', user: safeUser });
     }
     catch (error) {
         console.error('Update role error:', error);
@@ -880,41 +908,45 @@ const updateUser = async (req, res) => {
     try {
         const { userId } = req.params;
         const { email, password, coins, role } = req.body;
-        const user = await User_1.default.findById(userId);
+        const user = await prisma_1.prisma.user.findUnique({ where: { id: userId } });
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
+        const data = {};
         // Update email if provided
         if (email && email !== user.email) {
-            const existingUser = await User_1.default.findOne({ email });
-            if (existingUser && existingUser._id.toString() !== userId) {
+            const existingUser = await prisma_1.prisma.user.findUnique({ where: { email } });
+            if (existingUser && existingUser.id !== userId) {
                 return res.status(400).json({ message: 'Email already in use' });
             }
-            user.email = email;
+            data.email = email;
         }
         // Update password if provided
         if (password) {
             const bcrypt = await Promise.resolve().then(() => __importStar(require('bcrypt')));
-            user.password_hash = await bcrypt.hash(password, 10);
+            data.password = await bcrypt.hash(password, 10);
         }
         // Update coins if provided
         if (coins !== undefined) {
             if (coins < 0) {
                 return res.status(400).json({ message: 'Coins cannot be negative' });
             }
-            user.coins = coins;
+            data.coins = coins;
         }
         // Update role if provided
         if (role) {
             if (!['user', 'mod', 'admin'].includes(role)) {
                 return res.status(400).json({ message: 'Invalid role' });
             }
-            user.role = role;
+            data.role = role;
         }
-        await user.save();
+        const updatedUser = await prisma_1.prisma.user.update({
+            where: { id: userId },
+            data
+        });
         // Return user without password
-        const updatedUser = await User_1.default.findById(userId).select('-password_hash');
-        res.json({ message: 'User updated successfully', user: updatedUser });
+        const { password: _, ...safeUser } = updatedUser;
+        res.json({ message: 'User updated successfully', user: safeUser });
     }
     catch (error) {
         console.error('Update user error:', error);
@@ -926,30 +958,22 @@ exports.updateUser = updateUser;
 const updateSocialMedia = async (req, res) => {
     try {
         const { discord, instagram, twitter, facebook, youtube, github, website } = req.body;
-        let settings = await Settings_1.default.findOne();
-        if (!settings) {
-            settings = await Settings_1.default.create({});
-        }
-        // Initialize socialMedia if it doesn't exist
-        if (!settings.socialMedia) {
-            settings.socialMedia = {};
-        }
-        // Update only provided fields
-        if (discord !== undefined)
-            settings.socialMedia.discord = discord;
-        if (instagram !== undefined)
-            settings.socialMedia.instagram = instagram;
-        if (twitter !== undefined)
-            settings.socialMedia.twitter = twitter;
-        if (facebook !== undefined)
-            settings.socialMedia.facebook = facebook;
-        if (youtube !== undefined)
-            settings.socialMedia.youtube = youtube;
-        if (github !== undefined)
-            settings.socialMedia.github = github;
-        if (website !== undefined)
-            settings.socialMedia.website = website;
-        await settings.save();
+        const currentSettings = await (0, settingsService_1.getSettingsOrCreate)();
+        const currentSocial = currentSettings.socialMedia || {};
+        const newSocial = {
+            ...currentSocial,
+            discord: discord ?? currentSocial.discord,
+            instagram: instagram ?? currentSocial.instagram,
+            twitter: twitter ?? currentSocial.twitter,
+            facebook: facebook ?? currentSocial.facebook,
+            youtube: youtube ?? currentSocial.youtube,
+            github: github ?? currentSocial.github,
+            website: website ?? currentSocial.website
+        };
+        const settings = await prisma_1.prisma.settings.update({
+            where: { id: currentSettings.id },
+            data: { socialMedia: newSocial }
+        });
         res.json({ message: 'Social media links updated successfully', socialMedia: settings.socialMedia });
     }
     catch (error) {
@@ -958,3 +982,32 @@ const updateSocialMedia = async (req, res) => {
     }
 };
 exports.updateSocialMedia = updateSocialMedia;
+// Update Billing Settings
+const updateBillingSettings = async (req, res) => {
+    try {
+        const { enabled, interval, coinsPerGbHour, autoSuspend, autoResume } = req.body;
+        const currentSettings = await (0, settingsService_1.getSettingsOrCreate)();
+        const settings = await prisma_1.prisma.settings.update({
+            where: { id: currentSettings.id },
+            data: {
+                billing: {
+                    enabled: enabled ?? false,
+                    interval: parseInt(interval) || 1,
+                    coinsPerGbHour: coinsPerGbHour,
+                    autoSuspend: autoSuspend ?? false,
+                    autoResume: autoResume ?? false
+                }
+            }
+        });
+        await (0, settingsService_1.invalidateSettingsCache)();
+        // Restart Job
+        const { restartBillingJob } = await Promise.resolve().then(() => __importStar(require('../jobs/billing')));
+        await restartBillingJob();
+        res.json({ message: 'Billing settings updated', settings });
+    }
+    catch (error) {
+        console.error('Update billing error:', error);
+        res.status(500).json({ message: 'Failed to update billing settings' });
+    }
+};
+exports.updateBillingSettings = updateBillingSettings;

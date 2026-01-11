@@ -97,7 +97,7 @@ const UsersTab = ({ server }: UsersTabProps) => {
                 permissions: {
                     ...prev.permissions,
                     [category]: {
-                        ...prev.permissions[category],
+                        ...(prev.permissions as any)[category],
                         [permission]: value
                     }
                 }
@@ -106,7 +106,7 @@ const UsersTab = ({ server }: UsersTabProps) => {
             setPermissions(prev => ({
                 ...prev,
                 [category]: {
-                    ...prev[category],
+                    ...(prev as any)[category],
                     [permission]: value
                 }
             }));

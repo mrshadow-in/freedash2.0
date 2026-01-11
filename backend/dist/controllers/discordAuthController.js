@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.linkDiscord = exports.discordCallback = exports.discordLogin = void 0;
 const passport_1 = __importDefault(require("passport"));
 const passport_discord_1 = require("passport-discord");
-const User_1 = __importDefault(require("../models/User"));
+const prisma_1 = require("../prisma");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const env_1 = require("../config/env");
 // Discord OAuth Strategy
@@ -18,28 +18,37 @@ passport_1.default.use(new passport_discord_1.Strategy({
 }, async (accessToken, refreshToken, profile, done) => {
     try {
         // Check if user exists by Discord ID
-        let user = await User_1.default.findOne({ discordId: profile.id });
+        let user = await prisma_1.prisma.user.findUnique({
+            where: { discordId: profile.id }
+        });
         if (user) {
             // User exists, login
             return done(null, user);
         }
         // Check if email exists (user might want to link Discord)
         if (profile.email) {
-            user = await User_1.default.findOne({ email: profile.email });
-            if (user) {
+            const existingUser = await prisma_1.prisma.user.findUnique({
+                where: { email: profile.email }
+            });
+            if (existingUser) {
                 // Link Discord to existing account
-                user.discordId = profile.id;
-                await user.save();
+                user = await prisma_1.prisma.user.update({
+                    where: { id: existingUser.id },
+                    data: { discordId: profile.id }
+                });
                 return done(null, user);
             }
         }
         // Create new user
-        user = await User_1.default.create({
-            email: profile.email || `${profile.id}@discord.user`,
-            username: profile.username + '#' + profile.discriminator,
-            password_hash: 'discord_oauth_no_password',
-            discordId: profile.id,
-            coins: 100 // Starting coins
+        user = await prisma_1.prisma.user.create({
+            data: {
+                email: profile.email || `${profile.id}@discord.user`,
+                username: profile.username + '#' + profile.discriminator,
+                password: 'discord_oauth_no_password',
+                discordId: profile.id,
+                coins: 100, // Starting coins
+                role: 'user'
+            }
         });
         return done(null, user);
     }
@@ -56,8 +65,8 @@ const discordCallback = (req, res, next) => {
             return res.redirect(`${env_1.ENV.FRONTEND_URL}/login?error=discord_auth_failed`);
         }
         // Generate JWT tokens
-        const accessToken = jsonwebtoken_1.default.sign({ id: user._id, role: user.role }, env_1.ENV.JWT_SECRET, { expiresIn: '15m' });
-        const refreshToken = jsonwebtoken_1.default.sign({ id: user._id }, env_1.ENV.JWT_REFRESH_SECRET, { expiresIn: '7d' });
+        const accessToken = jsonwebtoken_1.default.sign({ id: user.id, role: user.role }, env_1.ENV.JWT_SECRET, { expiresIn: '15m' });
+        const refreshToken = jsonwebtoken_1.default.sign({ id: user.id }, env_1.ENV.JWT_REFRESH_SECRET, { expiresIn: '7d' });
         // Redirect to frontend with tokens
         res.redirect(`${env_1.ENV.FRONTEND_URL}/auth/discord/success?token=${accessToken}&refresh=${refreshToken}`);
     })(req, res, next);
@@ -69,12 +78,19 @@ const linkDiscord = async (req, res) => {
         const userId = req.user.userId;
         const { discordId } = req.body;
         // Check if Discord ID is already linked
-        const existingUser = await User_1.default.findOne({ discordId });
-        if (existingUser && existingUser._id.toString() !== userId) {
+        const existingUser = await prisma_1.prisma.user.findUnique({
+            where: { discordId }
+        });
+        if (existingUser && existingUser.id !== userId) {
             return res.status(400).json({ message: 'Discord account already linked to another user' });
         }
-        const user = await User_1.default.findByIdAndUpdate(userId, { discordId }, { new: true }).select('-password_hash');
-        res.json({ message: 'Discord linked successfully', user });
+        const user = await prisma_1.prisma.user.update({
+            where: { id: userId },
+            data: { discordId }
+        });
+        // Manually Exclude password manually
+        const { password, ...userWithoutPassword } = user;
+        res.json({ message: 'Discord linked successfully', user: userWithoutPassword });
     }
     catch (error) {
         res.status(500).json({ message: 'Failed to link Discord' });

@@ -5,11 +5,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendServerCreatedWebhook = exports.sendDiscordWebhook = void 0;
 const axios_1 = __importDefault(require("axios"));
-const Settings_1 = __importDefault(require("../models/Settings"));
+const settingsService_1 = require("./settingsService");
 const sendDiscordWebhook = async (embed) => {
     try {
-        const settings = await Settings_1.default.findOne();
-        if (!settings || settings.discordWebhooks.length === 0) {
+        const settings = await (0, settingsService_1.getSettings)(); // Changed to use getSettings()
+        const discordWebhooks = settings?.discordWebhooks || [];
+        if (!discordWebhooks || discordWebhooks.length === 0) {
             console.log('No webhooks configured');
             return;
         }
@@ -17,7 +18,7 @@ const sendDiscordWebhook = async (embed) => {
             embeds: [embed]
         };
         // Send to all webhooks (fire and forget)
-        const promises = settings.discordWebhooks.map(url => axios_1.default.post(url, payload).catch(err => {
+        const promises = discordWebhooks.map(url => axios_1.default.post(url, payload).catch(err => {
             console.error('Webhook failed:', err.message);
         }));
         await Promise.allSettled(promises);
@@ -29,7 +30,8 @@ const sendDiscordWebhook = async (embed) => {
 exports.sendDiscordWebhook = sendDiscordWebhook;
 const sendServerCreatedWebhook = async (serverData) => {
     // Fetch panel name for branding
-    const settings = await Settings_1.default.findOne();
+    // Fetch panel name for branding
+    const settings = await (0, settingsService_1.getSettings)();
     const panelName = settings?.panelName || 'Panel';
     const embed = {
         title: '🎮 New Server Created',

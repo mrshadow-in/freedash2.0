@@ -48,6 +48,7 @@ router.put('/settings/pricing', adminController.updateUpgradePricing);
 router.put('/settings/pterodactyl', adminController.updatePterodactylSettings);
 router.post('/settings/pterodactyl/test', adminController.testPterodactylConnection);
 router.put('/settings/smtp', adminController.updateSmtpSettings);
+router.put('/settings/billing', adminController.updateBillingSettings);
 router.post('/settings/smtp/test', adminController.testSmtpConnection);
 router.post('/settings/smtp/send-test', adminController.sendTestEmail);
 router.post('/settings/webhooks', adminController.addWebhook);
@@ -57,6 +58,12 @@ router.put('/settings/bot', adminController.updateBotSettings);
 router.post('/settings/bot/key', adminController.regenerateBotKey);
 router.get('/settings/bot/status', adminController.getBotStatus);
 router.post('/settings/bot/toggle', adminController.toggleBot);
+// Node Management (Wings)
+const nodeController = __importStar(require("../controllers/adminNodeController"));
+router.get('/nodes', nodeController.getNodes);
+router.post('/nodes', nodeController.createNode);
+router.get('/locations', nodeController.getLocations);
+router.get('/nodes/:id/deployment', nodeController.getNodeDeployment);
 // Plan Management
 router.post('/plans', adminController.createPlan);
 router.put('/plans/:planId', adminController.updatePlan);

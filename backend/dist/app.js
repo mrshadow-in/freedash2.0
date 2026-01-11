@@ -37,10 +37,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
+const http_1 = __importDefault(require("http"));
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
 const database_1 = require("./config/database");
 const env_1 = require("./config/env");
+const websocket_1 = require("./services/websocket");
 const authRoutes_1 = __importDefault(require("./routes/authRoutes"));
 const serverRoutes_1 = __importDefault(require("./routes/serverRoutes"));
 const adminRoutes_1 = __importDefault(require("./routes/adminRoutes"));
@@ -49,43 +51,49 @@ const upgradeRoutes_1 = __importDefault(require("./routes/upgradeRoutes"));
 const auth_1 = require("./middleware/auth");
 const coinController_1 = require("./controllers/coinController");
 const taskController_1 = require("./controllers/taskController");
+const billing_1 = require("./jobs/billing");
 const discordAuthController_1 = require("./controllers/discordAuthController");
 const passport_1 = __importDefault(require("passport"));
 const botRoutes_1 = __importDefault(require("./routes/botRoutes"));
+const adRoutes_1 = __importDefault(require("./routes/adRoutes"));
 const app = (0, express_1.default)();
 // Middleware
+app.set('trust proxy', 1);
 app.use((0, cors_1.default)());
 app.use((0, helmet_1.default)());
 app.use(express_1.default.json());
 app.use(passport_1.default.initialize());
+app.use('/static', express_1.default.static('public'));
 // Routes
-app.use('/auth', authRoutes_1.default);
-app.get('/auth/discord', discordAuthController_1.discordLogin);
-app.get('/auth/discord/callback', discordAuthController_1.discordCallback);
-app.use('/servers', serverRoutes_1.default);
-app.use('/admin', adminRoutes_1.default);
-app.use('/afk', afkRoutes_1.default);
-app.use('/upgrades', upgradeRoutes_1.default);
+// Routes
+app.use('/api/auth', authRoutes_1.default);
+app.get('/api/auth/discord', discordAuthController_1.discordLogin);
+app.get('/api/auth/discord/callback', discordAuthController_1.discordCallback);
+app.use('/api/servers', serverRoutes_1.default);
+app.use('/api/admin', adminRoutes_1.default);
+app.use('/api/afk', afkRoutes_1.default);
+app.use('/api/upgrades', upgradeRoutes_1.default);
 app.use('/api/bot', botRoutes_1.default);
+app.use('/api/ads', adRoutes_1.default);
 // Coins & Tasks
 const coinRouter = express_1.default.Router();
 coinRouter.use(auth_1.authenticate);
 coinRouter.post('/redeem', coinController_1.redeemCode);
-app.use('/coins', coinRouter);
+app.use('/api/coins', coinRouter);
 const taskRouter = express_1.default.Router();
 taskRouter.use(auth_1.authenticate);
 taskRouter.get('/', taskController_1.getTasks);
 taskRouter.post('/complete', taskController_1.completeTask);
-app.use('/tasks', taskRouter);
+app.use('/api/tasks', taskRouter);
 // Health check
 app.get('/', (req, res) => {
     res.send('API is running...');
 });
 // Public settings endpoint (no auth required) for branding
-app.get('/settings', async (req, res) => {
+app.get('/api/settings', async (req, res) => {
     try {
-        const { default: Settings } = await Promise.resolve().then(() => __importStar(require('./models/Settings')));
-        const settings = await Settings.findOne();
+        const { getSettings } = await Promise.resolve().then(() => __importStar(require('./services/settingsService')));
+        const settings = await getSettings();
         // Return only public branding information
         res.json({
             panelName: settings?.panelName || 'Panel',
@@ -115,7 +123,13 @@ app.get('/settings', async (req, res) => {
 // Start Server
 const start = async () => {
     await (0, database_1.connectDB)();
-    app.listen(env_1.ENV.PORT, () => {
+    // Create HTTP server
+    const server = http_1.default.createServer(app);
+    // Initialize WebSockets
+    (0, websocket_1.initWebSocketServer)(server);
+    // Initialize Billing Job
+    (0, billing_1.initBillingJob)();
+    server.listen(env_1.ENV.PORT, () => {
         console.log(`Server running on port ${env_1.ENV.PORT}`);
     });
 };

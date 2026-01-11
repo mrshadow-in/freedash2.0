@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.updatePreferences = exports.updatePassword = exports.updateEmail = exports.getMe = exports.refreshToken = exports.login = exports.register = void 0;
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const User_1 = __importDefault(require("../models/User"));
+const prisma_1 = require("../prisma");
 const env_1 = require("../config/env");
 const zod_1 = require("zod");
 const pterodactyl_1 = require("../services/pterodactyl");
@@ -18,7 +18,11 @@ const registerSchema = zod_1.z.object({
 const register = async (req, res) => {
     try {
         const { email, username, password } = registerSchema.parse(req.body);
-        const existingUser = await User_1.default.findOne({ $or: [{ email }, { username }] });
+        const existingUser = await prisma_1.prisma.user.findFirst({
+            where: {
+                OR: [{ email }, { username }]
+            }
+        });
         if (existingUser) {
             return res.status(400).json({ message: 'User already exists' });
         }
@@ -34,13 +38,17 @@ const register = async (req, res) => {
             console.error('⚠️  Failed to create Pterodactyl user:', pteroError.message);
             // Continue with registration even if Pterodactyl creation fails
         }
-        const user = await User_1.default.create({
-            email,
-            username,
-            password_hash: hashedPassword,
-            pteroUserId
+        const user = await prisma_1.prisma.user.create({
+            data: {
+                email,
+                username,
+                password: hashedPassword,
+                pteroUserId,
+                role: 'user', // Default role
+                coins: 0
+            }
         });
-        res.status(201).json({ message: 'User created successfully', userId: user._id });
+        res.status(201).json({ message: 'User created successfully', userId: user.id });
     }
     catch (error) {
         res.status(400).json({ message: error.message || 'Error regestering user' });
@@ -50,17 +58,28 @@ exports.register = register;
 const login = async (req, res) => {
     try {
         const { email, password } = req.body;
-        const user = await User_1.default.findOne({ email });
-        if (!user || !(await bcrypt_1.default.compare(password, user.password_hash))) {
+        const loginIdentifier = email.trim();
+        const user = await prisma_1.prisma.user.findFirst({
+            where: {
+                OR: [
+                    { email: loginIdentifier },
+                    { username: loginIdentifier }
+                ]
+            }
+        });
+        if (!user || !(await bcrypt_1.default.compare(password, user.password))) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
-        const accessToken = jsonwebtoken_1.default.sign({ userId: user._id, role: user.role }, env_1.ENV.JWT_SECRET, { expiresIn: '15m' });
-        const refreshToken = jsonwebtoken_1.default.sign({ userId: user._id }, env_1.ENV.JWT_REFRESH_SECRET, { expiresIn: '7d' });
-        user.lastActiveAt = new Date();
-        await user.save();
+        const accessToken = jsonwebtoken_1.default.sign({ userId: user.id, role: user.role }, env_1.ENV.JWT_SECRET, { expiresIn: '15m' });
+        const refreshToken = jsonwebtoken_1.default.sign({ userId: user.id }, env_1.ENV.JWT_REFRESH_SECRET, { expiresIn: '7d' });
+        // Update last active
+        await prisma_1.prisma.user.update({
+            where: { id: user.id },
+            data: { lastActiveAt: new Date() }
+        });
         res.json({
             accessToken, refreshToken, user: {
-                id: user._id,
+                id: user.id,
                 username: user.username,
                 email: user.email,
                 coins: user.coins,
@@ -79,10 +98,10 @@ const refreshToken = async (req, res) => {
         return res.status(401).json({ message: 'RefreshToken required' });
     try {
         const decoded = jsonwebtoken_1.default.verify(refreshToken, env_1.ENV.JWT_REFRESH_SECRET);
-        const user = await User_1.default.findById(decoded.userId);
+        const user = await prisma_1.prisma.user.findUnique({ where: { id: decoded.userId } });
         if (!user)
             return res.status(403).json({ message: 'User not found' });
-        const newAccessToken = jsonwebtoken_1.default.sign({ userId: user._id, role: user.role }, env_1.ENV.JWT_SECRET, { expiresIn: '15m' });
+        const newAccessToken = jsonwebtoken_1.default.sign({ userId: user.id, role: user.role }, env_1.ENV.JWT_SECRET, { expiresIn: '15m' });
         res.json({ accessToken: newAccessToken });
     }
     catch (error) {
@@ -96,18 +115,13 @@ const getMe = async (req, res) => {
         if (!userId) {
             return res.status(401).json({ message: 'Unauthorized' });
         }
-        const user = await User_1.default.findById(userId).select('-password_hash');
+        const user = await prisma_1.prisma.user.findUnique({ where: { id: userId } });
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
-        res.json({
-            id: user._id,
-            username: user.username,
-            email: user.email,
-            coins: user.coins,
-            role: user.role,
-            preferences: user.preferences
-        });
+        // Exclude password manually
+        const { password, ...userWithoutPassword } = user;
+        res.json(userWithoutPassword);
     }
     catch (error) {
         res.status(500).json({ message: 'Failed to fetch user data' });
@@ -122,23 +136,25 @@ const updateEmail = async (req, res) => {
         if (!newEmail || !password) {
             return res.status(400).json({ message: 'Email and password are required' });
         }
-        const user = await User_1.default.findById(userId);
+        const user = await prisma_1.prisma.user.findUnique({ where: { id: userId } });
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
         // Verify password
-        const isPasswordValid = await bcrypt_1.default.compare(password, user.password_hash);
+        const isPasswordValid = await bcrypt_1.default.compare(password, user.password);
         if (!isPasswordValid) {
             return res.status(401).json({ message: 'Invalid password' });
         }
         // Check if email already exists
-        const existingUser = await User_1.default.findOne({ email: newEmail });
-        if (existingUser && existingUser._id.toString() !== userId) {
+        const existingUser = await prisma_1.prisma.user.findUnique({ where: { email: newEmail } });
+        if (existingUser && existingUser.id !== userId) {
             return res.status(400).json({ message: 'Email already in use' });
         }
-        user.email = newEmail;
-        await user.save();
-        res.json({ message: 'Email updated successfully', email: user.email });
+        const updatedUser = await prisma_1.prisma.user.update({
+            where: { id: userId },
+            data: { email: newEmail }
+        });
+        res.json({ message: 'Email updated successfully', email: updatedUser.email });
     }
     catch (error) {
         res.status(500).json({ message: 'Failed to update email' });
@@ -159,19 +175,21 @@ const updatePassword = async (req, res) => {
         if (newPassword.length < 8) {
             return res.status(400).json({ message: 'Password must be at least 8 characters' });
         }
-        const user = await User_1.default.findById(userId);
+        const user = await prisma_1.prisma.user.findUnique({ where: { id: userId } });
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
         // Verify current password
-        const isPasswordValid = await bcrypt_1.default.compare(currentPassword, user.password_hash);
+        const isPasswordValid = await bcrypt_1.default.compare(currentPassword, user.password);
         if (!isPasswordValid) {
             return res.status(401).json({ message: 'Current password is incorrect' });
         }
         // Hash and save new password
         const hashedPassword = await bcrypt_1.default.hash(newPassword, 10);
-        user.password_hash = hashedPassword;
-        await user.save();
+        await prisma_1.prisma.user.update({
+            where: { id: userId },
+            data: { password: hashedPassword }
+        });
         res.json({ message: 'Password updated successfully' });
     }
     catch (error) {
@@ -184,21 +202,23 @@ const updatePreferences = async (req, res) => {
     try {
         const userId = req.user?.userId;
         const { theme, language, sounds } = req.body;
-        const user = await User_1.default.findById(userId);
+        const user = await prisma_1.prisma.user.findUnique({ where: { id: userId } });
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
-        if (!user.preferences) {
-            user.preferences = {};
-        }
-        if (theme !== undefined)
-            user.preferences.theme = theme;
-        if (language !== undefined)
-            user.preferences.language = language;
-        if (sounds !== undefined)
-            user.preferences.sounds = sounds;
-        await user.save();
-        res.json({ message: 'Preferences updated successfully', preferences: user.preferences });
+        // Merge existing preferences
+        const existingPreferences = user.preferences || {};
+        const newPreferences = {
+            ...existingPreferences,
+            ...(theme !== undefined && { theme }),
+            ...(language !== undefined && { language }),
+            ...(sounds !== undefined && { sounds })
+        };
+        await prisma_1.prisma.user.update({
+            where: { id: userId },
+            data: { preferences: newPreferences }
+        });
+        res.json({ message: 'Preferences updated successfully', preferences: newPreferences });
     }
     catch (error) {
         res.status(500).json({ message: 'Failed to update preferences' });

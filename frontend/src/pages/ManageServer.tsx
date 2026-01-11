@@ -414,9 +414,10 @@ const ManageServer = () => {
                         server={server}
                         pricing={pricing}
                     />
-                </div >
-            </div >
-            );
+                </div>
+            </div>
+        </div>
+    );
 };
 
-            export default ManageServer;
+export default ManageServer;
