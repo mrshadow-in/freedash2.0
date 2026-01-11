@@ -1133,8 +1133,9 @@ function ServersTab({ servers, fetchServers, loading }: any) {
     };
 
     // Separate servers into active and suspended
-    const activeServers = servers.filter((s: any) => s.status === 'active' && !s.isSuspended);
+    // Separate servers into active and suspended
     const suspendedServers = servers.filter((s: any) => s.status === 'suspended' || s.isSuspended);
+    const activeServers = servers.filter((s: any) => !suspendedServers.includes(s));
 
     const ServerTable = ({ servers: serverList, showActions = true }: any) => (
         <div className="overflow-x-auto">
