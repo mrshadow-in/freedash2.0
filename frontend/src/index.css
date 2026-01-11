@@ -43,3 +43,39 @@
 .card-bg-theme {
   background-color: var(--card-bg-color);
 }
+
+/* Force dark theme for all select dropdowns and options */
+select {
+  color-scheme: dark;
+}
+
+select option {
+  background-color: #111827;
+  color: #ffffff;
+}
+
+/* Ensure dropdown lists render dark in all browsers */
+select:focus option:checked,
+select option:hover {
+  background-color: #1f2937;
+  color: #ffffff;
+}
+
+/* Custom scrollbar for dark theme */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}

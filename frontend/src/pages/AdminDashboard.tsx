@@ -2749,13 +2749,14 @@ function AdsTab() {
                                     <select
                                         value={newAd.type}
                                         onChange={e => setNewAd({ ...newAd, type: e.target.value })}
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+                                        className="w-full bg-gray-900 border border-white/10 rounded-xl px-4 py-3 text-white [&>option]:bg-gray-900 [&>option]:text-white"
+                                        style={{ colorScheme: 'dark' }}
                                     >
-                                        <option value="leaderboard">Leaderboard (728x90)</option>
-                                        <option value="banner">Banner (468x60)</option>
-                                        <option value="square">Square / Sidebar</option>
-                                        <option value="full-width">Full Width Native</option>
-                                        <option value="promo-strip">Promo Strip (Small)</option>
+                                        <option value="leaderboard" className="bg-gray-900 text-white">Leaderboard (728x90)</option>
+                                        <option value="banner" className="bg-gray-900 text-white">Banner (468x60)</option>
+                                        <option value="square" className="bg-gray-900 text-white">Square / Sidebar</option>
+                                        <option value="full-width" className="bg-gray-900 text-white">Full Width Native</option>
+                                        <option value="promo-strip" className="bg-gray-900 text-white">Promo Strip (Small)</option>
                                     </select>
                                 </div>
                                 <div>
@@ -2763,10 +2764,11 @@ function AdsTab() {
                                     <select
                                         value={newAd.position}
                                         onChange={e => setNewAd({ ...newAd, position: e.target.value })}
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+                                        className="w-full bg-gray-900 border border-white/10 rounded-xl px-4 py-3 text-white [&>option]:bg-gray-900 [&>option]:text-white"
+                                        style={{ colorScheme: 'dark' }}
                                     >
                                         {adPositions.filter(p => p.id !== 'all').map(p => (
-                                            <option key={p.id} value={p.id}>{p.label}</option>
+                                            <option key={p.id} value={p.id} className="bg-gray-900 text-white">{p.label}</option>
                                         ))}
                                     </select>
                                 </div>
