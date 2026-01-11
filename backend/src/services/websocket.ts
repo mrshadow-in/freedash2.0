@@ -78,14 +78,14 @@ export const initWebSocketServer = (server: Server) => {
             // Proxy Messages: Ptero -> Client
             pteroWs.on('message', (data) => {
                 if (ws.readyState === WebSocket.OPEN) {
-                    ws.send(data);
+                    ws.send(data.toString());
                 }
             });
 
             // Proxy Messages: Client -> Ptero
             ws.on('message', (data) => {
                 if (pteroWs.readyState === WebSocket.OPEN) {
-                    pteroWs.send(data);
+                    pteroWs.send(data.toString());
                 }
             });
 
