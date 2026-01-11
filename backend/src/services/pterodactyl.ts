@@ -538,9 +538,21 @@ export const pullPteroFile = async (pteroIdentifier: string, url: string, direct
     const config = await getPteroConfig();
     const token = config.clientKey || config.key;
     try {
+        // Send both 'root' and 'directory' to support different Pterodactyl versions/docs
+        // Also ensure directory doesn't have double slashes but starts with / if needed, or maybe try without?
+        // Pterodactyl usually expects sending 'root' or 'directory'. We'll send both.
+        // Also strip trailing slash.
+        const cleanDir = directory.endsWith('/') && directory.length > 1 ? directory.slice(0, -1) : directory;
+
         await axios.post(
             `${config.url}/api/client/servers/${pteroIdentifier}/files/pull`,
-            { url, directory: directory },
+            {
+                url,
+                root: cleanDir,
+                directory: cleanDir,
+                use_header: false,
+                foreground: true // Try force foreground to ensure it happens immediately? Optional.
+            },
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
