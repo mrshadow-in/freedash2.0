@@ -16,6 +16,7 @@
   "dependencies": {
     "@prisma/client": "^6.2.1",
     "@types/axios": "^0.9.36",
+    "@types/node-cron": "^3.0.11",
     "@types/passport": "^1.0.17",
     "@types/passport-discord": "^0.1.15",
     "@types/ssh2": "^1.15.5",
@@ -30,6 +31,7 @@
     "helmet": "^8.1.0",
     "ioredis": "^5.8.2",
     "jsonwebtoken": "^9.0.3",
+    "node-cron": "^4.2.1",
     "nodemailer": "^7.0.11",
     "passport": "^0.7.0",
     "passport-discord": "^0.1.4",

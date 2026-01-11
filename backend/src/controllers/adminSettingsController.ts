@@ -1003,3 +1003,35 @@ export const updateSocialMedia = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Failed to update social media links' });
     }
 };
+
+// Update Billing Settings
+export const updateBillingSettings = async (req: Request, res: Response) => {
+    try {
+        const { enabled, interval, coinsPerGbHour, autoSuspend, autoResume } = req.body;
+        const currentSettings = await getSettingsOrCreate();
+
+        const settings = await prisma.settings.update({
+            where: { id: currentSettings.id },
+            data: {
+                billing: {
+                    enabled: enabled ?? false,
+                    interval: parseInt(interval) || 1,
+                    coinsPerGbHour: coinsPerGbHour,
+                    autoSuspend: autoSuspend ?? false,
+                    autoResume: autoResume ?? false
+                }
+            }
+        });
+
+        await invalidateSettingsCache();
+
+        // Restart Job
+        const { restartBillingJob } = await import('../jobs/billing');
+        await restartBillingJob();
+
+        res.json({ message: 'Billing settings updated', settings });
+    } catch (error) {
+        console.error('Update billing error:', error);
+        res.status(500).json({ message: 'Failed to update billing settings' });
+    }
+};

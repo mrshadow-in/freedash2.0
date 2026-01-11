@@ -16,6 +16,7 @@ router.put('/settings/pricing', adminController.updateUpgradePricing);
 router.put('/settings/pterodactyl', adminController.updatePterodactylSettings);
 router.post('/settings/pterodactyl/test', adminController.testPterodactylConnection);
 router.put('/settings/smtp', adminController.updateSmtpSettings);
+router.put('/settings/billing', adminController.updateBillingSettings);
 router.post('/settings/smtp/test', adminController.testSmtpConnection);
 router.post('/settings/smtp/send-test', adminController.sendTestEmail);
 router.post('/settings/webhooks', adminController.addWebhook);

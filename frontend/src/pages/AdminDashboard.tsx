@@ -198,7 +198,12 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
         smtpFromEmail: '',
         smtpFromName: 'Panel',
         afkRotationInterval: 30,
-        afkSaturationMode: false
+        afkSaturationMode: false,
+        billingEnabled: false,
+        billingInterval: 1,
+        coinsPerGbHour: 0,
+        billingAutoSuspend: false,
+        billingAutoResume: false
     });
 
     useEffect(() => {
@@ -231,6 +236,11 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                 smtpFromName: settings.smtp?.fromName || 'Panel',
                 afkRotationInterval: settings.afk?.rotationInterval || 30,
                 afkSaturationMode: settings.afk?.saturationMode || false,
+                billingEnabled: settings.billing?.enabled ?? false,
+                billingInterval: settings.billing?.interval || 1,
+                coinsPerGbHour: settings.billing?.coinsPerGbHour || 0,
+                billingAutoSuspend: settings.billing?.autoSuspend ?? false,
+                billingAutoResume: settings.billing?.autoResume ?? false,
                 webhook: ''
             });
         }
@@ -279,6 +289,14 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                     password: formData.smtpPassword,
                     fromEmail: formData.smtpFromEmail,
                     fromName: formData.smtpFromName
+                });
+            } else if (type === 'billing') {
+                await api.put('/admin/settings/billing', {
+                    enabled: formData.billingEnabled,
+                    interval: formData.billingInterval,
+                    coinsPerGbHour: formData.coinsPerGbHour,
+                    autoSuspend: formData.billingAutoSuspend,
+                    autoResume: formData.billingAutoResume
                 });
             }
             await refreshTheme(); // Instant UI update
@@ -363,6 +381,73 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                         className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg hover:opacity-90 transition"
                     >
                         Save AFK Settings
+                    </button>
+                </div>
+            </div>
+
+            {/* Billing Settings */}
+            <div className="border border-white/10 rounded-xl p-6">
+                <h3 className="text-xl font-bold mb-4">💰 Automatic Billing System</h3>
+                <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            checked={formData.billingEnabled}
+                            onChange={(e) => setFormData({ ...formData, billingEnabled: e.target.checked })}
+                            className="w-5 h-5"
+                        />
+                        <label>Enable Automatic Billing</label>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-2">Billing Interval (Minutes)</label>
+                            <input
+                                type="number"
+                                min="1"
+                                value={formData.billingInterval}
+                                onChange={(e) => setFormData({ ...formData, billingInterval: parseInt(e.target.value) })}
+                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-2">Cost per GB RAM / Hour (Coins)</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                value={formData.coinsPerGbHour}
+                                onChange={(e) => setFormData({ ...formData, coinsPerGbHour: parseFloat(e.target.value) })}
+                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                checked={formData.billingAutoSuspend}
+                                onChange={(e) => setFormData({ ...formData, billingAutoSuspend: e.target.checked })}
+                                className="w-4 h-4"
+                            />
+                            <label className="text-sm text-gray-400">Auto Suspend if Insufficient</label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                checked={formData.billingAutoResume}
+                                onChange={(e) => setFormData({ ...formData, billingAutoResume: e.target.checked })}
+                                className="w-4 h-4"
+                            />
+                            <label className="text-sm text-gray-400">Auto Resume on Payment</label>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={() => saveSettings('billing')}
+                        className="px-6 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 rounded-lg hover:opacity-90 transition"
+                    >
+                        Save Billing Settings
                     </button>
                 </div>
             </div>
@@ -697,7 +782,7 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                     ))}
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
 

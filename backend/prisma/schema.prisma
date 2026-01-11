@@ -81,6 +81,7 @@ model Server {
   isSuspended     Boolean      @default(false)
   suspendedAt     DateTime?
   suspendedBy     String?
+  suspendReason   String?
   expiresAt       DateTime?
   serverIp        String?
   createdAt       DateTime     @default(now())
@@ -127,6 +128,7 @@ model Settings {
   discordBot           Json?
   boostRewards         Json?
   socialMedia          Json?
+  billing              Json?
   
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt

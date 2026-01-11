@@ -13,6 +13,7 @@ import upgradeRoutes from './routes/upgradeRoutes';
 import { authenticate } from './middleware/auth';
 import { redeemCode } from './controllers/coinController';
 import { completeTask, getTasks } from './controllers/taskController';
+import { initBillingJob } from './jobs/billing';
 import { discordLogin, discordCallback } from './controllers/discordAuthController';
 import passport from 'passport';
 import botRoutes from './routes/botRoutes';
@@ -100,6 +101,9 @@ const start = async () => {
 
     // Initialize WebSockets
     initWebSocketServer(server);
+
+    // Initialize Billing Job
+    initBillingJob();
 
     server.listen(ENV.PORT, () => {
         console.log(`Server running on port ${ENV.PORT}`);
