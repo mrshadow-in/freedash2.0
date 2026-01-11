@@ -64,7 +64,7 @@ export const getServerProperties = async (req: AuthRequest, res: Response) => {
             return res.status(403).json({ message: 'Unauthorized' });
         }
 
-        const content = await getFileContent(server.pteroIdentifier, 'server.properties');
+        const content = await getFileContent(server.pteroIdentifier, 'server.properties') as string;
         const properties = parseProperties(content);
         res.json(properties);
     } catch (error) {
@@ -87,7 +87,7 @@ export const updateServerProperties = async (req: AuthRequest, res: Response) =>
             return res.status(403).json({ message: 'Unauthorized' });
         }
 
-        const content = await getFileContent(server.pteroIdentifier, 'server.properties');
+        const content = await getFileContent(server.pteroIdentifier, 'server.properties') as string;
 
         const stringUpdates: Record<string, string> = {};
         Object.entries(updates).forEach(([k, v]) => {
