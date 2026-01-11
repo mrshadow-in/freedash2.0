@@ -118,7 +118,18 @@ const AdZone: React.FC<AdZoneProps> = ({
 
     const handleAdClick = async (adId: string) => {
         try {
-            await api.post(`/ads/${adId}/click`);
+            const res = await api.post(`/ads/${adId}/click`);
+            if (res.data?.reward > 0) {
+                toast.success(`You earned ${res.data.reward} coins!`, {
+                    icon: '🪙',
+                    style: {
+                        background: '#130b2e',
+                        color: '#facc15',
+                        border: '1px solid #4f46e5'
+                    }
+                });
+                // Optional: Refresh user balance if available in store
+            }
         } catch (error) {
             console.error('Failed to track click:', error);
         }
