@@ -14,6 +14,11 @@ export type AdZonePosition =
     | 'floating-left'
     | 'floating-right'
     | 'full-width'
+    | 'sidebar-left'
+    | 'sidebar-right'
+    | 'between-stats'
+    | 'below-stats'
+    | 'empty-server-zone'
     | 'afk-top'
     | 'afk-middle'
     | 'afk-bottom';

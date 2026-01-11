@@ -128,6 +128,16 @@ const Dashboard = () => {
                 <div className="absolute bottom-[10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px]" />
             </div>
 
+            {/* Sidebar Left Ad Zone - Fixed Floating */}
+            <div className="fixed left-4 top-1/2 -translate-y-1/2 z-20 hidden xl:block max-w-[200px]">
+                <AdZone position="sidebar-left" rotate={true} rotationInterval={30} className="" />
+            </div>
+
+            {/* Sidebar Right Ad Zone - Fixed Floating */}
+            <div className="fixed right-4 top-1/2 -translate-y-1/2 z-20 hidden xl:block max-w-[200px]">
+                <AdZone position="sidebar-right" rotate={true} rotationInterval={30} className="" />
+            </div>
+
             {/* Navigation Header */}
             <Header />
 
@@ -190,6 +200,9 @@ const Dashboard = () => {
                         <div className="text-sm text-gray-500">Available Balance</div>
                     </motion.div>
 
+                    {/* Between Stats Ad Zone - After 3rd stat card */}
+                    <AdZone position="between-stats" rotate={true} rotationInterval={40} className="col-span-full" />
+
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -211,12 +224,18 @@ const Dashboard = () => {
                     </motion.div>
                 </div>
 
+                {/* Below Stats Ad Zone */}
+                <AdZone position="below-stats" rotate={true} rotationInterval={35} className="mb-12" />
+
                 {/* Middle Ad Zone */}
                 <AdZone
                     position="after-header"
                     onBuyClick={() => openAdPurchase('after-header')}
                     className="mb-12"
                 />
+
+                {/* Before Servers Section Ad Zone */}
+                <AdZone position="before-servers" rotate={true} rotationInterval={45} className="mb-8" />
 
                 {/* Servers Section Header */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4 sm:gap-0">
@@ -236,19 +255,26 @@ const Dashboard = () => {
                             <div key={i} className="bg-white/5 border border-white/10 rounded-3xl h-[280px] animate-pulse shadow-lg" />
                         ))
                     ) : servers?.length === 0 ? (
-                        <div className="col-span-full bg-white/5 border border-white/10 rounded-3xl p-12 text-center backdrop-blur-md">
-                            <div className="w-20 h-20 bg-purple-500/10 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                                <Server className="text-purple-400" size={40} />
+                        <>
+                            {/* Empty Server Zone Ad - Shows when no servers */}
+                            <div className="col-span-full mb-6">
+                                <AdZone position="empty-server-zone" rotate={true} rotationInterval={50} className="" />
                             </div>
-                            <h3 className="text-2xl font-bold text-white mb-3">No servers found</h3>
-                            <p className="text-gray-400 mb-8 max-w-md mx-auto">You haven't deployed any servers yet. Get started by creating your first world!</p>
-                            <button
-                                onClick={() => setShowCreateModal(true)}
-                                className="px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl font-extrabold text-white shadow-xl shadow-purple-500/25 hover:opacity-90 transition-all scale-105 active:scale-100"
-                            >
-                                Deploy Server Now
-                            </button>
-                        </div>
+
+                            <div className="col-span-full bg-white/5 border border-white/10 rounded-3xl p-12 text-center backdrop-blur-md">
+                                <div className="w-20 h-20 bg-purple-500/10 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                                    <Server className="text-purple-400" size={40} />
+                                </div>
+                                <h3 className="text-2xl font-bold text-white mb-3">No servers found</h3>
+                                <p className="text-gray-400 mb-8 max-w-md mx-auto">You haven't deployed any servers yet. Get started by creating your first world!</p>
+                                <button
+                                    onClick={() => setShowCreateModal(true)}
+                                    className="px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl font-extrabold text-white shadow-xl shadow-purple-500/25 hover:opacity-90 transition-all scale-105 active:scale-100"
+                                >
+                                    Deploy Server Now
+                                </button>
+                            </div>
+                        </>
                     ) : (
                         servers?.map((server: any) => (
                             <ServerCard
