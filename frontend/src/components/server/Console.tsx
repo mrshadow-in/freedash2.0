@@ -106,6 +106,7 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
         if (terminalRef.current && !xtermRef.current) {
             const term = new Terminal({
                 cursorBlink: true,
+                convertEol: true,
                 theme: {
                     background: '#0d1117',
                     foreground: '#c9d1d9',
