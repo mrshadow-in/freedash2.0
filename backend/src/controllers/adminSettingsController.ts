@@ -788,9 +788,21 @@ export const createPlan = async (req: Request, res: Response) => {
 export const deletePlan = async (req: Request, res: Response) => {
     try {
         const { planId } = req.params;
+
+        // Check if any servers are using this plan
+        const serversUsingPlan = await prisma.server.count({
+            where: { planId: planId }
+        });
+
+        if (serversUsingPlan > 0) {
+            return res.status(400).json({
+                message: `Cannot delete plan: ${serversUsingPlan} server(s) are currently using this plan. Please delete or reassign those servers first.`
+            });
+        }
+
         await prisma.plan.delete({ where: { id: planId } });
 
-        res.json({ message: 'Plan deleted' });
+        res.json({ message: 'Plan deleted successfully' });
     } catch (error) {
         console.error('Delete plan error:', error);
         res.status(500).json({ message: 'Failed to delete plan' });
