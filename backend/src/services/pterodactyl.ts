@@ -354,7 +354,7 @@ export const deleteFile = async (identifier: string, root: string, files: string
 
     await axios.post(
         `${config.url}/api/client/servers/${identifier}/files/delete`,
-        { root, files },
+        { root: root || '/', files },
         {
             headers: {
                 Authorization: `Bearer ${token}`,

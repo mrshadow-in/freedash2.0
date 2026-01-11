@@ -1,8 +1,10 @@
 import express from 'express';
+import http from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import { connectDB } from './config/database';
 import { ENV } from './config/env';
+import { initWebSocketServer } from './services/websocket';
 import authRoutes from './routes/authRoutes';
 import serverRoutes from './routes/serverRoutes';
 import adminRoutes from './routes/adminRoutes';
@@ -19,6 +21,7 @@ import adRoutes from './routes/adRoutes';
 const app = express();
 
 // Middleware
+app.set('trust proxy', 1);
 app.use(cors());
 app.use(helmet());
 app.use(express.json());
@@ -88,7 +91,14 @@ app.get('/api/settings', async (req, res) => {
 // Start Server
 const start = async () => {
     await connectDB();
-    app.listen(ENV.PORT, () => {
+
+    // Create HTTP server
+    const server = http.createServer(app);
+
+    // Initialize WebSockets
+    initWebSocketServer(server);
+
+    server.listen(ENV.PORT, () => {
         console.log(`Server running on port ${ENV.PORT}`);
     });
 };

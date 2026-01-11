@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../prisma';
 import { AuthRequest } from '../middleware/auth';
+import jwt from 'jsonwebtoken';
 import {
     createPteroServer,
     deletePteroServer,
@@ -420,8 +421,23 @@ export const getConsoleCredentials = async (req: AuthRequest, res: Response) => 
             return res.status(400).json({ message: 'Server is not ready' });
         }
 
-        const data = await getConsoleDetails(server.pteroIdentifier);
-        res.json(data);
+        // Generate Proxy Token
+        const proxyToken = jwt.sign(
+            { userId: req.user!.userId, serverId: server.id },
+            ENV.JWT_SECRET,
+            { expiresIn: '5m' }
+        );
+
+        // Construct Proxy URL
+        const protocol = req.protocol === 'https' ? 'wss' : 'ws';
+        const host = req.get('host');
+        const proxyUrl = `${protocol}://${host}/api/ws/console?serverId=${server.id}&token=${proxyToken}`;
+
+        // Return Proxy URL and Dummy Token (Frontend sends auth, Proxy handles real auth)
+        res.json({
+            socket: proxyUrl,
+            token: 'proxy-session'
+        });
     } catch (error: any) {
         res.status(500).json({ message: 'Failed to fetch console credentials' });
     }
@@ -509,7 +525,8 @@ export const deleteServerFile = async (req: AuthRequest, res: Response) => {
         await deleteFile(server.pteroIdentifier, root, files);
         res.json({ message: 'Deleted successfully' });
     } catch (error: any) {
-        res.status(500).json({ message: 'Failed to delete' });
+        console.error('Delete File Error:', error.response?.data || error.message);
+        res.status(500).json({ message: 'Failed to delete', error: error.response?.data || error.message });
     }
 };
 
