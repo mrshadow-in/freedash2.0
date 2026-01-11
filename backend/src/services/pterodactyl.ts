@@ -598,8 +598,7 @@ export const renamePteroFile = async (
     from: string,
     to: string
 ) => {
-    const config = getPteroConfig();
-    const token = await getClientToken(identifier);
+    const config = await getPteroConfig();
 
     await axios.put(
         `${config.url}/api/client/servers/${identifier}/files/rename`,
@@ -609,10 +608,11 @@ export const renamePteroFile = async (
         },
         {
             headers: {
-                Authorization: `Bearer ${token}`,
+                Authorization: `Bearer ${config.clientKey}`,
                 'Content-Type': 'application/json',
                 Accept: 'application/vnd.pterodactyl.v1+json'
             }
         }
     );
 };
+

@@ -1,9 +1,42 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.changeServerVersion = exports.deletePlugin = exports.getInstalledPlugins = exports.installPlugin = exports.searchPlugins = exports.updateServerProperties = exports.getServerProperties = void 0;
+exports.getPaperVersions = exports.getMinecraftVersions = exports.changeServerVersion = exports.deletePlugin = exports.getInstalledPlugins = exports.installPlugin = exports.searchPlugins = exports.updateServerProperties = exports.getServerProperties = void 0;
 const pterodactyl_1 = require("../services/pterodactyl");
 const prisma_1 = require("../prisma");
 const axios_1 = __importDefault(require("axios"));
@@ -220,13 +253,55 @@ const changeServerVersion = async (req, res) => {
         if (server.ownerId !== req.user.userId && req.user.role !== 'admin') {
             return res.status(403).json({ message: 'Unauthorized' });
         }
-        // Update MINECRAFT_VERSION variable via startup API
+        // Get latest Paper build for this version
+        const buildsRes = await axios_1.default.get(`https://api.papermc.io/v2/projects/paper/versions/${version}/builds`);
+        const builds = buildsRes.data.builds;
+        const latestBuild = builds[builds.length - 1];
+        const buildNumber = latestBuild.build;
+        // Construct download URL
+        const downloadUrl = `https://api.papermc.io/v2/projects/paper/versions/${version}/builds/${buildNumber}/downloads/paper-${version}-${buildNumber}.jar`;
+        // Download JAR to server root
+        await (0, pterodactyl_1.pullPteroFile)(server.pteroIdentifier, downloadUrl, '/');
+        // Rename to server.jar
+        const newFilename = `paper-${version}-${buildNumber}.jar`;
+        await (0, pterodactyl_1.renamePteroFile)(server.pteroIdentifier, '/', newFilename, 'server.jar');
+        // Update MINECRAFT_VERSION variable
         await (0, pterodactyl_1.updateStartupVariable)(server.pteroIdentifier, 'MINECRAFT_VERSION', version);
-        res.json({ message: `Server version changed to ${version}. Restart server to apply.`, version });
+        res.json({
+            message: `Downloaded Paper ${version} build ${buildNumber}`,
+            version,
+            build: buildNumber
+        });
     }
     catch (error) {
         console.error('Error changing server version:', error);
-        res.status(500).json({ message: 'Failed to change server version' });
+        res.status(500).json({ message: 'Failed to change version' });
     }
 };
 exports.changeServerVersion = changeServerVersion;
+// Get Minecraft versions from Mojang API
+const getMinecraftVersions = async (req, res) => {
+    try {
+        const { getMinecraftVersions: fetchVersions } = await Promise.resolve().then(() => __importStar(require('../services/minecraft')));
+        const versions = await fetchVersions();
+        res.json(versions);
+    }
+    catch (error) {
+        console.error('Error fetching Minecraft versions:', error);
+        res.status(500).json({ message: 'Failed to fetch versions' });
+    }
+};
+exports.getMinecraftVersions = getMinecraftVersions;
+// Get Paper versions
+const getPaperVersions = async (req, res) => {
+    try {
+        const { getPaperVersions: fetchPaperVersions } = await Promise.resolve().then(() => __importStar(require('../services/minecraft')));
+        const versions = await fetchPaperVersions();
+        res.json(versions);
+    }
+    catch (error) {
+        console.error('Error fetching Paper versions:', error);
+        res.status(500).json({ message: 'Failed to fetch Paper versions' });
+    }
+};
+exports.getPaperVersions = getPaperVersions;

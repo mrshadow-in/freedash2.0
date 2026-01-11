@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateStartupVariable = exports.getStartup = exports.pullPteroFile = exports.getPteroNodeConfiguration = exports.createPteroNode = exports.getPteroLocations = exports.getPteroNodes = exports.getPteroServerResources = exports.reinstallServer = exports.getUploadUrl = exports.createFolder = exports.deleteFile = exports.renameFile = exports.writeFileContent = exports.getFileContent = exports.listFiles = exports.getConsoleDetails = exports.powerPteroServer = exports.updatePteroServerBuild = exports.getPteroServer = exports.unsuspendPteroServer = exports.suspendPteroServer = exports.deletePteroServer = exports.createPteroServer = exports.updatePteroUserPassword = exports.createPteroUser = exports.getPteroUrl = void 0;
+exports.renamePteroFile = exports.updateStartupVariable = exports.getStartup = exports.pullPteroFile = exports.getPteroNodeConfiguration = exports.createPteroNode = exports.getPteroLocations = exports.getPteroNodes = exports.getPteroServerResources = exports.reinstallServer = exports.getUploadUrl = exports.createFolder = exports.deleteFile = exports.renameFile = exports.writeFileContent = exports.getFileContent = exports.listFiles = exports.getConsoleDetails = exports.powerPteroServer = exports.updatePteroServerBuild = exports.getPteroServer = exports.unsuspendPteroServer = exports.suspendPteroServer = exports.deletePteroServer = exports.createPteroServer = exports.updatePteroUserPassword = exports.createPteroUser = exports.getPteroUrl = void 0;
 const axios_1 = __importDefault(require("axios"));
 const env_1 = require("../config/env");
 const prisma_1 = require("../prisma");
@@ -466,3 +466,18 @@ const updateStartupVariable = async (identifier, key, value) => {
     return response.data;
 };
 exports.updateStartupVariable = updateStartupVariable;
+// Rename file
+const renamePteroFile = async (identifier, root, from, to) => {
+    const config = await getPteroConfig();
+    await axios_1.default.put(`${config.url}/api/client/servers/${identifier}/files/rename`, {
+        root,
+        files: [{ from, to }]
+    }, {
+        headers: {
+            Authorization: `Bearer ${config.clientKey}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/vnd.pterodactyl.v1+json'
+        }
+    });
+};
+exports.renamePteroFile = renamePteroFile;

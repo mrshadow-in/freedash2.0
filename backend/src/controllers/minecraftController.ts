@@ -5,7 +5,8 @@ import {
     pullPteroFile,
     listFiles,
     deleteFile,
-    updateStartupVariable
+    updateStartupVariable,
+    renamePteroFile
 } from '../services/pterodactyl';
 import { prisma } from '../prisma';
 import axios from 'axios';
@@ -242,13 +243,35 @@ export const changeServerVersion = async (req: AuthRequest, res: Response) => {
             return res.status(403).json({ message: 'Unauthorized' });
         }
 
-        // Update MINECRAFT_VERSION variable via startup API
+        // Get latest Paper build for this version
+        const buildsRes = await axios.get(
+            `https://api.papermc.io/v2/projects/paper/versions/${version}/builds`
+        );
+        const builds = (buildsRes.data as any).builds;
+        const latestBuild = builds[builds.length - 1];
+        const buildNumber = latestBuild.build;
+
+        // Construct download URL
+        const downloadUrl = `https://api.papermc.io/v2/projects/paper/versions/${version}/builds/${buildNumber}/downloads/paper-${version}-${buildNumber}.jar`;
+
+        // Download JAR to server root
+        await pullPteroFile(server.pteroIdentifier, downloadUrl, '/');
+
+        // Rename to server.jar
+        const newFilename = `paper-${version}-${buildNumber}.jar`;
+        await renamePteroFile(server.pteroIdentifier, '/', newFilename, 'server.jar');
+
+        // Update MINECRAFT_VERSION variable
         await updateStartupVariable(server.pteroIdentifier, 'MINECRAFT_VERSION', version);
 
-        res.json({ message: `Server version changed to ${version}. Restart server to apply.`, version });
+        res.json({
+            message: `Downloaded Paper ${version} build ${buildNumber}`,
+            version,
+            build: buildNumber
+        });
     } catch (error) {
         console.error('Error changing server version:', error);
-        res.status(500).json({ message: 'Failed to change server version' });
+        res.status(500).json({ message: 'Failed to change version' });
     }
 };
 
