@@ -125,6 +125,23 @@ model Node {
   updatedAt   DateTime   @updatedAt
   
   servers     Server[]
+  allocations Allocation[]
+}
+
+model Allocation {
+  id         String   @id @default(uuid())
+  nodeId     String
+  node       Node     @relation(fields: [nodeId], references: [id])
+  ip         String
+  port       Int
+  alias      String?
+  assigned   Boolean  @default(false)
+  serverId   String?  // ID of server using this allocation
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([nodeId, ip, port])
 }
 
 model Plan {

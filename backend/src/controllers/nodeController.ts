@@ -290,3 +290,112 @@ export const getNodeStats = async (req: AuthRequest, res: Response) => {
         });
     }
 };
+
+/**
+ * Get node allocations (Admin only)
+ */
+export const getNodeAllocations = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const allocations = await prisma.allocation.findMany({
+            where: { nodeId: id },
+            orderBy: { port: 'asc' }
+        });
+        res.json(allocations);
+    } catch (error: any) {
+        console.error('Get allocations error:', error);
+        res.status(500).json({ message: 'Failed to get allocations' });
+    }
+};
+
+/**
+ * Create node allocations (Admin only)
+ */
+export const createNodeAllocations = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { ip, alias, ports } = req.body; // ports is array of strings "25565", "8000-8010"
+
+        if (!ip || !Array.isArray(ports)) {
+            return res.status(400).json({ message: 'IP and ports array required' });
+        }
+
+        const allocationsToCreate: any[] = [];
+
+        for (const portEntry of ports) {
+            if (typeof portEntry === 'string' && portEntry.includes('-')) {
+                // Range
+                const [start, end] = portEntry.split('-').map(Number);
+                if (!isNaN(start) && !isNaN(end) && start <= end) {
+                    for (let p = start; p <= end; p++) {
+                        allocationsToCreate.push({
+                            nodeId: id,
+                            ip,
+                            port: p,
+                            alias: alias || null,
+                            assigned: false
+                        });
+                    }
+                }
+            } else {
+                // Single
+                const port = Number(portEntry);
+                if (!isNaN(port)) {
+                    allocationsToCreate.push({
+                        nodeId: id,
+                        ip,
+                        port,
+                        alias: alias || null,
+                        assigned: false
+                    });
+                }
+            }
+        }
+
+        // Use createMany (skips duplicates if supported by DB config, but plain createMany might fail on conflict)
+        // Prisma createMany skipDuplicates is supported in Postgres
+        await prisma.allocation.createMany({
+            data: allocationsToCreate,
+            skipDuplicates: true
+        });
+
+        const newAllocations = await prisma.allocation.findMany({
+            where: { nodeId: id },
+            orderBy: { createdAt: 'desc' },
+            take: allocationsToCreate.length
+        });
+
+        res.status(201).json(newAllocations);
+    } catch (error: any) {
+        console.error('Create allocations error:', error);
+        res.status(500).json({ message: 'Failed to create allocations' });
+    }
+};
+
+/**
+ * Delete node allocation (Admin only)
+ */
+export const deleteNodeAllocation = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id, allocationId } = req.params;
+
+        const allocation = await prisma.allocation.findUnique({
+            where: { id: allocationId }
+        });
+
+        if (!allocation || allocation.nodeId !== id) {
+            return res.status(404).json({ message: 'Allocation not found' });
+        }
+
+        if (allocation.assigned) {
+            return res.status(400).json({ message: 'Cannot delete assigned allocation' });
+        }
+
+        await prisma.allocation.delete({ where: { id: allocationId } });
+
+        res.json({ message: 'Allocation deleted' });
+    } catch (error: any) {
+        console.error('Delete allocation error:', error);
+        res.status(500).json({ message: 'Failed to delete allocation' });
+    }
+};

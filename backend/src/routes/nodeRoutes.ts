@@ -7,7 +7,10 @@ import {
     updateNode,
     deleteNode,
     testNodeConnection,
-    getNodeStats
+    getNodeStats,
+    getNodeAllocations,
+    createNodeAllocations,
+    deleteNodeAllocation
 } from '../controllers/nodeController';
 
 const router = express.Router();
@@ -26,5 +29,10 @@ router.delete('/:id', deleteNode as any);
 // Node operations
 router.post('/:id/test', testNodeConnection as any);
 router.get('/:id/stats', getNodeStats as any);
+
+// Node Allocations
+router.get('/:id/allocations', getNodeAllocations as any);
+router.post('/:id/allocations', createNodeAllocations as any);
+router.delete('/:id/allocations/:allocationId', deleteNodeAllocation as any);
 
 export default router;
