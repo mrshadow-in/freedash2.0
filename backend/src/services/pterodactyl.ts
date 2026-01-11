@@ -26,6 +26,11 @@ async function getPteroConfig() {
     };
 }
 
+export const getPteroUrl = async () => {
+    const config = await getPteroConfig();
+    return config.url;
+};
+
 export const createPteroUser = async (email: string, username: string, password?: string) => {
     const config = await getPteroConfig();
 

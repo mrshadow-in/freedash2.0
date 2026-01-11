@@ -289,14 +289,14 @@ const WingsManager = () => {
 
                             <div className="bg-black/40 rounded-lg p-4 font-mono text-sm text-gray-300 relative group overflow-x-auto">
                                 <button
-                                    onClick={() => copyToClipboard(`cd /etc/pterodactyl && sudo wings configure --panel-url ${deploymentData.url || 'YOUR_PANEL_URL'} --token ${deploymentData.token} --node ${selectedNode.id}\nsudo systemctl start wings`)}
+                                    onClick={() => copyToClipboard(`cd /etc/pterodactyl && sudo wings configure --panel-url ${deploymentData.panelUrl || deploymentData.url || 'YOUR_PANEL_URL'} --token ${deploymentData.token} --node ${selectedNode.id}\nsudo systemctl start wings`)}
                                     className="absolute top-2 right-2 p-2 bg-white/10 hover:bg-white/20 rounded opacity-0 group-hover:opacity-100 transition"
                                 >
                                     <Copy className="w-4 h-4" />
                                 </button>
                                 <pre className="whitespace-pre-wrap break-all">
                                     {`# Automatic Configuration
-cd /etc/pterodactyl && sudo wings configure --panel-url https://panel.example.com --token ${deploymentData.token} --node ${selectedNode.id}
+cd /etc/pterodactyl && sudo wings configure --panel-url ${deploymentData.panelUrl || deploymentData.url || 'YOUR_PANEL_URL'} --token ${deploymentData.token} --node ${selectedNode.id}
 
 # Start Wings
 sudo systemctl enable --now wings`}

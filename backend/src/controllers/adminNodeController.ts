@@ -3,7 +3,8 @@ import {
     getPteroNodes,
     createPteroNode,
     getPteroLocations,
-    getPteroNodeConfiguration
+    getPteroNodeConfiguration,
+    getPteroUrl
 } from '../services/pterodactyl';
 import { z } from 'zod';
 
@@ -86,7 +87,8 @@ export const getNodeDeployment = async (req: Request, res: Response) => {
         // Usually it returns 'token', 'uuid', etc.
         // We will send the whole config object.
 
-        res.json(config);
+        const panelUrl = await getPteroUrl();
+        res.json({ ...config, panelUrl });
     } catch (error) {
         console.error('Error fetching node deployment:', error);
         res.status(500).json({ message: 'Failed to fetch deployment info' });
