@@ -417,39 +417,23 @@ export const getConsoleCredentials = async (req: AuthRequest, res: Response) => 
 
         // Check if server is ready
         const pteroServer = await getPteroServer(server.pteroServerId);
-        if (pteroServer.suspended || pteroServer.container.installed !== 1) {
+        if (pteroServer.suspended || pteroServer.container?.installed !== 1) {
             return res.status(400).json({ message: 'Server is not ready' });
         }
 
-        // Generate Proxy Token
-        const proxyToken = jwt.sign(
-            { userId: req.user!.userId, serverId: server.id },
-            ENV.JWT_SECRET,
-            { expiresIn: '5m' }
-        );
+        // Fetch WebSocket credentials from Pterodactyl
+        // This returns the EXACT socket URL and token that the frontend needs
+        const consoleDetails = await getConsoleDetails(server.pteroIdentifier);
 
-        // Construct Proxy URL - use FRONTEND_URL to get the public domain
-        // This avoids Docker internal hostnames like 'backend:3000'
-        let wsUrl: string;
-        try {
-            const frontendUrl = new URL(ENV.FRONTEND_URL);
-            const protocol = frontendUrl.protocol === 'https:' ? 'wss' : 'ws';
-            // WebSocket goes through the same reverse proxy, so use /api prefix
-            wsUrl = `${protocol}://${frontendUrl.host}/api/ws/console?serverId=${server.id}&token=${proxyToken}`;
-        } catch (e) {
-            // Fallback to request host if FRONTEND_URL is invalid
-            const protocol = req.protocol === 'https' ? 'wss' : 'ws';
-            const host = req.get('host');
-            wsUrl = `${protocol}://${host}/api/ws/console?serverId=${server.id}&token=${proxyToken}`;
-        }
-
-        // Return Proxy URL and Dummy Token (Frontend sends auth, Proxy handles real auth)
+        // Return Pterodactyl's socket URL and token directly
+        // Frontend will connect directly to Pterodactyl Wings
         res.json({
-            socket: wsUrl,
-            token: 'proxy-session'
+            socket: consoleDetails.socket,
+            token: consoleDetails.token
         });
     } catch (error: any) {
-        res.status(500).json({ message: 'Failed to fetch console credentials' });
+        console.error('Console credentials error:', error.response?.data || error.message);
+        res.status(500).json({ message: 'Failed to fetch console credentials', error: error.message });
     }
 };
 

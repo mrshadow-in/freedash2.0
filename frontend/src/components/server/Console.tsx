@@ -50,7 +50,8 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
         wsRef.current = ws;
 
         ws.onopen = () => {
-            setStatus('connected');
+            console.log('WebSocket opened, sending auth...');
+            // Send auth immediately on connection - REQUIRED by Pterodactyl
             ws.send(JSON.stringify({ event: 'auth', args: [token] }));
         };
 
@@ -88,10 +89,10 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
             xtermRef.current = term;
             fitAddonRef.current = fitAddon;
 
-            // Handle Input
+            // Handle Input - use 'send command' event (Pterodactyl protocol)
             term.onData((data) => {
                 if (ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({ event: 'send', args: [data] }));
+                    ws.send(JSON.stringify({ event: 'send command', args: [data] }));
                 }
             });
 
@@ -106,23 +107,39 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
     const handleEvent = (data: any) => {
         const { event, args } = data;
         switch (event) {
+            case 'auth success':
+                console.log('Console authenticated successfully');
+                setStatus('connected');
+                break;
             case 'console output':
                 xtermRef.current?.write(args[0]);
                 break;
+            case 'status':
+                console.log('Server status:', args[0]);
+                break;
             case 'stats':
-                const stats = JSON.parse(args[0]);
-                setStats(stats);
+                try {
+                    const statsData = JSON.parse(args[0]);
+                    setStats(statsData);
+                } catch (e) {
+                    console.error('Failed to parse stats:', e);
+                }
                 break;
             case 'token expiring':
-                // Refresh token logic could go here
-                console.log('Console token expiring...');
+                console.log('Console token expiring, should reconnect...');
+                // Auto-reconnect with fresh token
+                connect();
+                break;
+            case 'token expired':
+                console.log('Console token expired, reconnecting...');
+                connect();
                 break;
             case 'jwt error':
                 console.error('JWT Error from Console Socket');
                 setStatus('error');
                 break;
             default:
-                // console.log('Unknown event:', event);
+                console.log('Console event:', event, args);
                 break;
         }
     };
