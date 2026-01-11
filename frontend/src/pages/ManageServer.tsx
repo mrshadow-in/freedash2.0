@@ -64,6 +64,22 @@ const ManageServer = () => {
         }
     });
 
+    // Fetch Real-Time Resources (Power State)
+    const { data: resources } = useQuery({
+        queryKey: ['server-resources', id],
+        queryFn: async () => {
+            const res = await api.get(`/servers/${id}/resources`);
+            return res.data;
+        },
+        enabled: !!server && server.status !== 'suspended' && server.status !== 'installing',
+        refetchInterval: 3000 // Poll every 3 seconds for real-time status
+    });
+
+    // Determine actual status
+    const actualStatus = server?.status === 'suspended' || server?.status === 'installing'
+        ? server.status
+        : (resources?.current_state || 'offline');
+
     // Power Mutation
     const powerMutation = useMutation({
         mutationFn: async (signal: string) => {
@@ -150,7 +166,7 @@ const ManageServer = () => {
             <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
                 <ServerHeader
                     server={server}
-                    powerState={usage?.attributes?.current_state}
+                    powerState={actualStatus}
                     onPowerAction={(signal) => powerMutation.mutate(signal)}
                     isPowerPending={powerMutation.isPending}
                     onOpenShop={() => setIsShopOpen(true)}

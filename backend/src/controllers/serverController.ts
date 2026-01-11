@@ -653,3 +653,24 @@ export const reinstallServerAction = async (req: AuthRequest, res: Response) => 
         res.status(500).json({ message: 'Failed to reinstall server' });
     }
 };
+
+export const getServerResources = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const server = await prisma.server.findUnique({ where: { id } });
+
+        if (!server || !server.pteroIdentifier) {
+            return res.status(404).json({ message: 'Server not found' });
+        }
+
+        if (server.ownerId !== req.user!.userId && req.user!.role !== 'admin') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const resources: any = await getPteroServerResources(server.pteroIdentifier);
+        res.json(resources);
+    } catch (error: any) {
+        console.error("Resources fetch error:", error);
+        res.status(500).json({ message: 'Failed to fetch resources' });
+    }
+};

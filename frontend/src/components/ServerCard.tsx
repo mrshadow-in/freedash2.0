@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
+import api from '../api/client';
 import { Cpu, HardDrive, MemoryStick, Wifi, WifiOff, Trash2, Settings, Copy, Check } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import ConfirmDialog from './ConfirmDialog';
@@ -50,13 +52,18 @@ const MinecraftParticles = () => {
 // Glowing status indicator
 const StatusIndicator = ({ status }: { status: string }) => {
     const statusLower = status?.toLowerCase() || '';
-    const isOnline = statusLower === 'running' || statusLower === 'active';
-    const isStarting = statusLower === 'starting' || statusLower === 'installing';
+    const isSuspended = statusLower === 'suspended';
+    const isInstalling = statusLower === 'installing';
+    const isOnline = statusLower === 'running';
+    const isStarting = statusLower === 'starting';
 
     return (
         <div className="flex items-center gap-2">
             <motion.div
-                className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-green-500' : isStarting ? 'bg-yellow-500' : 'bg-red-500'
+                className={`w-2.5 h-2.5 rounded-full ${isSuspended ? 'bg-orange-500' :
+                    isOnline ? 'bg-green-500' :
+                        isStarting || isInstalling ? 'bg-yellow-500' :
+                            'bg-red-500'
                     }`}
                 animate={{
                     scale: isOnline ? [1, 1.3, 1] : 1,
@@ -71,10 +78,13 @@ const StatusIndicator = ({ status }: { status: string }) => {
                 }}
             />
             <span
-                className={`text-xs font-bold uppercase tracking-wide ${isOnline ? 'text-green-400' : isStarting ? 'text-yellow-400' : 'text-red-400'
+                className={`text-xs font-bold uppercase tracking-wide ${isSuspended ? 'text-orange-400' :
+                    isOnline ? 'text-green-400' :
+                        isStarting || isInstalling ? 'text-yellow-400' :
+                            'text-red-400'
                     }`}
             >
-                {isOnline ? 'Online' : isStarting ? 'Starting' : 'Offline'}
+                {isSuspended ? 'Suspended' : isOnline ? 'Online' : isStarting || isInstalling ? 'Starting' : 'Offline'}
             </span>
         </div>
     );
@@ -105,6 +115,22 @@ const ServerCard = ({ id, name, status, planName, serverIp, ramMb, diskMb, cpuCo
     const [isHovered, setIsHovered] = useState(false);
     const [copied, setCopied] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+    // Fetch real-time power state from Pterodactyl
+    const { data: resources } = useQuery({
+        queryKey: ['server-resources', id],
+        queryFn: async () => {
+            const res = await api.get(`/servers/${id}/resources`);
+            return res.data;
+        },
+        refetchInterval: 5000, // Poll every 5 seconds
+        enabled: status !== 'suspended' && status !== 'installing'
+    });
+
+    // Determine actual status: suspended/installing from DB, otherwise use power state
+    const actualStatus = status === 'suspended' || status === 'installing'
+        ? status
+        : (resources?.current_state || 'offline');
 
     const copyIP = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -196,14 +222,14 @@ const ServerCard = ({ id, name, status, planName, serverIp, ramMb, diskMb, cpuCo
                                     <p className="text-xs text-gray-400">{planName}</p>
                                 </div>
                             </div>
-                            <StatusIndicator status={status} />
+                            <StatusIndicator status={actualStatus} />
                         </div>
 
                         {/* Server IP */}
                         <div className="bg-black/30 backdrop-blur-sm rounded-xl p-3 mb-4 border border-white/5">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2 overflow-hidden">
-                                    {(status === 'running' || status === 'active') ? (
+                                    {actualStatus === 'running' ? (
                                         <Wifi size={14} className="text-green-400 flex-shrink-0" />
                                     ) : (
                                         <WifiOff size={14} className="text-gray-500 flex-shrink-0" />

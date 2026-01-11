@@ -30,6 +30,8 @@ const ServerHeader = ({ server, powerState, onPowerAction, isPowerPending, onOpe
             return { color: 'bg-yellow-500', text: 'Starting', textColor: 'text-yellow-400', bgColor: 'bg-yellow-500/20' };
         } else if (status === 'stopping') {
             return { color: 'bg-orange-500', text: 'Stopping', textColor: 'text-orange-400', bgColor: 'bg-orange-500/20' };
+        } else if (status === 'suspended') {
+            return { color: 'bg-orange-600', text: 'Suspended', textColor: 'text-orange-500', bgColor: 'bg-orange-600/20' };
         } else if (status === 'active') {
             // 'active' is DB status for provisioned, assume Offline if no powerState
             return { color: 'bg-red-500', text: 'Offline', textColor: 'text-red-400', bgColor: 'bg-red-500/20' };

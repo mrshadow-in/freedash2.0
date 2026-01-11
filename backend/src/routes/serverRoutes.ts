@@ -14,11 +14,12 @@ import {
     getServerFiles,
     getFile,
     writeFile,
-    renameServerFile,
-    deleteServerFile,
     createServerFolder,
     getServerUploadUrl,
-    reinstallServerAction
+    reinstallServerAction,
+    getServerResources,
+    renameServerFile,
+    deleteServerFile
 } from '../controllers/serverController';
 import { estimateCost, purchaseItem } from '../controllers/shopController';
 import * as mcController from '../controllers/minecraftController';
@@ -38,7 +39,7 @@ router.get('/:id', getServer as any);
 router.delete('/:id', deleteServer as any);
 router.post('/:id/upgrade', upgradeServer as any);
 router.post('/:id/power', powerServer as any);
-router.post('/:id/power', powerServer as any);
+router.get('/:id/resources', getServerResources as any);
 router.get('/:id/usage', getServerUsage as any);
 router.get('/:id/console', getConsoleCredentials as any);
 router.get('/:id/files/list', getServerFiles as any);
