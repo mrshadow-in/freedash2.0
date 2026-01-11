@@ -132,7 +132,11 @@ export const searchPlugins = async (req: Request, res: Response) => {
         const keys = (settings.plugins as any) || {};
 
         if (provider === 'modrinth') {
-            const response = await axios.get(`https://api.modrinth.com/v2/search?query=${q}&limit=20&facets=[["categories:bukkit","categories:spigot","categories:paper"]]`);
+            // Modrinth Search - STRICT plugins only
+            // facets: ["project_type:plugin"] AND ["categories:bukkit" OR "categories:spigot" OR "categories:paper"]
+            const facets = encodeURIComponent('["project_type:plugin",["categories:bukkit","categories:spigot","categories:paper"]]');
+            const response = await axios.get(`https://api.modrinth.com/v2/search?query=${q}&limit=20&facets=[["project_type:plugin"],["categories:bukkit","categories:spigot","categories:paper"]]`);
+
             const plugins = ((response.data as any).hits || []).map((p: any) => ({
                 id: p.project_id,
                 name: p.title,
@@ -174,7 +178,7 @@ export const searchPlugins = async (req: Request, res: Response) => {
             res.json(plugins);
 
         } else if (provider === 'curseforge') {
-            // CurseForge Search
+            // CurseForge Search - STRICT Bukkit Plugins (Class ID 5)
             const apiKey = keys.curseforge_api_key;
             if (!apiKey) return res.json([]); // Return empty if no key
 
@@ -182,6 +186,7 @@ export const searchPlugins = async (req: Request, res: Response) => {
                 headers: { 'x-api-key': apiKey },
                 params: {
                     gameId: 432, // Minecraft
+                    classId: 5,  // Bukkit Plugins (CRITICAL: Excludes Mods/Modpacks)
                     searchFilter: q,
                     pageSize: 20,
                     sortOrder: 'desc'
