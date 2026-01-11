@@ -45,16 +45,36 @@ export const createAd = async (req: Request, res: Response) => {
     try {
         const { title, imageUrl, redirectUrl, rawCode, isAFK, position, positionIndex, priority, type, endDate, ownerId } = req.body;
 
+        // Validate required fields
+        if (!title || !position || !type) {
+            return res.status(400).json({ message: 'Title, position, and type are required fields' });
+        }
+
+        // At least one of imageUrl or rawCode must be provided
+        if (!imageUrl && !rawCode) {
+            return res.status(400).json({ message: 'Either imageUrl or rawCode must be provided' });
+        }
+
+        // Automatically determine positionIndex if not provided
+        let finalPositionIndex = positionIndex;
+        if (finalPositionIndex === undefined || finalPositionIndex === null) {
+            const maxIndexAd = await prisma.ad.findFirst({
+                where: { position },
+                orderBy: { positionIndex: 'desc' }
+            });
+            finalPositionIndex = maxIndexAd ? maxIndexAd.positionIndex + 1 : 0;
+        }
+
         const ad = await prisma.ad.create({
             data: {
                 title,
-                imageUrl,
-                redirectUrl,
-                rawCode,
+                imageUrl: imageUrl || null,
+                redirectUrl: redirectUrl || null,
+                rawCode: rawCode || null,
                 isAFK: isAFK || false,
                 position,
-                positionIndex: positionIndex || 0,
-                priority: priority || 0,
+                positionIndex: finalPositionIndex,
+                priority: priority || 1,
                 type,
                 endDate: endDate ? new Date(endDate) : null,
                 ownerId: ownerId || null,
@@ -63,8 +83,9 @@ export const createAd = async (req: Request, res: Response) => {
         });
 
         res.status(201).json(ad);
-    } catch (error) {
-        res.status(500).json({ message: 'Failed to create ad' });
+    } catch (error: any) {
+        console.error('Ad creation error:', error);
+        res.status(500).json({ message: error.message || 'Failed to create ad' });
     }
 };
 
