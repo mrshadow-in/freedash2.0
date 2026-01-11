@@ -555,3 +555,38 @@ export const pullPteroFile = async (pteroIdentifier: string, url: string, direct
         throw error;
     }
 };
+
+// Startup
+export const getStartup = async (identifier: string) => {
+    const config = await getPteroConfig();
+    const token = config.clientKey || config.key;
+
+    const response = await axios.get(
+        `${config.url}/api/client/servers/${identifier}/startup`,
+        {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: 'application/vnd.pterodactyl.v1+json'
+            }
+        }
+    );
+    return response.data;
+};
+
+export const updateStartupVariable = async (identifier: string, key: string, value: string) => {
+    const config = await getPteroConfig();
+    const token = config.clientKey || config.key;
+
+    const response = await axios.put(
+        `${config.url}/api/client/servers/${identifier}/startup/variable`,
+        { key, value },
+        {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                Accept: 'application/vnd.pterodactyl.v1+json'
+            }
+        }
+    );
+    return response.data;
+};

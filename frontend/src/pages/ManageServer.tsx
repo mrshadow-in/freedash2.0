@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import { motion } from 'framer-motion';
-import { Loader2, ShoppingCart, Copy, Check, Terminal, FolderOpen, Settings, Ghost } from 'lucide-react';
+import { Loader2, ShoppingCart, Copy, Check, Terminal, FolderOpen, Settings, Ghost, Play, Users } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 
@@ -14,6 +14,8 @@ import ShopModal from '../components/shop/ShopModal';
 import Console from '../components/server/Console';
 import FileManager from '../components/server/FileManager';
 import MinecraftTab from '../components/server/MinecraftTab';
+import StartupTab from '../components/server/StartupTab';
+import UsersTab from '../components/server/UsersTab';
 
 
 const ManageServer = () => {
@@ -21,7 +23,7 @@ const ManageServer = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [isShopOpen, setIsShopOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<'console' | 'files' | 'settings' | 'shop' | 'minecraft'>('console');
+    const [activeTab, setActiveTab] = useState<'console' | 'files' | 'settings' | 'startup' | 'users' | 'shop' | 'minecraft'>('console');
     const [copiedIP, setCopiedIP] = useState(false);
 
     // Fetch Server Details
@@ -205,10 +207,22 @@ const ManageServer = () => {
                         <Settings size={18} /> Settings
                     </button>
                     <button
+                        onClick={() => setActiveTab('users')}
+                        className={`flex items-center gap-2 px-6 py-3 font-bold transition whitespace-nowrap rounded-t-lg ${activeTab === 'users' ? 'text-white bg-white/5 border-b-2 border-blue-400' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                    >
+                        <Users size={18} /> Users
+                    </button>
+                    <button
                         onClick={() => setActiveTab('shop')}
                         className={`flex items-center gap-2 px-6 py-3 font-bold transition whitespace-nowrap rounded-t-lg ${activeTab === 'shop' ? 'text-white bg-white/5 border-b-2 border-purple-500' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
                     >
                         <ShoppingCart size={18} /> Shop
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('startup')}
+                        className={`flex items-center gap-2 px-6 py-3 font-bold transition whitespace-nowrap rounded-t-lg ${activeTab === 'startup' ? 'text-white bg-white/5 border-b-2 border-cyan-500' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                    >
+                        <Play size={18} /> Startup
                     </button>
                     <button
                         onClick={() => setActiveTab('minecraft')}
@@ -232,13 +246,64 @@ const ManageServer = () => {
                         <MinecraftTab server={server} />
                     )}
 
-                    {activeTab === 'settings' && (
-                        <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
-                            <h2 className="text-2xl font-bold text-white mb-6">Server Settings</h2>
+                    {activeTab === 'startup' && <StartupTab server={server} />}
+                    {activeTab === 'users' && <UsersTab />}
 
-                            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6">
-                                <h3 className="text-xl font-bold text-white mb-2">Danger Zone</h3>
-                                <p className="text-gray-400 mb-6">Reinstalling your server will delete some configuration files but usually keeps data. Backup first!</p>
+                    {activeTab === 'settings' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                            {/* SFTP Details */}
+                            <div className="bg-[#161b22] border border-white/10 rounded-xl p-6">
+                                <h3 className="text-gray-400 text-xs uppercase font-bold mb-4">SFTP Details</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-xs text-gray-500 uppercase font-bold block mb-1">Server Address</label>
+                                        <div className="bg-black/20 rounded p-2 text-sm text-gray-200 font-mono border border-white/5">
+                                            sftp://{server.serverIp?.split(':')[0] || 'unavailable'}:{server.relationships?.allocation?.attributes?.port || 2022}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-gray-500 uppercase font-bold block mb-1">Username</label>
+                                        <div className="bg-black/20 rounded p-2 text-sm text-gray-200 font-mono border border-white/5">
+                                            {server.identifier}.{server.uuid?.split('-')[0]}
+                                        </div>
+                                    </div>
+                                    <div className="pt-2">
+                                        <button onClick={() => window.open(`sftp://${server.serverIp?.split(':')[0]}`)} className="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded transition">
+                                            Launch SFTP
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Change Details (Placeholder) */}
+                            <div className="bg-[#161b22] border border-white/10 rounded-xl p-6">
+                                <h3 className="text-gray-400 text-xs uppercase font-bold mb-4">Change Server Details</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-xs text-gray-500 uppercase font-bold block mb-1">Server Name</label>
+                                        <input type="text" value={server.name} readOnly className="w-full bg-black/20 border border-white/10 rounded p-2 text-sm text-gray-400" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Debug Info */}
+                            <div className="bg-[#161b22] border border-white/10 rounded-xl p-6">
+                                <h3 className="text-gray-400 text-xs uppercase font-bold mb-4">Debug Information</h3>
+                                <div className="flex justify-between items-center py-2 border-b border-white/5">
+                                    <span className="text-sm text-gray-400">Node</span>
+                                    <span className="text-sm font-mono">{server.relationships?.node?.attributes?.name || 'Unknown'}</span>
+                                </div>
+                                <div className="flex justify-between items-center py-2">
+                                    <span className="text-sm text-gray-400">Server ID</span>
+                                    <span className="text-sm font-mono">{server.uuid}</span>
+                                </div>
+                            </div>
+
+                            {/* Reinstall */}
+                            <div className="bg-[#161b22] border border-white/10 rounded-xl p-6">
+                                <h3 className="text-gray-400 text-xs uppercase font-bold mb-4">Reinstall Server</h3>
+                                <p className="text-sm text-gray-400 mb-6">Reinstalling your server will delete some configuration files but usually keeps data. Backup first!</p>
 
                                 <button
                                     onClick={() => {
@@ -247,7 +312,7 @@ const ManageServer = () => {
                                         }
                                     }}
                                     disabled={reinstallMutation.isPending}
-                                    className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold transition"
+                                    className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded text-sm font-bold transition"
                                 >
                                     {reinstallMutation.isPending ? 'Reinstalling...' : 'Reinstall Server'}
                                 </button>
