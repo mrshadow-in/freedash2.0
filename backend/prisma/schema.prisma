@@ -87,11 +87,7 @@ model Server {
   updatedAt       DateTime     @updatedAt
 }
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
 
-  @@unique([nodeId, ip, port])
-}
 
 model Plan {
   id          String   @id @default(uuid())

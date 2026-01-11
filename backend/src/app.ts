@@ -17,7 +17,7 @@ import { discordLogin, discordCallback } from './controllers/discordAuthControll
 import passport from 'passport';
 import botRoutes from './routes/botRoutes';
 import adRoutes from './routes/adRoutes';
-import adRoutes from './routes/adRoutes';
+
 
 const app = express();
 
