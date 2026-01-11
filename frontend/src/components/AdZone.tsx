@@ -21,7 +21,9 @@ export type AdZonePosition =
     | 'empty-server-zone'
     | 'afk-top'
     | 'afk-middle'
-    | 'afk-bottom';
+    | 'afk-bottom'
+    | 'afk-sidebar-left'
+    | 'afk-sidebar-right';
 
 interface Ad {
     id: string;

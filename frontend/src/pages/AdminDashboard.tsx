@@ -2706,7 +2706,9 @@ function AdsTab() {
         { id: 'footer', label: 'Global Footer' },
         { id: 'afk-top', label: 'AFK Zone Top' },
         { id: 'afk-middle', label: 'AFK Zone Middle' },
-        { id: 'afk-bottom', label: 'AFK Zone Bottom' }
+        { id: 'afk-bottom', label: 'AFK Zone Bottom' },
+        { id: 'afk-sidebar-left', label: 'AFK Sidebar Left' },
+        { id: 'afk-sidebar-right', label: 'AFK Sidebar Right' }
     ];
 
     const filteredAds = filterPosition === 'all'
