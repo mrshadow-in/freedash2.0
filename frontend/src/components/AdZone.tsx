@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../api/client';
 import { Plus, ExternalLink, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuthStore } from '../store/authStore';
 
 export type AdZonePosition =
     | 'top'
@@ -92,6 +93,8 @@ const AdZone: React.FC<AdZoneProps> = ({
     isAFK = false
 }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
+    const { user } = useAuthStore(); // Get current user
+    const isAdmin = user?.role === 'ADMIN'; // Check if user is admin
 
     const { data: ads, isLoading } = useQuery({
         queryKey: ['ads', position, isAFK],
@@ -128,6 +131,14 @@ const AdZone: React.FC<AdZoneProps> = ({
     }
 
     const currentAds = rotate && ads && ads.length > 0 ? [ads[currentIndex]] : ads;
+
+    // ADMIN-ONLY FEATURE: Hide ad placeholders from normal users
+    // - Admin users: See "Advertise Here" placeholders to manage ad positions
+    // - Normal users: See nothing if no ads exist (clean UI)
+    // This applies to ALL pages (Dashboard, AFK, etc.) since AdZone is shared
+    if ((!currentAds || currentAds.length === 0) && !isAdmin) {
+        return null;
+    }
 
     return (
         <div className={`flex flex-col items-center gap-4 w-full ${className}`}>
