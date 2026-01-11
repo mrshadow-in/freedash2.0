@@ -5,7 +5,7 @@ import api from '../api/client';
 import { motion } from 'framer-motion';
 import { Loader2, ShoppingCart, Copy, Check, Terminal, FolderOpen, Settings, Info } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { format } from 'date-fns';
+
 
 // Components
 import Header from '../components/Header';
@@ -22,7 +22,6 @@ const ManageServer = () => {
     const [isShopOpen, setIsShopOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'console' | 'resources' | 'files' | 'settings' | 'shop'>('console');
     const [copiedIP, setCopiedIP] = useState(false);
-    const [showReinstallConfirm, setShowReinstallConfirm] = useState(false);
 
     // Fetch Server Details
     const { data: server, isLoading, error } = useQuery({
@@ -96,8 +95,7 @@ const ManageServer = () => {
             return api.post(`/servers/${id}/reinstall`);
         },
         onSuccess: () => {
-            toast.success('Server reinstall started');
-            setShowReinstallConfirm(false);
+            toast.success('Server reinstall started'); // Removed setShowReinstallConfirm
             queryClient.invalidateQueries({ queryKey: ['server', id] });
         },
         onError: (error: any) => {
