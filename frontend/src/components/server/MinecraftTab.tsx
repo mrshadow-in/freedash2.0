@@ -104,18 +104,70 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
         }
     });
 
-    // Change version mutation
+    // Change version mutation (with automatic server management)
     const changeVersionMutation = useMutation({
         mutationFn: async (version: string) => {
-            return api.post(`/servers/${server.id}/minecraft/version`, { version });
+            // Step 1: Stop server
+            toast.loading('Stopping server...', { id: 'version-change' });
+            await api.post(`/servers/${server.id}/power`, { signal: 'stop' });
+
+            // Wait for server to stop
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            // Step 2: Set server to installing mode
+            toast.loading('Preparing server...', { id: 'version-change' });
+            await api.put(`/servers/${server.id}`, { status: 'installing' });
+
+            // Step 3: Change version (downloads new JAR)
+            toast.loading(`Downloading Minecraft ${version}...`, { id: 'version-change' });
+            await api.post(`/servers/${server.id}/minecraft/version`, { version });
+
+            // Wait for download
+            await new Promise(resolve => setTimeout(resolve, 5000));
+
+            // Step 4: Set back to active
+            toast.loading('Finalizing...', { id: 'version-change' });
+            await api.put(`/servers/${server.id}`, { status: 'active' });
+
+            return { version };
         },
         onSuccess: (data) => {
-            toast.success(data.data.message);
+            toast.success(`Server updated to Minecraft ${data.version}! You can start it now.`, {
+                id: 'version-change',
+                duration: 5000
+            });
+            // Refresh server data
+            window.location.reload();
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to change version');
+            toast.error(error.response?.data?.message || 'Failed to change version', {
+                id: 'version-change'
+            });
         }
     });
+
+    const handleChangeVersion = () => {
+        if (!selectedPaperVersion) {
+            toast.error('Please select a version');
+            return;
+        }
+
+        // Confirmation dialog
+        const confirmed = window.confirm(
+            `⚠️ Change Server Version?\n\n` +
+            `This will:\n` +
+            `1. Stop your server\n` +
+            `2. Download Minecraft ${selectedPaperVersion}\n` +
+            `3. Replace the server JAR\n` +
+            `4. Set server to installing mode during process\n\n` +
+            `The server will be ready to start in about 10-15 seconds.\n\n` +
+            `Continue?`
+        );
+
+        if (confirmed) {
+            changeVersionMutation.mutate(selectedPaperVersion);
+        }
+    };
 
     // Fetch Properties
     useEffect(() => {
@@ -177,14 +229,6 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
             return;
         }
         installMutation.mutate({ plugin, version: selectedVersion });
-    };
-
-    const handleChangeVersion = () => {
-        if (!selectedPaperVersion) {
-            toast.error('Please select a version');
-            return;
-        }
-        changeVersionMutation.mutate(selectedPaperVersion);
     };
 
     return (

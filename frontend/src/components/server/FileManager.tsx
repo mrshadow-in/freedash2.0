@@ -78,10 +78,13 @@ const FileManager = ({ serverId }: FileManagerProps) => {
         onError: () => toast.error('Failed to rename')
     });
 
-    // Upload (Basic implementation)
+    // Upload (with proper error handling and animation)
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files?.length) return;
         const file = e.target.files[0];
+
+        // Show uploading toast
+        const uploadToast = toast.loading(`Uploading ${file.name}...`);
 
         try {
             // Get URL
@@ -92,30 +95,27 @@ const FileManager = ({ serverId }: FileManagerProps) => {
             const formData = new FormData();
             formData.append('files', file);
 
-            // Note: Pterodactyl signed URLs usually accept POST with multipart/form-data
-            // Since we are proxying, this might need axios.post to external URL
-            // But browser can post directly to ptero upload url to avoid backend bandwidth
-            // However, CORS might be an issue if Ptero isn't configured for this Dashboard domain.
-            // Let's assume CORS is fine or we proxy via ptero.
-            // Actually, usually Pterodactyl requires `&directory=...` in query param of upload url 
-            // but the `getUploadUrl` usually returns a base url where we append query params? 
-            // Or the endpoint itself handles it.
-            // Pterodactyl API: GET /upload returns { url: "..." }
-            // Then POST to that URL with file and `directory` param.
-
             const uploadTarget = `${uploadUrl}&directory=${encodeURIComponent(directory)}`;
 
-            await fetch(uploadTarget, {
+            const response = await fetch(uploadTarget, {
                 method: 'POST',
                 body: formData
             });
 
+            // Check if upload was successful
+            if (!response.ok) {
+                throw new Error(`Upload failed with status: ${response.status}`);
+            }
+
             queryClient.invalidateQueries({ queryKey: ['files', serverId, directory] });
-            toast.success('File uploaded');
+            toast.success(`${file.name} uploaded successfully!`, { id: uploadToast });
         } catch (error) {
-            console.error(error);
-            toast.error('Upload failed');
+            console.error('Upload error:', error);
+            toast.error(`Failed to upload ${file.name}`, { id: uploadToast });
         }
+
+        // Reset input
+        e.target.value = '';
     };
 
 
