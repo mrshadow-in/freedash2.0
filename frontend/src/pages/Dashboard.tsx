@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import { useAuthStore } from '../store/authStore';
@@ -13,6 +14,7 @@ import Header from '../components/Header';
 
 const Dashboard = () => {
     const { user: authUser, setUser } = useAuthStore();
+    const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showRedeemModal, setShowRedeemModal] = useState(false);
@@ -67,11 +69,14 @@ const Dashboard = () => {
         mutationFn: async (data: { name: string, planId: string }) => {
             return api.post('/servers/create', data);
         },
-        onSuccess: () => {
+        onSuccess: (response: any) => {
             queryClient.invalidateQueries({ queryKey: ['servers'] });
             setShowCreateModal(false);
             setServerName('');
-            toast.success('Server deployed! Initializing...');
+            toast.success('Server deployed! Redirecting...');
+            if (response.data?.server?.id) {
+                navigate(`/server/${response.data.server.id}`);
+            }
         },
         onError: (error: any) => {
             toast.error(error.response?.data?.message || 'Failed to create server');
@@ -278,8 +283,8 @@ const Dashboard = () => {
                     ) : (
                         servers?.map((server: any) => (
                             <ServerCard
-                                key={server._id}
-                                id={server._id}
+                                key={server.id}
+                                id={server.id}
                                 name={server.name}
                                 status={server.status}
                                 planName={server.planId?.name || 'Standard Plan'}
