@@ -207,6 +207,7 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
         billingEnabled: false,
         billingInterval: 1,
         coinsPerGbHour: 0,
+        coinsPerGbMinute: 0,
         billingAutoSuspend: false,
         billingAutoResume: false
     });
@@ -244,6 +245,7 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                 billingEnabled: settings.billing?.enabled ?? false,
                 billingInterval: settings.billing?.interval || 1,
                 coinsPerGbHour: settings.billing?.coinsPerGbHour || 0,
+                coinsPerGbMinute: settings.billing?.coinsPerGbMinute || 0,
                 billingAutoSuspend: settings.billing?.autoSuspend ?? false,
                 billingAutoResume: settings.billing?.autoResume ?? false,
                 webhook: ''
@@ -300,6 +302,7 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                     enabled: formData.billingEnabled,
                     interval: formData.billingInterval,
                     coinsPerGbHour: formData.coinsPerGbHour,
+                    coinsPerGbMinute: formData.coinsPerGbMinute,
                     autoSuspend: formData.billingAutoSuspend,
                     autoResume: formData.billingAutoResume
                 });
@@ -404,7 +407,7 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                         <label>Enable Automatic Billing</label>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label className="block text-sm text-gray-400 mb-2">Billing Interval (Minutes)</label>
                             <input
@@ -416,12 +419,22 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm text-gray-400 mb-2">Cost per GB RAM / Hour (Coins)</label>
+                            <label className="block text-sm text-gray-400 mb-2">Cost / GB / Hour (Legacy)</label>
                             <input
                                 type="number"
-                                step="0.01"
+                                step="any"
                                 value={formData.coinsPerGbHour}
                                 onChange={(e) => setFormData({ ...formData, coinsPerGbHour: parseFloat(e.target.value) })}
+                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-2">Cost / GB / Minute</label>
+                            <input
+                                type="number"
+                                step="any"
+                                value={formData.coinsPerGbMinute}
+                                onChange={(e) => setFormData({ ...formData, coinsPerGbMinute: parseFloat(e.target.value) })}
                                 className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
                             />
                         </div>

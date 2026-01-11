@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import { prisma } from '../prisma';
-import { suspendPteroServer, unsuspendPteroServer } from '../services/pterodactyl';
+import { suspendPteroServer, unsuspendPteroServer, getPteroServerResources } from '../services/pterodactyl';
 
 let billingTask: any | null = null;
 let isJobRunning = false;
@@ -64,44 +64,62 @@ export const processBillingCycle = async () => {
     const settings = await getSettings();
     const config = (settings.billing as any) || {};
 
-    const ratePerGbHour = parseFloat(config.coinsPerGbHour || '0');
+    // Check for Per-Minute Pricing first, fallback to Hourly/60
+    let ratePerGbMinute = parseFloat(config.coinsPerGbMinute || '0');
+    if (ratePerGbMinute <= 0 && config.coinsPerGbHour) {
+        ratePerGbMinute = parseFloat(config.coinsPerGbHour) / 60;
+    }
+
     const autoSuspend = config.autoSuspend ?? false;
     const autoResume = config.autoResume ?? false;
 
-    if (ratePerGbHour <= 0) return; // No cost
+    if (ratePerGbMinute <= 0) return; // No cost configured
 
-    console.log(`[Billing] Starting cycle. Rate: ${ratePerGbHour}/GB/hr`);
+    // console.log(`[Billing] Starting cycle. Rate: ${ratePerGbMinute}/GB/min`);
 
     // Fetch Active & Running Servers
-    // Note: We trust DB status. 'active' usually implies provisioned. 
-    // User requested "Server is RUNNING". If DB status tracks 'running', we use it. 
-    // If DB status is 'active' (default for online), we act on it.
-    // We exclude 'stopped', 'suspended', 'deleted', 'installing'.
-
+    // We check ALL non-suspended/deleted servers, then verify ONLINE status via Pterodactyl
     const servers = await prisma.server.findMany({
         where: {
-            status: { in: ['running', 'active'] }, // 'active' is often used for 'Online' in this panel
-            isSuspended: false
+            status: { notIn: ['deleted', 'suspended', 'installing'] },
+            isSuspended: false,
+            pteroIdentifier: { not: null } // Must have ptero ID
         },
         include: { owner: true }
     });
 
     const timestamp = new Date();
+    const interval = parseInt(config.interval || '1');
 
     for (const server of servers) {
         try {
-            // Skip if user banned
+            // Skip if user banned or special case (maybe admins are free? optional)
             if (server.owner.isBanned) continue;
+            if (!server.pteroIdentifier) continue;
 
+            // 1. LIVE CHECK: Is server actually online?
+            let isOnline = false;
+            try {
+                // We use getPteroServerResources because it gives current_state directly
+                const resources = await getPteroServerResources(server.pteroIdentifier);
+                // States: running, starting, stopping, offline
+                if (resources.current_state === 'running' || resources.current_state === 'starting') {
+                    isOnline = true;
+                }
+            } catch (err: any) {
+                // If 404, server might be gone. If 500/timeout, assume offline to be safe (don't charge errors)
+                // console.warn(`[Billing] Failed to check status for ${server.name}: ${err.message}`);
+                continue; // Skip charging if we can't verify status
+            }
+
+            if (!isOnline) {
+                // console.log(`[Billing] Skipping ${server.name} (Offline)`);
+                continue;
+            }
+
+            // 2. CALCULATION
             const ramGb = server.ramMb / 1024;
-            const hourlyCost = ramGb * ratePerGbHour;
-            const perMinuteCost = hourlyCost / 60;
-
-            // Adjust for interval (e.g. if running every 5 mins, charge 5x)
-            // User formula said: per_minute_cost = ... 
-            // If interval is 1, multiply by 1.
-            const interval = parseInt(config.interval || '1');
-            const chargeAmount = perMinuteCost * interval;
+            const chargeAmount = ramGb * ratePerGbMinute * interval;
 
             if (server.owner.coins >= chargeAmount) {
                 // Deduct Coins
@@ -115,12 +133,12 @@ export const processBillingCycle = async () => {
                             userId: server.ownerId,
                             type: 'debit',
                             amount: chargeAmount,
-                            description: `Server Billing: ${server.name} (${chargeAmount.toFixed(4)} coins)`,
+                            description: `Server Usage (${interval}m): ${server.name}`,
                             balanceAfter: server.owner.coins - chargeAmount,
                             metadata: {
                                 serverId: server.id,
                                 ramGb,
-                                rate: ratePerGbHour,
+                                rate: ratePerGbMinute,
                                 timestamp
                             }
                         }
@@ -129,7 +147,7 @@ export const processBillingCycle = async () => {
                 // console.log(`[Billing] Charged ${server.owner.username}: ${chargeAmount}`);
 
             } else {
-                // Insufficient Coins
+                // Insufficient Coins -> Suspend
                 if (autoSuspend) {
                     console.log(`[Billing] Suspending server ${server.id} (User: ${server.owner.username}) - Insufficient funds`);
 
@@ -139,8 +157,6 @@ export const processBillingCycle = async () => {
                             await suspendPteroServer(server.pteroServerId);
                         } catch (err: any) {
                             console.error(`[Billing] Ptero Suspend Failed: ${err.message}`);
-                            // Continue to update DB to avoid loop? Or retry? 
-                            // We should verify suspension.
                         }
                     }
 
@@ -156,12 +172,11 @@ export const processBillingCycle = async () => {
                         }
                     });
 
-                    // Log Notification/Transaction?
                     await prisma.auditLog.create({
                         data: {
-                            details: `Server ${server.name} suspended due to insufficient coins.`,
+                            details: `Server ${server.name} suspended (Billing).`,
                             action: 'billing_suspend',
-                            actorId: server.ownerId // attributed to user
+                            actorId: server.ownerId
                         }
                     });
                 }
@@ -185,11 +200,9 @@ export const processBillingCycle = async () => {
         for (const server of suspendedServers) {
             try {
                 const ramGb = server.ramMb / 1024;
-                const hourlyCost = ramGb * ratePerGbHour;
-                const perMinuteCost = hourlyCost / 60;
-
-                // If user has enough for at least 1 interval
-                const required = perMinuteCost * parseInt(config.interval || '1');
+                // Requirement for resume: Can afford at least 1 interval? Or maybe 1 hour is safer?
+                // Let's stick to 1 interval as minimum entry.
+                const required = ramGb * ratePerGbMinute * interval;
 
                 if (server.owner.coins >= required) {
                     console.log(`[Billing] Auto-resuming server ${server.id} (User: ${server.owner.username})`);
@@ -205,7 +218,7 @@ export const processBillingCycle = async () => {
                             suspendedAt: null,
                             suspendedBy: null,
                             suspendReason: null,
-                            status: 'active' // Return to active/provisioned
+                            status: 'active'
                         }
                     });
                 }

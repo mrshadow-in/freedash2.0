@@ -1032,7 +1032,7 @@ export const updateSocialMedia = async (req: Request, res: Response) => {
 // Update Billing Settings
 export const updateBillingSettings = async (req: Request, res: Response) => {
     try {
-        const { enabled, interval, coinsPerGbHour, autoSuspend, autoResume } = req.body;
+        const { enabled, interval, coinsPerGbHour, coinsPerGbMinute, autoSuspend, autoResume } = req.body;
         const currentSettings = await getSettingsOrCreate();
 
         const settings = await prisma.settings.update({
@@ -1041,7 +1041,8 @@ export const updateBillingSettings = async (req: Request, res: Response) => {
                 billing: {
                     enabled: enabled ?? false,
                     interval: parseInt(interval) || 1,
-                    coinsPerGbHour: coinsPerGbHour,
+                    coinsPerGbHour: coinsPerGbHour, // Kept for legacy/fallback
+                    coinsPerGbMinute: coinsPerGbMinute,  // New field
                     autoSuspend: autoSuspend ?? false,
                     autoResume: autoResume ?? false
                 }
