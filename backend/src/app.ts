@@ -27,6 +27,7 @@ app.use(cors());
 app.use(helmet());
 app.use(express.json());
 app.use(passport.initialize());
+app.use('/static', express.static('public'));
 
 // Routes
 // Routes

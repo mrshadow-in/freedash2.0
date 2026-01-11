@@ -207,6 +207,16 @@ const NodeManager = () => {
 
                         <form onSubmit={handleSubmit} className="p-6 space-y-6">
                             <div className="grid grid-cols-2 gap-6">
+                                <div className="col-span-2 bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                                    <h4 className="text-blue-400 font-bold text-sm mb-2">🚀 How to Connect a Remote VPS</h4>
+                                    <p className="text-gray-300 text-xs mb-3">
+                                        Run this command on your fresh VPS to automatically install Docker and prepare it for FreeDash:
+                                    </p>
+                                    <div className="flex bg-black/30 rounded p-2 text-xs font-mono text-gray-300 relative group">
+                                        <code className="flex-1">curl -sL {window.location.protocol}//{window.location.hostname}:3001/static/setup.sh | bash</code>
+                                    </div>
+                                </div>
+
                                 <div className="space-y-4">
                                     <h4 className="text-purple-400 font-bold text-sm uppercase">Basic Details</h4>
                                     <div>
