@@ -312,7 +312,7 @@ export const getServer = async (req: AuthRequest, res: Response) => {
         if (server.pteroServerId) {
             try {
                 const pteroServer = await getPteroServer(server.pteroServerId);
-                const pteroStatus = pteroServer.status || (pteroServer.suspended ? 'suspended' : 'running');
+                const pteroStatus = pteroServer.status || (pteroServer.suspended ? 'suspended' : 'active');
 
                 // basic allocation check
                 const allocations = pteroServer.relationships?.allocations?.data || [];

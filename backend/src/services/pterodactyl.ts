@@ -206,7 +206,7 @@ export const getPteroServer = async (serverId: number) => {
     const config = await getPteroConfig();
 
     const response = await axios.get(
-        `${config.url}/api/application/servers/${serverId}`,
+        `${config.url}/api/application/servers/${serverId}?include=allocations`,
         {
             headers: {
                 Authorization: `Bearer ${config.key}`,
@@ -455,8 +455,8 @@ export const getPteroServerResources = async (identifier: string) => {
     );
 
     const data = (response.data as any).attributes;
-    // Cache for 30 seconds
-    await redis.set(CACHE_KEY, JSON.stringify(data), 'EX', 30);
+    // Cache for 1 second (almost real-time)
+    await redis.set(CACHE_KEY, JSON.stringify(data), 'EX', 1);
 
     return data;
 };
