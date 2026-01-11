@@ -98,7 +98,21 @@ export const createServer = async (req: AuthRequest, res: Response) => {
 
             // Save Server to DB with IP address
             // Extract IP and port from allocations
-            const allocations = pteroServer.relationships?.allocations?.data || [];
+            console.log('Ptero Allocations:', JSON.stringify(pteroServer.relationships?.allocations, null, 2));
+
+            let allocations = pteroServer.relationships?.allocations?.data || [];
+
+            // If no allocations in create response, try fetching server details immediately
+            if (allocations.length === 0) {
+                try {
+                    console.log('Allocations missing in create response, fetching details...');
+                    const fullServer = await getPteroServer(pteroServer.attributes.id);
+                    allocations = fullServer.relationships?.allocations?.data || [];
+                } catch (err) {
+                    console.error('Failed to fetch fallback allocations:', err);
+                }
+            }
+
             const primaryAllocation = allocations.find((a: any) => a.attributes.is_default) || allocations[0];
             const serverIp = primaryAllocation
                 ? `${primaryAllocation.attributes.ip}:${primaryAllocation.attributes.port}`
