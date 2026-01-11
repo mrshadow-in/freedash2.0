@@ -73,6 +73,27 @@ export const createPteroUser = async (email: string, username: string, password?
     }
 };
 
+export const reinstallServer = async (pteroId: number) => {
+    const config = await getPteroConfig();
+    try {
+        await axios.post(
+            `${config.url}/api/application/servers/${pteroId}/reinstall`,
+            {},
+            {
+                headers: {
+                    Authorization: `Bearer ${config.key}`,
+                    'Content-Type': 'application/json',
+                    Accept: 'application/vnd.pterodactyl.v1+json'
+                }
+            }
+        );
+        return true;
+    } catch (error) {
+        console.error('Error reinstalling server:', error);
+        throw error;
+    }
+};
+
 // Update Pterodactyl user password
 export const updatePteroUserPassword = async (userId: number, password: string) => {
     const config = await getPteroConfig();

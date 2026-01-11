@@ -13,6 +13,7 @@ import ServerHeader from '../components/server/ServerHeader';
 import ShopModal from '../components/shop/ShopModal';
 import Console from '../components/server/Console';
 import FileManager from '../components/server/FileManager';
+import MinecraftTab from '../components/server/MinecraftTab';
 
 
 const ManageServer = () => {
@@ -20,7 +21,7 @@ const ManageServer = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [isShopOpen, setIsShopOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<'console' | 'resources' | 'files' | 'settings' | 'shop'>('console');
+    const [activeTab, setActiveTab] = useState<'console' | 'resources' | 'files' | 'settings' | 'shop' | 'minecraft'>('console');
     const [copiedIP, setCopiedIP] = useState(false);
 
     // Fetch Server Details
@@ -213,6 +214,12 @@ const ManageServer = () => {
                     >
                         <ShoppingCart size={18} /> Shop
                     </button>
+                    <button
+                        onClick={() => setActiveTab('minecraft')}
+                        className={`flex items-center gap-2 px-6 py-3 font-bold transition whitespace-nowrap rounded-t-lg ${activeTab === 'minecraft' ? 'text-white bg-white/5 border-b-2 border-green-500' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                    >
+                        <Gamepad2 size={18} /> Minecraft
+                    </button>
                 </div>
 
                 {/* Tab Content */}
@@ -223,6 +230,10 @@ const ManageServer = () => {
 
                     {activeTab === 'files' && (
                         <FileManager serverId={id!} />
+                    )}
+
+                    {activeTab === 'minecraft' && (
+                        <MinecraftTab server={server} />
                     )}
 
                     {activeTab === 'settings' && (

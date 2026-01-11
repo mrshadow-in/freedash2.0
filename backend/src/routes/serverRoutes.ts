@@ -20,7 +20,8 @@ import {
     getServerUploadUrl,
     reinstallServerAction
 } from '../controllers/serverController';
-import { estimateCost, purchaseItem } from '../controllers/shopController'; // Added
+import { estimateCost, purchaseItem } from '../controllers/shopController';
+import * as mcController from '../controllers/minecraftController';
 
 const router = Router();
 
