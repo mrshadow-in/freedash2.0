@@ -617,13 +617,15 @@ export const renamePteroFile = async (
 };
 
 // Upload file (Binary/Multipart)
+// Upload file (Binary/Multipart)
 export const uploadFileToPtero = async (identifier: string, directory: string, filename: string, content: Buffer) => {
     // 1. Get Signed Upload URL
     const uploadUrl = await getUploadUrl(identifier);
 
     // 2. Construct Multipart Body Manually (No 'form-data' dependency)
     const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2);
-    const header = `--${boundary}\r\nContent-Disposition: form-data; name="files"; filename="${filename}"\r\nContent-Type: application/java-archive\r\n\r\n`;
+    // Use generic binary stream content type
+    const header = `--${boundary}\r\nContent-Disposition: form-data; name="files"; filename="${filename}"\r\nContent-Type: application/octet-stream\r\n\r\n`;
     const footer = `\r\n--${boundary}--`;
 
     const body = Buffer.concat([
@@ -633,7 +635,15 @@ export const uploadFileToPtero = async (identifier: string, directory: string, f
     ]);
 
     // 3. Upload to Node
-    await axios.post(`${uploadUrl}&directory=${encodeURIComponent(directory)}`, body, {
+    // Important: 'directory' is passed as a query param to the upload URL usually, or appended. 
+    // The getUploadUrl returns a URL that usually creates file in root if not specified.
+    // For Wings, we usually append `&directory=/plugins`.
+
+    // Check if uploadUrl already has query params
+    const separator = uploadUrl.includes('?') ? '&' : '?';
+    const finalUrl = `${uploadUrl}${separator}directory=${encodeURIComponent(directory)}`;
+
+    await axios.post(finalUrl, body, {
         headers: {
             'Content-Type': `multipart/form-data; boundary=${boundary}`,
             'Content-Length': body.length
