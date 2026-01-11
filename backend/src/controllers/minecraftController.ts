@@ -2,7 +2,10 @@ import { Request, Response } from 'express';
 import {
     getFileContent,
     writeFileContent,
-    pullPteroFile
+    pullPteroFile,
+    listFiles,
+    deleteFile,
+    updateStartupVariable
 } from '../services/pterodactyl';
 import { prisma } from '../prisma';
 import axios from 'axios';
@@ -162,5 +165,89 @@ export const installPlugin = async (req: AuthRequest, res: Response) => {
     } catch (error) {
         console.error('Error installing plugin:', error);
         res.status(500).json({ message: 'Failed to install plugin' });
+    }
+};
+
+// Get list of installed plugins
+export const getInstalledPlugins = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        const server = await prisma.server.findUnique({ where: { id } });
+        if (!server || !server.pteroIdentifier) {
+            return res.status(404).json({ message: 'Server not found' });
+        }
+        if (server.ownerId !== req.user!.userId && req.user!.role !== 'admin') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        // List files in /plugins directory
+        const files = await listFiles(server.pteroIdentifier, '/plugins');
+
+        // Filter for .jar files only
+        const plugins = files
+            .filter((file: any) => file.attributes.name.endsWith('.jar'))
+            .map((file: any) => ({
+                name: file.attributes.name,
+                size: file.attributes.size,
+                modified: file.attributes.modified_at
+            }));
+
+        res.json(plugins);
+    } catch (error: any) {
+        console.error('Error fetching installed plugins:', error);
+        // Return empty array if directory doesn't exist
+        res.json([]);
+    }
+};
+
+// Delete a plugin
+export const deletePlugin = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id, filename } = req.params;
+
+        const server = await prisma.server.findUnique({ where: { id } });
+        if (!server || !server.pteroIdentifier) {
+            return res.status(404).json({ message: 'Server not found' });
+        }
+        if (server.ownerId !== req.user!.userId && req.user!.role !== 'admin') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        // Delete the plugin file
+        await deleteFile(server.pteroIdentifier, '/plugins', [filename]);
+
+        res.json({ message: 'Plugin deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting plugin:', error);
+        res.status(500).json({ message: 'Failed to delete plugin' });
+    }
+};
+
+// Change server version (Paper only)
+export const changeServerVersion = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { version } = req.body;
+
+        if (!version) {
+            return res.status(400).json({ message: 'Version is required' });
+        }
+
+        const server = await prisma.server.findUnique({ where: { id } });
+        if (!server || !server.pteroIdentifier) {
+            return res.status(404).json({ message: 'Server not found' });
+        }
+        if (server.ownerId !== req.user!.userId && req.user!.role !== 'admin') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        // Update MINECRAFT_VERSION variable via startup API
+        await updateStartupVariable(server.pteroIdentifier, 'MINECRAFT_VERSION', version);
+
+        res.json({ message: `Server version changed to ${version}. Restart server to apply.`, version });
+    } catch (error) {
+        console.error('Error changing server version:', error);
+        res.status(500).json({ message: 'Failed to change server version' });
     }
 };

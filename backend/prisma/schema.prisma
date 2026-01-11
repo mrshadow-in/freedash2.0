@@ -60,6 +60,7 @@ model User {
   bannedId       String?
 
   ads            Ad[]
+  serverAccess   ServerAccess[]
 }
 
 model Server {
@@ -86,9 +87,24 @@ model Server {
   serverIp        String?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
+  
+  sharedWith      ServerAccess[]
 }
 
-
+model ServerAccess {
+  id          String   @id @default(uuid())
+  serverId    String
+  userId      String
+  permissions Json     // Stores permission structure
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  server      Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([serverId, userId])
+  @@map("server_access")
+}
 
 model Plan {
   id          String   @id @default(uuid())

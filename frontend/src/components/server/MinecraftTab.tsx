@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-
-import { Settings, Package, Search, Download, Save, Loader2 } from 'lucide-react';
+import { Settings, Package, Search, Download, Loader2, Trash2, RefreshCw, Zap } from 'lucide-react';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import api from '../../api/client';
 import toast from 'react-hot-toast';
 
@@ -8,8 +8,23 @@ interface MinecraftTabProps {
     server: any;
 }
 
+// Popular plugins to show by default
+const POPULAR_PLUGINS = [
+    { id: '9089', name: 'Essentials', author: 'EssentialsX Team', downloads: '50M+', description: 'Essential commands and features' },
+    { id: '13224', name: 'WorldEdit', author: 'sk89q', downloads: '30M+', description: 'In-game map editor' },
+    { id: '34315', name: 'Vault', author: 'MilkBowl', downloads: '25M+', description: 'Economy & Permissions API' },
+    { id: '19254', name: 'LuckPerms', author: 'Luck', downloads: '20M+', description: 'Permissions plugin' },
+    { id: '274', name: 'WorldGuard', author: 'sk89q', downloads: '18M+', description: 'Region protection' },
+];
+
+// Paper versions
+const PAPER_VERSIONS = [
+    '1.21.1', '1.21', '1.20.6', '1.20.4', '1.20.2', '1.20.1',
+    '1.19.4', '1.19.3', '1.19.2', '1.18.2', '1.17.1', '1.16.5'
+];
+
 const MinecraftTab = ({ server }: MinecraftTabProps) => {
-    const [subTab, setSubTab] = useState<'settings' | 'plugins'>('settings');
+    const [subTab, setSubTab] = useState<'settings' | 'plugins' | 'version'>('plugins');
 
     // Properties State
     const [properties, setProperties] = useState<any>({});
@@ -18,9 +33,67 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
 
     // Plugins State
     const [searchQuery, setSearchQuery] = useState('');
-    const [plugins, setPlugins] = useState<any[]>([]);
+    const [plugins, setPlugins] = useState<any[]>(POPULAR_PLUGINS);
     const [searching, setSearching] = useState(false);
-    const [installing, setInstalling] = useState<string | null>(null);
+    const [selectedVersion, setSelectedVersion] = useState('latest');
+
+    // Version Changer State
+    const [selectedPaperVersion, setSelectedPaperVersion] = useState('');
+
+    // Fetch installed plugins
+    const { data: installedPlugins = [], refetch: refetchInstalled } = useQuery({
+        queryKey: ['installed-plugins', server.id],
+        queryFn: async () => {
+            const res = await api.get(`/servers/${server.id}/minecraft/plugins/installed`);
+            return res.data;
+        },
+        refetchInterval: 10000 // Refresh every 10 seconds
+    });
+
+    // Install plugin mutation
+    const installMutation = useMutation({
+        mutationFn: async ({ plugin, version }: { plugin: any; version: string }) => {
+            return api.post(`/servers/${server.id}/minecraft/plugins/install`, {
+                resourceId: plugin.id,
+                fileName: `${plugin.name}.jar`,
+                version
+            });
+        },
+        onSuccess: (_, variables) => {
+            toast.success(`Installing ${variables.plugin.name}...`);
+            setTimeout(() => refetchInstalled(), 3000);
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Failed to install plugin');
+        }
+    });
+
+    // Delete plugin mutation
+    const deleteMutation = useMutation({
+        mutationFn: async (filename: string) => {
+            return api.delete(`/servers/${server.id}/minecraft/plugins/${filename}`);
+        },
+        onSuccess: () => {
+            toast.success('Plugin deleted');
+            refetchInstalled();
+        },
+        onError: () => {
+            toast.error('Failed to delete plugin');
+        }
+    });
+
+    // Change version mutation
+    const changeVersionMutation = useMutation({
+        mutationFn: async (version: string) => {
+            return api.post(`/servers/${server.id}/minecraft/version`, { version });
+        },
+        onSuccess: (data) => {
+            toast.success(data.data.message);
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Failed to change version');
+        }
+    });
 
     // Fetch Properties
     useEffect(() => {
@@ -60,7 +133,10 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
 
     const handleSearchPlugins = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!searchQuery.trim()) return;
+        if (!searchQuery.trim()) {
+            setPlugins(POPULAR_PLUGINS);
+            return;
+        }
 
         setSearching(true);
         try {
@@ -73,19 +149,20 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
         }
     };
 
-    const handleInstallPlugin = async (plugin: any) => {
-        setInstalling(plugin.id);
-        try {
-            await api.post(`/servers/${server.id}/minecraft/plugins/install`, {
-                resourceId: plugin.id,
-                fileName: `${plugin.name}.jar`
-            });
-            toast.success(`Started installing ${plugin.name}`);
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to install plugin');
-        } finally {
-            setInstalling(null);
+    const handleInstallPlugin = (plugin: any) => {
+        if (!selectedVersion) {
+            toast.error('Please select a version');
+            return;
         }
+        installMutation.mutate({ plugin, version: selectedVersion });
+    };
+
+    const handleChangeVersion = () => {
+        if (!selectedPaperVersion) {
+            toast.error('Please select a version');
+            return;
+        }
+        changeVersionMutation.mutate(selectedPaperVersion);
     };
 
     return (
@@ -93,176 +170,243 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
             {/* Sub Tabs */}
             <div className="flex gap-4 border-b border-white/10 pb-2">
                 <button
-                    onClick={() => setSubTab('settings')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${subTab === 'settings' ? 'bg-purple-500/20 text-purple-400' : 'text-gray-400 hover:text-white'}`}
-                >
-                    <Settings size={18} /> properties
-                </button>
-                <button
                     onClick={() => setSubTab('plugins')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${subTab === 'plugins' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-400 hover:text-white'}`}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${subTab === 'plugins' ? 'bg-purple-500/20 text-purple-400' : 'text-gray-400 hover:text-white'}`}
                 >
                     <Package size={18} /> Plugins
                 </button>
+                <button
+                    onClick={() => setSubTab('version')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${subTab === 'version' ? 'bg-purple-500/20 text-purple-400' : 'text-gray-400 hover:text-white'}`}
+                >
+                    <Zap size={18} /> Version
+                </button>
+                <button
+                    onClick={() => setSubTab('settings')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${subTab === 'settings' ? 'bg-purple-500/20 text-purple-400' : 'text-gray-400 hover:text-white'}`}
+                >
+                    <Settings size={18} /> Properties
+                </button>
             </div>
 
-            {/* Settings View */}
-            {subTab === 'settings' && (
-                <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-                    <h3 className="text-xl font-bold text-white mb-6">Server Properties</h3>
+            {/* Plugins Tab */}
+            {subTab === 'plugins' && (
+                <div className="space-y-6">
+                    {/* Installed Plugins */}
+                    <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                <Package size={20} className="text-green-400" />
+                                Installed Plugins ({installedPlugins.length})
+                            </h3>
+                            <button
+                                onClick={() => refetchInstalled()}
+                                className="p-2 hover:bg-white/10 rounded-lg transition"
+                            >
+                                <RefreshCw size={16} className="text-gray-400" />
+                            </button>
+                        </div>
 
-                    {loadingProps ? (
-                        <div className="flex justify-center p-8"><Loader2 className="animate-spin text-purple-500" /></div>
-                    ) : (
-                        <form onSubmit={handleSaveProperties} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-                            {/* Gamemode */}
-                            <div>
-                                <label className="block text-gray-400 text-sm mb-1">Gamemode</label>
-                                <select
-                                    value={properties['gamemode'] || 'survival'}
-                                    onChange={e => handleChange('gamemode', e.target.value)}
-                                    className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-purple-500"
-                                >
-                                    <option value="survival">Survival</option>
-                                    <option value="creative">Creative</option>
-                                    <option value="adventure">Adventure</option>
-                                    <option value="spectator">Spectator</option>
-                                </select>
+                        {installedPlugins.length === 0 ? (
+                            <p className="text-gray-400 text-sm">No plugins installed yet</p>
+                        ) : (
+                            <div className="space-y-2">
+                                {installedPlugins.map((plugin: any) => (
+                                    <div key={plugin.name} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                                        <div>
+                                            <p className="text-white font-medium">{plugin.name}</p>
+                                            <p className="text-xs text-gray-400">{(plugin.size / 1024).toFixed(2)} KB</p>
+                                        </div>
+                                        <button
+                                            onClick={() => deleteMutation.mutate(plugin.name)}
+                                            disabled={deleteMutation.isPending}
+                                            className="p-2 hover:bg-red-500/20 text-red-400 rounded-lg transition disabled:opacity-50"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                ))}
                             </div>
+                        )}
+                    </div>
 
-                            {/* Difficulty */}
-                            <div>
-                                <label className="block text-gray-400 text-sm mb-1">Difficulty</label>
-                                <select
-                                    value={properties['difficulty'] || 'easy'}
-                                    onChange={e => handleChange('difficulty', e.target.value)}
-                                    className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-purple-500"
-                                >
-                                    <option value="peaceful">Peaceful</option>
-                                    <option value="easy">Easy</option>
-                                    <option value="normal">Normal</option>
-                                    <option value="hard">Hard</option>
-                                </select>
-                            </div>
+                    {/* Plugin Search */}
+                    <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+                        <h3 className="text-lg font-bold text-white mb-4">Plugin Manager (Spigot)</h3>
 
-                            {/* PVP */}
-                            <div>
-                                <label className="block text-gray-400 text-sm mb-1">PvP</label>
-                                <select
-                                    value={properties['pvp'] || 'true'}
-                                    onChange={e => handleChange('pvp', e.target.value)}
-                                    className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-purple-500"
-                                >
-                                    <option value="true">Enabled</option>
-                                    <option value="false">Disabled</option>
-                                </select>
-                            </div>
-
-                            {/* Whitelist */}
-                            <div>
-                                <label className="block text-gray-400 text-sm mb-1">White-list</label>
-                                <select
-                                    value={properties['white-list'] || 'false'}
-                                    onChange={e => handleChange('white-list', e.target.value)}
-                                    className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-purple-500"
-                                >
-                                    <option value="true">Enabled</option>
-                                    <option value="false">Disabled</option>
-                                </select>
-                            </div>
-
-                            {/* Max Players */}
-                            <div>
-                                <label className="block text-gray-400 text-sm mb-1">Max Players</label>
+                        <form onSubmit={handleSearchPlugins} className="flex gap-2 mb-6">
+                            <div className="flex-1 relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                                 <input
-                                    type="number"
-                                    value={properties['max-players'] || '20'}
-                                    onChange={e => handleChange('max-players', e.target.value)}
-                                    className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-purple-500"
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder="Search plugins (e.g., Essentials, WorldEdit)..."
+                                    className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
                                 />
                             </div>
-
-                            {/* Online Mode */}
-                            <div>
-                                <label className="block text-gray-400 text-sm mb-1">Online Mode</label>
-                                <select
-                                    value={properties['online-mode'] || 'true'}
-                                    onChange={e => handleChange('online-mode', e.target.value)}
-                                    className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-purple-500"
-                                >
-                                    <option value="true">True (Premium)</option>
-                                    <option value="false">False (Cracked)</option>
-                                </select>
-                            </div>
-
-                            <div className="col-span-1 md:col-span-2 lg:col-span-3 flex justify-end mt-4">
-                                <button
-                                    disabled={savingProps}
-                                    type="submit"
-                                    className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition font-medium"
-                                >
-                                    {savingProps ? <Loader2 className="animate-spin w-4 h-4" /> : <Save className="w-4 h-4" />}
-                                    Save Properties
-                                </button>
-                            </div>
+                            <button
+                                type="submit"
+                                disabled={searching}
+                                className="px-6 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-bold transition disabled:opacity-50 flex items-center gap-2"
+                            >
+                                {searching ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
+                                Search
+                            </button>
                         </form>
-                    )}
+
+                        {/* Version Selector */}
+                        <div className="mb-4">
+                            <label className="block text-sm text-gray-400 mb-2">Minecraft Version</label>
+                            <select
+                                value={selectedVersion}
+                                onChange={(e) => setSelectedVersion(e.target.value)}
+                                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                            >
+                                <option value="latest">Latest</option>
+                                {PAPER_VERSIONS.map(v => (
+                                    <option key={v} value={v}>{v}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Plugin Results */}
+                        <div className="space-y-3">
+                            {plugins.length === 0 && !searching && (
+                                <p className="text-gray-400 text-center py-8">Search for plugins or browse popular ones above</p>
+                            )}
+                            {plugins.map((plugin) => (
+                                <div key={plugin.id} className="p-4 bg-white/5 rounded-lg border border-white/10 hover:border-purple-500/50 transition">
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                            <h4 className="text-white font-bold">{plugin.name}</h4>
+                                            <p className="text-sm text-gray-400 mt-1">{plugin.description || 'No description'}</p>
+                                            <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                                                <span>By {plugin.author || 'Unknown'}</span>
+                                                <span>• {plugin.downloads || 'N/A'} downloads</span>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => handleInstallPlugin(plugin)}
+                                            disabled={installMutation.isPending}
+                                            className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold transition disabled:opacity-50 flex items-center gap-2"
+                                        >
+                                            {installMutation.isPending && installMutation.variables?.plugin.id === plugin.id ? (
+                                                <Loader2 size={16} className="animate-spin" />
+                                            ) : (
+                                                <Download size={16} />
+                                            )}
+                                            Install
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             )}
 
-            {/* Plugins View */}
-            {subTab === 'plugins' && (
-                <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-                    <h3 className="text-xl font-bold text-white mb-6">Plugin Manager (Spigot)</h3>
+            {/* Version Changer Tab */}
+            {subTab === 'version' && (
+                <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+                    <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <Zap size={20} className="text-yellow-400" />
+                        Change Server Version (Paper)
+                    </h3>
+                    <p className="text-gray-400 text-sm mb-6">
+                        Select a Paper version to change your server to. Server must be restarted for changes to take effect.
+                    </p>
 
-                    <form onSubmit={handleSearchPlugins} className="flex gap-2 mb-8">
-                        <input
-                            type="text"
-                            placeholder="Search plugins (e.g., Essentials, WorldEdit)..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="flex-1 bg-black/20 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none"
-                        />
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-2">Select Paper Version</label>
+                            <select
+                                value={selectedPaperVersion}
+                                onChange={(e) => setSelectedPaperVersion(e.target.value)}
+                                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                            >
+                                <option value="">-- Select Version --</option>
+                                {PAPER_VERSIONS.map(v => (
+                                    <option key={v} value={v}>{v}</option>
+                                ))}
+                            </select>
+                        </div>
+
                         <button
-                            type="submit"
-                            disabled={searching}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold transition flex items-center gap-2"
+                            onClick={handleChangeVersion}
+                            disabled={!selectedPaperVersion || changeVersionMutation.isPending}
+                            className="w-full px-6 py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-bold transition disabled:opacity-50 flex items-center justify-center gap-2"
                         >
-                            {searching ? <Loader2 className="animate-spin w-5 h-5" /> : <Search className="w-5 h-5" />}
-                            Search
+                            {changeVersionMutation.isPending ? (
+                                <>
+                                    <Loader2 size={18} className="animate-spin" />
+                                    Changing Version...
+                                </>
+                            ) : (
+                                <>
+                                    <Zap size={18} />
+                                    Change Version
+                                </>
+                            )}
                         </button>
-                    </form>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {plugins.map((plugin) => (
-                            <div key={plugin.id} className="bg-black/20 border border-white/5 rounded-lg p-4 flex gap-4 hover:border-blue-500/30 transition">
-                                {plugin.icon ? (
-                                    <img src={plugin.icon} alt={plugin.name} className="w-12 h-12 rounded-lg" />
-                                ) : (
-                                    <div className="w-12 h-12 bg-white/5 rounded-lg flex items-center justify-center">
-                                        <Package className="w-6 h-6 text-gray-500" />
-                                    </div>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                    <h4 className="font-bold text-white truncate">{plugin.name}</h4>
-                                    <p className="text-xs text-gray-400 mb-2 truncate">{plugin.tag}</p>
-                                    <div className="flex gap-3 text-xs text-gray-500">
-                                        <span>❤️ {plugin.likes}</span>
-                                        <span>⬇️ {plugin.downloads}</span>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => handleInstallPlugin(plugin)}
-                                    disabled={installing === plugin.id}
-                                    className="self-center bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition"
-                                    title="Install Plugin"
-                                >
-                                    {installing === plugin.id ? <Loader2 className="animate-spin w-5 h-5" /> : <Download className="w-5 h-5" />}
-                                </button>
-                            </div>
-                        ))}
+                        <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                            <p className="text-yellow-400 text-sm">
+                                ⚠️ <strong>Warning:</strong> Changing versions may cause compatibility issues with plugins. Always backup your server before changing versions.
+                            </p>
+                        </div>
                     </div>
+                </div>
+            )}
+
+            {/* Properties Tab */}
+            {subTab === 'settings' && (
+                <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+                    <h3 className="text-lg font-bold text-white mb-4">Server Properties</h3>
+
+                    {loadingProps ? (
+                        <div className="flex justify-center py-12">
+                            <Loader2 className="animate-spin text-purple-500" size={32} />
+                        </div>
+                    ) : (
+                        <form onSubmit={handleSaveProperties} className="space-y-4">
+                            {Object.keys(properties).length === 0 ? (
+                                <p className="text-gray-400 text-center py-8">No properties found</p>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {Object.entries(properties).map(([key, value]: [string, any]) => (
+                                        <div key={key}>
+                                            <label className="block text-sm text-gray-400 mb-1">{key}</label>
+                                            <input
+                                                type="text"
+                                                value={value}
+                                                onChange={(e) => handleChange(key, e.target.value)}
+                                                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            <button
+                                type="submit"
+                                disabled={savingProps || Object.keys(properties).length === 0}
+                                className="w-full px-6 py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-bold transition disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {savingProps ? (
+                                    <>
+                                        <Loader2 size={18} className="animate-spin" />
+                                        Saving...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Settings size={18} />
+                                        Save Properties
+                                    </>
+                                )}
+                            </button>
+                        </form>
+                    )}
                 </div>
             )}
         </div>

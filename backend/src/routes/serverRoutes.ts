@@ -24,6 +24,7 @@ import {
 import { estimateCost, purchaseItem } from '../controllers/shopController';
 import * as mcController from '../controllers/minecraftController';
 import * as startupController from '../controllers/startupController';
+import * as subusersController from '../controllers/subusersController';
 
 const router = Router();
 
@@ -56,6 +57,9 @@ router.get('/:id/minecraft/properties', mcController.getServerProperties as any)
 router.put('/:id/minecraft/properties', mcController.updateServerProperties as any);
 router.get('/:id/minecraft/plugins', mcController.searchPlugins as any);
 router.post('/:id/minecraft/plugins/install', mcController.installPlugin as any);
+router.get('/:id/minecraft/plugins/installed', mcController.getInstalledPlugins as any);
+router.delete('/:id/minecraft/plugins/:filename', mcController.deletePlugin as any);
+router.post('/:id/minecraft/version', mcController.changeServerVersion as any);
 
 // Shop Routes
 router.post('/shop/estimate', estimateCost as any);
@@ -64,5 +68,11 @@ router.post('/shop/purchase', purchaseItem as any);
 // Startup
 router.get('/:id/startup', startupController.getServerStartup as any);
 router.put('/:id/startup/variable', startupController.updateServerVariable as any);
+
+// Subusers
+router.get('/:id/subusers', subusersController.getServerSubusers as any);
+router.post('/:id/subusers', subusersController.addSubuser as any);
+router.put('/:id/subusers/:userId', subusersController.updateSubuserPermissions as any);
+router.delete('/:id/subusers/:userId', subusersController.removeSubuser as any);
 
 export default router;

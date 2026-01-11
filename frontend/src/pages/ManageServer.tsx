@@ -163,6 +163,37 @@ const ManageServer = () => {
                     panelUrl={settings?.pterodactylUrl || ''}
                 />
 
+                {/* Suspended Server Banner */}
+                {server.status === 'suspended' && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-gradient-to-r from-orange-600/20 to-red-600/20 border-2 border-orange-500/50 rounded-2xl p-6 mb-6 backdrop-blur-sm"
+                    >
+                        <div className="flex items-start gap-4">
+                            <div className="p-3 bg-orange-500/20 rounded-full">
+                                <svg className="w-6 h-6 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-xl font-bold text-orange-400 mb-2">Server Suspended</h3>
+                                <p className="text-gray-300 mb-3">
+                                    This server has been suspended and is currently inaccessible. All management features are disabled.
+                                </p>
+                                {server.suspendReason && (
+                                    <p className="text-sm text-gray-400">
+                                        <strong>Reason:</strong> {server.suspendReason}
+                                    </p>
+                                )}
+                                <p className="text-sm text-gray-500 mt-2">
+                                    Please contact support to resolve this issue.
+                                </p>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -239,142 +270,153 @@ const ManageServer = () => {
 
                 {/* Tab Content */}
                 <div className="min-h-[500px]">
-                    {activeTab === 'console' && (
-                        <Console serverId={id!} serverStatus={server?.status} />
-                    )}
+                    {server.status === 'suspended' ? (
+                        <div className="bg-white/5 rounded-xl p-12 border border-white/10 text-center">
+                            <svg className="w-16 h-16 mx-auto text-orange-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            <h3 className="text-xl font-bold text-white mb-2">Access Restricted</h3>
+                            <p className="text-gray-400">This server is suspended. All management features are disabled.</p>
+                        </div>
+                    ) : (
+                        <>
+                            {activeTab === 'console' && (
+                                <Console serverId={id!} serverStatus={server?.status} />
+                            )}
 
-                    {activeTab === 'files' && (
-                        <FileManager serverId={id!} />
-                    )}
+                            {activeTab === 'files' && (
+                                <FileManager serverId={id!} />
+                            )}
 
-                    {activeTab === 'minecraft' && (
-                        <MinecraftTab server={server} />
-                    )}
+                            {activeTab === 'minecraft' && (
+                                <MinecraftTab server={server} />
+                            )}
 
-                    {activeTab === 'startup' && <StartupTab server={server} />}
-                    {activeTab === 'users' && <UsersTab />}
+                            {activeTab === 'startup' && <StartupTab server={server} />}
+                            {activeTab === 'users' && <UsersTab server={server} />}
 
-                    {activeTab === 'settings' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {activeTab === 'settings' && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                            {/* SFTP Details */}
-                            <div className="bg-[#161b22] border border-white/10 rounded-xl p-6">
-                                <h3 className="text-gray-400 text-xs uppercase font-bold mb-4">SFTP Details</h3>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="text-xs text-gray-500 uppercase font-bold block mb-1">Server Address</label>
-                                        <div className="bg-black/20 rounded p-2 text-sm text-gray-200 font-mono border border-white/5">
-                                            sftp://{server.serverIp?.split(':')[0] || 'unavailable'}:{server.relationships?.allocation?.attributes?.port || 2022}
+                                    {/* SFTP Details */}
+                                    <div className="bg-[#161b22] border border-white/10 rounded-xl p-6">
+                                        <h3 className="text-gray-400 text-xs uppercase font-bold mb-4">SFTP Details</h3>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="text-xs text-gray-500 uppercase font-bold block mb-1">Server Address</label>
+                                                <div className="bg-black/20 rounded p-2 text-sm text-gray-200 font-mono border border-white/5">
+                                                    sftp://{server.serverIp?.split(':')[0] || 'unavailable'}:{server.relationships?.allocation?.attributes?.port || 2022}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-gray-500 uppercase font-bold block mb-1">Username</label>
+                                                <div className="bg-black/20 rounded p-2 text-sm text-gray-200 font-mono border border-white/5">
+                                                    {server.identifier}.{server.uuid?.split('-')[0]}
+                                                </div>
+                                            </div>
+                                            <div className="pt-2">
+                                                <button onClick={() => window.open(`sftp://${server.serverIp?.split(':')[0]}`)} className="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded transition">
+                                                    Launch SFTP
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div>
-                                        <label className="text-xs text-gray-500 uppercase font-bold block mb-1">Username</label>
-                                        <div className="bg-black/20 rounded p-2 text-sm text-gray-200 font-mono border border-white/5">
-                                            {server.identifier}.{server.uuid?.split('-')[0]}
+
+                                    {/* Change Details (Placeholder) */}
+                                    <div className="bg-[#161b22] border border-white/10 rounded-xl p-6">
+                                        <h3 className="text-gray-400 text-xs uppercase font-bold mb-4">Change Server Details</h3>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="text-xs text-gray-500 uppercase font-bold block mb-1">Server Name</label>
+                                                <input type="text" value={server.name} readOnly className="w-full bg-black/20 border border-white/10 rounded p-2 text-sm text-gray-400" />
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="pt-2">
-                                        <button onClick={() => window.open(`sftp://${server.serverIp?.split(':')[0]}`)} className="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded transition">
-                                            Launch SFTP
+
+                                    {/* Debug Info */}
+                                    <div className="bg-[#161b22] border border-white/10 rounded-xl p-6">
+                                        <h3 className="text-gray-400 text-xs uppercase font-bold mb-4">Debug Information</h3>
+                                        <div className="flex justify-between items-center py-2 border-b border-white/5">
+                                            <span className="text-sm text-gray-400">Node</span>
+                                            <span className="text-sm font-mono">{server.relationships?.node?.attributes?.name || 'Unknown'}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center py-2">
+                                            <span className="text-sm text-gray-400">Server ID</span>
+                                            <span className="text-sm font-mono">{server.uuid}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Reinstall */}
+                                    <div className="bg-[#161b22] border border-white/10 rounded-xl p-6">
+                                        <h3 className="text-gray-400 text-xs uppercase font-bold mb-4">Reinstall Server</h3>
+                                        <p className="text-sm text-gray-400 mb-6">Reinstalling your server will delete some configuration files but usually keeps data. Backup first!</p>
+
+                                        <button
+                                            onClick={() => {
+                                                if (confirm("Are you SURE you want to reinstall? This will stop the server.")) {
+                                                    reinstallMutation.mutate();
+                                                }
+                                            }}
+                                            disabled={reinstallMutation.isPending}
+                                            className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded text-sm font-bold transition"
+                                        >
+                                            {reinstallMutation.isPending ? 'Reinstalling...' : 'Reinstall Server'}
                                         </button>
                                     </div>
                                 </div>
-                            </div>
+                            )}
 
-                            {/* Change Details (Placeholder) */}
-                            <div className="bg-[#161b22] border border-white/10 rounded-xl p-6">
-                                <h3 className="text-gray-400 text-xs uppercase font-bold mb-4">Change Server Details</h3>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="text-xs text-gray-500 uppercase font-bold block mb-1">Server Name</label>
-                                        <input type="text" value={server.name} readOnly className="w-full bg-black/20 border border-white/10 rounded p-2 text-sm text-gray-400" />
+
+
+                            {activeTab === 'shop' && (
+                                <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
+                                    <div className="text-center mb-8">
+                                        <ShoppingCart className="mx-auto mb-4 text-purple-400" size={48} />
+                                        <h2 className="text-3xl font-bold text-white mb-2">Upgrade Your Server</h2>
+                                        <p className="text-gray-400">Scale your resources instantly with coins</p>
                                     </div>
-                                </div>
-                            </div>
 
-                            {/* Debug Info */}
-                            <div className="bg-[#161b22] border border-white/10 rounded-xl p-6">
-                                <h3 className="text-gray-400 text-xs uppercase font-bold mb-4">Debug Information</h3>
-                                <div className="flex justify-between items-center py-2 border-b border-white/5">
-                                    <span className="text-sm text-gray-400">Node</span>
-                                    <span className="text-sm font-mono">{server.relationships?.node?.attributes?.name || 'Unknown'}</span>
-                                </div>
-                                <div className="flex justify-between items-center py-2">
-                                    <span className="text-sm text-gray-400">Server ID</span>
-                                    <span className="text-sm font-mono">{server.uuid}</span>
-                                </div>
-                            </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                                        <div className="bg-white/5 border border-blue-500/20 rounded-xl p-6 text-center">
+                                            <div className="text-4xl font-bold text-blue-400 mb-2">
+                                                {pricing?.ramPerGB || 100}
+                                            </div>
+                                            <div className="text-gray-400">Coins per GB RAM</div>
+                                        </div>
+                                        <div className="bg-white/5 border border-green-500/20 rounded-xl p-6 text-center">
+                                            <div className="text-4xl font-bold text-green-400 mb-2">
+                                                {pricing?.diskPerGB || 50}
+                                            </div>
+                                            <div className="text-gray-400">Coins per GB Disk</div>
+                                        </div>
+                                        <div className="bg-white/5 border border-purple-500/20 rounded-xl p-6 text-center">
+                                            <div className="text-4xl font-bold text-purple-400 mb-2">
+                                                {pricing?.cpuPerCore || 20}
+                                            </div>
+                                            <div className="text-gray-400">Coins per CPU Core</div>
+                                        </div>
+                                    </div>
 
-                            {/* Reinstall */}
-                            <div className="bg-[#161b22] border border-white/10 rounded-xl p-6">
-                                <h3 className="text-gray-400 text-xs uppercase font-bold mb-4">Reinstall Server</h3>
-                                <p className="text-sm text-gray-400 mb-6">Reinstalling your server will delete some configuration files but usually keeps data. Backup first!</p>
-
-                                <button
-                                    onClick={() => {
-                                        if (confirm("Are you SURE you want to reinstall? This will stop the server.")) {
-                                            reinstallMutation.mutate();
-                                        }
-                                    }}
-                                    disabled={reinstallMutation.isPending}
-                                    className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded text-sm font-bold transition"
-                                >
-                                    {reinstallMutation.isPending ? 'Reinstalling...' : 'Reinstall Server'}
-                                </button>
-                            </div>
-                        </div>
+                                    <button
+                                        onClick={() => setIsShopOpen(true)}
+                                        className="w-full py-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 rounded-xl font-bold text-lg transition shadow-lg shadow-purple-500/25 transform hover:scale-[1.02] active:scale-[0.98]"
+                                    >
+                                        Open Shop Modal
+                                    </button>
+                                </div>
+                            )}
+                        </>
                     )}
 
-
-
-                    {activeTab === 'shop' && (
-                        <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
-                            <div className="text-center mb-8">
-                                <ShoppingCart className="mx-auto mb-4 text-purple-400" size={48} />
-                                <h2 className="text-3xl font-bold text-white mb-2">Upgrade Your Server</h2>
-                                <p className="text-gray-400">Scale your resources instantly with coins</p>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                                <div className="bg-white/5 border border-blue-500/20 rounded-xl p-6 text-center">
-                                    <div className="text-4xl font-bold text-blue-400 mb-2">
-                                        {pricing?.ramPerGB || 100}
-                                    </div>
-                                    <div className="text-gray-400">Coins per GB RAM</div>
-                                </div>
-                                <div className="bg-white/5 border border-green-500/20 rounded-xl p-6 text-center">
-                                    <div className="text-4xl font-bold text-green-400 mb-2">
-                                        {pricing?.diskPerGB || 50}
-                                    </div>
-                                    <div className="text-gray-400">Coins per GB Disk</div>
-                                </div>
-                                <div className="bg-white/5 border border-purple-500/20 rounded-xl p-6 text-center">
-                                    <div className="text-4xl font-bold text-purple-400 mb-2">
-                                        {pricing?.cpuPerCore || 20}
-                                    </div>
-                                    <div className="text-gray-400">Coins per CPU Core</div>
-                                </div>
-                            </div>
-
-                            <button
-                                onClick={() => setIsShopOpen(true)}
-                                className="w-full py-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 rounded-xl font-bold text-lg transition shadow-lg shadow-purple-500/25 transform hover:scale-[1.02] active:scale-[0.98]"
-                            >
-                                Open Shop Modal
-                            </button>
-                        </div>
-                    )}
-                </div>
-
-                <ShopModal
-                    isOpen={isShopOpen}
-                    onClose={() => setIsShopOpen(false)}
-                    server={server}
-                    pricing={pricing}
-                />
+                    <ShopModal
+                        isOpen={isShopOpen}
+                        onClose={() => setIsShopOpen(false)}
+                        server={server}
+                        pricing={pricing}
+                    />
+                </div >
             </div >
-        </div >
-    );
+            );
 };
 
-export default ManageServer;
+            export default ManageServer;
