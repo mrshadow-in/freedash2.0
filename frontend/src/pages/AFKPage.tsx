@@ -100,14 +100,38 @@ const AFKPage = () => {
             <div className="absolute top-0 left-[-20%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[150px] pointer-events-none" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/10 rounded-full blur-[150px] pointer-events-none" />
 
-            {/* AFK Left Sidebar - Stacked Ads */}
-            <div className="fixed left-4 top-1/2 -translate-y-1/2 z-20 hidden xl:block max-w-[180px] space-y-4">
-                <AdZone position="afk-sidebar-left" isAFK={true} rotate={false} className="" />
+            {/* LEFT SIDE - Individual Ad Zones at Each White Oval Position */}
+            <div className="fixed left-4 top-[5%] z-20 hidden xl:block max-w-[180px]">
+                <AdZone position="afk-left-1" isAFK={true} rotate={false} className="" />
+            </div>
+            <div className="fixed left-4 top-[20%] z-20 hidden xl:block max-w-[180px]">
+                <AdZone position="afk-left-2" isAFK={true} rotate={false} className="" />
+            </div>
+            <div className="fixed left-4 top-[35%] z-20 hidden xl:block max-w-[180px]">
+                <AdZone position="afk-left-3" isAFK={true} rotate={false} className="" />
+            </div>
+            <div className="fixed left-4 top-[50%] z-20 hidden xl:block max-w-[180px]">
+                <AdZone position="afk-left-4" isAFK={true} rotate={false} className="" />
+            </div>
+            <div className="fixed left-4 top-[65%] z-20 hidden xl:block max-w-[180px]">
+                <AdZone position="afk-left-5" isAFK={true} rotate={false} className="" />
             </div>
 
-            {/* AFK Right Sidebar - Stacked Ads */}
-            <div className="fixed right-4 top-1/2 -translate-y-1/2 z-20 hidden xl:block max-w-[180px] space-y-4">
-                <AdZone position="afk-sidebar-right" isAFK={true} rotate={false} className="" />
+            {/* RIGHT SIDE - Individual Ad Zones at Each White Oval Position */}
+            <div className="fixed right-4 top-[10%] z-20 hidden xl:block max-w-[180px]">
+                <AdZone position="afk-right-1" isAFK={true} rotate={false} className="" />
+            </div>
+            <div className="fixed right-4 top-[25%] z-20 hidden xl:block max-w-[180px]">
+                <AdZone position="afk-right-2" isAFK={true} rotate={false} className="" />
+            </div>
+            <div className="fixed right-4 top-[40%] z-20 hidden xl:block max-w-[180px]">
+                <AdZone position="afk-right-3" isAFK={true} rotate={false} className="" />
+            </div>
+            <div className="fixed right-4 top-[55%] z-20 hidden xl:block max-w-[180px]">
+                <AdZone position="afk-right-4" isAFK={true} rotate={false} className="" />
+            </div>
+            <div className="fixed right-4 top-[70%] z-20 hidden xl:block max-w-[180px]">
+                <AdZone position="afk-right-5" isAFK={true} rotate={false} className="" />
             </div>
 
             <Header />

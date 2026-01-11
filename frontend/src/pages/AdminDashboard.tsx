@@ -2708,7 +2708,17 @@ function AdsTab() {
         { id: 'afk-middle', label: 'AFK Zone Middle' },
         { id: 'afk-bottom', label: 'AFK Zone Bottom' },
         { id: 'afk-sidebar-left', label: 'AFK Sidebar Left' },
-        { id: 'afk-sidebar-right', label: 'AFK Sidebar Right' }
+        { id: 'afk-sidebar-right', label: 'AFK Sidebar Right' },
+        { id: 'afk-left-1', label: 'AFK Left Position 1 (Top)' },
+        { id: 'afk-left-2', label: 'AFK Left Position 2' },
+        { id: 'afk-left-3', label: 'AFK Left Position 3' },
+        { id: 'afk-left-4', label: 'AFK Left Position 4' },
+        { id: 'afk-left-5', label: 'AFK Left Position 5 (Bottom)' },
+        { id: 'afk-right-1', label: 'AFK Right Position 1 (Top)' },
+        { id: 'afk-right-2', label: 'AFK Right Position 2' },
+        { id: 'afk-right-3', label: 'AFK Right Position 3' },
+        { id: 'afk-right-4', label: 'AFK Right Position 4' },
+        { id: 'afk-right-5', label: 'AFK Right Position 5 (Bottom)' }
     ];
 
     const filteredAds = filterPosition === 'all'

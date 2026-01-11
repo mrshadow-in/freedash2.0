@@ -23,7 +23,17 @@ export type AdZonePosition =
     | 'afk-middle'
     | 'afk-bottom'
     | 'afk-sidebar-left'
-    | 'afk-sidebar-right';
+    | 'afk-sidebar-right'
+    | 'afk-left-1'
+    | 'afk-left-2'
+    | 'afk-left-3'
+    | 'afk-left-4'
+    | 'afk-left-5'
+    | 'afk-right-1'
+    | 'afk-right-2'
+    | 'afk-right-3'
+    | 'afk-right-4'
+    | 'afk-right-5';
 
 interface Ad {
     id: string;
