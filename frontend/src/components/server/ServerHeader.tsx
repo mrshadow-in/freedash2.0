@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Power, RotateCw, Square, Skull, ExternalLink, ShoppingBag, Gamepad2, Trash2 } from 'lucide-react';
+import { Power, RotateCw, Square, Skull, ExternalLink, ShoppingBag, Ghost, Trash2 } from 'lucide-react';
 
 interface ServerHeaderProps {
     server: any;
@@ -92,7 +92,7 @@ const ServerHeader = ({ server, onPowerAction, isPowerPending, onOpenShop, onDel
                                 <span className="text-gray-500 font-mono text-xs">{server.pteroIdentifier}</span>
                                 <span className="text-gray-600">•</span>
                                 <span className="text-purple-400 font-medium flex items-center gap-1 text-xs">
-                                    <Gamepad2 size={12} />
+                                    <Ghost size={12} />
                                     {server.planId?.name || 'Minecraft'}
                                 </span>
                             </div>

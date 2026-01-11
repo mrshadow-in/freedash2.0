@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import { motion } from 'framer-motion';
-import { Loader2, ShoppingCart, Copy, Check, Terminal, FolderOpen, Settings, Info } from 'lucide-react';
+import { Loader2, ShoppingCart, Copy, Check, Terminal, FolderOpen, Settings, Ghost } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 
@@ -218,7 +218,7 @@ const ManageServer = () => {
                         onClick={() => setActiveTab('minecraft')}
                         className={`flex items-center gap-2 px-6 py-3 font-bold transition whitespace-nowrap rounded-t-lg ${activeTab === 'minecraft' ? 'text-white bg-white/5 border-b-2 border-green-500' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
                     >
-                        <Gamepad size={18} /> Minecraft
+                        <Ghost size={18} /> Minecraft
                     </button>
                 </div>
 
