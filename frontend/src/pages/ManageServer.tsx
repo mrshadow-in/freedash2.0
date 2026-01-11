@@ -218,7 +218,7 @@ const ManageServer = () => {
                 {/* Tab Content */}
                 <div className="min-h-[500px]">
                     {activeTab === 'console' && (
-                        <Console serverId={id!} />
+                        <Console serverId={id!} serverStatus={server?.status} />
                     )}
 
                     {activeTab === 'files' && (

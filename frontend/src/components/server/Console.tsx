@@ -7,36 +7,43 @@ import { Loader2 } from 'lucide-react';
 
 interface ConsoleProps {
     serverId: string;
+    serverStatus?: string;
 }
 
-const Console = ({ serverId }: ConsoleProps) => {
+const Console = ({ serverId, serverStatus }: ConsoleProps) => {
     const terminalRef = useRef<HTMLDivElement>(null);
     const wsRef = useRef<WebSocket | null>(null);
     const xtermRef = useRef<Terminal | null>(null);
     const fitAddonRef = useRef<FitAddon | null>(null);
-    const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('connecting');
+    const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error' | 'installing'>('connecting');
     const [stats, setStats] = useState<any>(null);
 
-    useEffect(() => {
-        // Fetch Credentials
-        const connect = async () => {
-            try {
-                const res = await api.get(`/servers/${serverId}/console`);
-                const { token, socket } = res.data;
-                initWebSocket(socket, token);
-            } catch (error) {
-                console.error('Failed to get console credentials', error);
-                setStatus('error');
-            }
-        };
+    const connect = async () => {
+        // Check server status first
+        if (serverStatus === 'installing' || serverStatus === 'transferring') {
+            setStatus('installing');
+            return;
+        }
 
+        setStatus('connecting');
+        try {
+            const res = await api.get(`/servers/${serverId}/console`);
+            const { token, socket } = res.data;
+            initWebSocket(socket, token);
+        } catch (error) {
+            console.error('Failed to get console credentials', error);
+            setStatus('error');
+        }
+    };
+
+    useEffect(() => {
         connect();
 
         return () => {
             if (wsRef.current) wsRef.current.close();
             if (xtermRef.current) xtermRef.current.dispose();
         };
-    }, [serverId]);
+    }, [serverId, serverStatus]);
 
     const initWebSocket = (url: string, token: string) => {
         const ws = new WebSocket(url);
@@ -132,13 +139,40 @@ const Console = ({ serverId }: ConsoleProps) => {
             {/* Terminal Area */}
             <div className="flex-1 relative">
                 {status === 'connecting' && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-[#0d1117] z-10">
-                        <Loader2 className="animate-spin text-purple-500" />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0d1117] z-10 gap-4">
+                        <Loader2 className="animate-spin text-purple-500" size={32} />
+                        <span className="text-gray-400">Connecting to server socket...</span>
+                    </div>
+                )}
+                {status === 'installing' && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0d1117] z-10 p-8 text-center text-yellow-500">
+                        <Loader2 className="animate-spin mb-4" size={48} />
+                        <h3 className="text-xl font-bold mb-2">Server Installing</h3>
+                        <p className="text-gray-400 max-w-md">Your server is currently being set up. The console will be available once the installation is complete.</p>
                     </div>
                 )}
                 {status === 'error' && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-[#0d1117] z-10 text-red-500">
-                        Connection Failed
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0d1117] z-10 text-red-500 gap-4">
+                        <span className="text-lg font-bold">Connection Failed</span>
+                        <button
+                            onClick={connect}
+                            className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-white text-sm transition"
+                        >
+                            Retry Connection
+                        </button>
+                    </div>
+                )}
+                {status === 'disconnected' && (
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex items-center justify-center">
+                        <div className="bg-[#161b22] border border-white/10 p-6 rounded-xl flex flex-col items-center shadow-2xl">
+                            <h3 className="text-red-400 font-bold mb-2">Disconnected</h3>
+                            <button
+                                onClick={connect}
+                                className="px-6 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg font-bold transition"
+                            >
+                                Reconnect
+                            </button>
+                        </div>
                     </div>
                 )}
                 <div ref={terminalRef} className="h-full w-full" />
