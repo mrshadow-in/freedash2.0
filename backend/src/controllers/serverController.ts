@@ -179,22 +179,33 @@ export const getMyServers = async (req: AuthRequest, res: Response) => {
         });
 
         // Sync Installing Status
+        // Sync Installing Status and Missing IP
         const updatedServers = await Promise.all(servers.map(async (server: any) => {
-            if (server.status === 'installing') {
+            // Check if we need to sync: status is installing OR ip is Pending
+            if (server.status === 'installing' || server.serverIp === 'Pending') {
                 try {
                     const pteroData = await getPteroServer(server.pteroServerId);
-                    // Pterodactyl status: null (active), installing, install_failed, suspended, restoring_backup
-                    if (pteroData.status === null) {
+
+                    // Extract latest IP
+                    const allocations = pteroData.relationships?.allocations?.data || [];
+                    const primaryAllocation = allocations.find((a: any) => a.attributes.is_default) || allocations[0];
+                    const newIp = primaryAllocation
+                        ? `${primaryAllocation.attributes.ip}:${primaryAllocation.attributes.port}`
+                        : 'Pending';
+
+                    let newStatus = server.status;
+
+                    if (pteroData.status === null) newStatus = 'active';
+                    else if (pteroData.status === 'suspended') newStatus = 'suspended';
+
+                    // Only update if changed
+                    if (newStatus !== server.status || (newIp !== 'Pending' && newIp !== server.serverIp)) {
                         const updated = await prisma.server.update({
                             where: { id: server.id },
-                            data: { status: 'active' },
-                            include: { plan: true }
-                        });
-                        return updated;
-                    } else if (pteroData.status === 'suspended') {
-                        const updated = await prisma.server.update({
-                            where: { id: server.id },
-                            data: { status: 'suspended' },
+                            data: {
+                                status: newStatus,
+                                serverIp: newIp
+                            },
                             include: { plan: true }
                         });
                         return updated;
