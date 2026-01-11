@@ -1061,3 +1061,30 @@ export const updateBillingSettings = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Failed to update billing settings' });
     }
 };
+
+// Update Security settings
+export const updateSecuritySettings = async (req: Request, res: Response) => {
+    try {
+        const { enablePanelAccess } = req.body;
+        const currentSettings = await getSettingsOrCreate();
+
+        const data: any = {};
+        if (enablePanelAccess !== undefined) {
+            const currentSecurity = (currentSettings.security as any) || { enablePanelAccess: true };
+            data.security = {
+                ...currentSecurity,
+                enablePanelAccess: enablePanelAccess
+            };
+        }
+
+        const settings = await prisma.settings.update({
+            where: { id: currentSettings.id },
+            data
+        });
+        await invalidateSettingsCache();
+        res.json({ message: 'Security settings updated', settings });
+    } catch (error) {
+        console.error('Update security settings error:', error);
+        res.status(500).json({ message: 'Failed to update security settings' });
+    }
+};
