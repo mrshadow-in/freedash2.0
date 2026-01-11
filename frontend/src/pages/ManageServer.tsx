@@ -35,17 +35,6 @@ const ManageServer = () => {
         }
     });
 
-    // Fetch Server Usage (Poll every 5s)
-    const { data: usage } = useQuery({
-        queryKey: ['serverUsage', id],
-        queryFn: async () => {
-            const res = await api.get(`/servers/${id}/usage`);
-            return res.data;
-        },
-        enabled: !!server,
-        refetchInterval: 5000
-    });
-
     // Fetch Pricing (for Shop)
     const { data: pricing } = useQuery({
         queryKey: ['pricing'],
