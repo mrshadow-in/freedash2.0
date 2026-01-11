@@ -9,7 +9,6 @@ import {
     powerServer,
     getUpgradePricing,
     getServer,
-    getServer,
     getServerUsage,
     getConsoleCredentials,
     getServerFiles,

@@ -269,7 +269,7 @@ export const getConsoleDetails = async (identifier: string) => {
     const config = await getPteroConfig();
     const token = config.clientKey || config.key;
 
-    const response = await axios.get(
+    const response: any = await axios.get(
         `${config.url}/api/client/servers/${identifier}/websocket`,
         {
             headers: {
@@ -286,7 +286,7 @@ export const listFiles = async (identifier: string, directory: string = '') => {
     const config = await getPteroConfig();
     const token = config.clientKey || config.key;
 
-    const response = await axios.get(
+    const response: any = await axios.get(
         `${config.url}/api/client/servers/${identifier}/files/list?directory=${encodeURIComponent(directory)}`,
         {
             headers: {
@@ -386,7 +386,7 @@ export const getUploadUrl = async (identifier: string) => {
     const config = await getPteroConfig();
     const token = config.clientKey || config.key;
 
-    const response = await axios.get(
+    const response: any = await axios.get(
         `${config.url}/api/client/servers/${identifier}/files/upload`,
         {
             headers: {
