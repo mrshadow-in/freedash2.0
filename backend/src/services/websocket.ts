@@ -1,155 +1,117 @@
-import { WebSocketServer, WebSocket } from 'ws';
 import { Server } from 'http';
+import { WebSocket, WebSocketServer } from 'ws';
 import jwt from 'jsonwebtoken';
 import { ENV } from '../config/env';
 import { prisma } from '../prisma';
-import { containerService } from './containerService';
+import { getConsoleDetails } from './pterodactyl';
 
-interface JwtPayload {
+interface ExtWebSocket extends WebSocket {
+    isAlive: boolean;
     userId?: string;
-    id?: string;
 }
 
-/**
- * WebSocket Server for Console streaming
- * This replaces the Pterodactyl proxy with direct Docker log streaming
- */
-export const initWebSocketServer = (server: Server) => {
+export const setupWebSocket = (server: Server) => {
     const wss = new WebSocketServer({ server, path: '/api/ws/console' });
 
-    console.log('✅ WebSocket Server initialized at /api/ws/console');
-
-    wss.on('error', (error) => {
-        console.error('❌ WebSocket Server Error:', error);
-    });
-
-    wss.on('connection', async (ws, req) => {
-        console.log('🔌 New WebSocket connection attempt');
+    wss.on('connection', async (ws: ExtWebSocket, req) => {
+        ws.isAlive = true;
+        ws.on('pong', () => { ws.isAlive = true; });
 
         try {
-            // Parse Query Params
+            // Parse URL params
             const url = new URL(req.url || '', `http://${req.headers.host}`);
             const token = url.searchParams.get('token');
             const serverId = url.searchParams.get('serverId');
 
             if (!token || !serverId) {
-                console.error('❌ Missing parameters');
                 ws.close(1008, 'Missing parameters');
                 return;
             }
 
-            // Authenticate User
-            let userId: string;
-            try {
-                const decoded = jwt.verify(token, ENV.JWT_SECRET) as JwtPayload;
-                userId = decoded.userId || decoded.id || '';
-                if (!userId) throw new Error('No user ID in token');
-            } catch (err) {
-                console.error('❌ Invalid token');
-                ws.close(4001, 'Invalid Token');
-                return;
-            }
+            // Verify User Token
+            const decoded: any = jwt.verify(token, ENV.JWT_SECRET);
+            ws.userId = decoded.userId;
 
-            console.log('✅ User authenticated:', userId);
-
-            // Verify Server Ownership and get node info
-            const dbServer = await prisma.server.findFirst({
-                where: { id: serverId, ownerId: userId },
-                include: { node: true }
+            // Get Server
+            const serverEntity = await prisma.server.findUnique({
+                where: { id: serverId },
+                include: { owner: true }
             });
 
-            if (!dbServer) {
-                console.error('❌ Server not found');
-                ws.close(4004, 'Server not found');
+            if (!serverEntity || serverEntity.ownerId !== decoded.userId) {
+                // Allow admins? For now strict owner check
+                const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+                if (user?.role !== 'admin' && serverEntity?.ownerId !== decoded.userId) {
+                    ws.close(1008, 'Unauthorized');
+                    return;
+                }
+            }
+
+            if (!serverEntity?.pteroIdentifier) {
+                ws.send(JSON.stringify({ event: 'error', args: ['Server has no Pterodactyl ID'] }));
+                ws.close();
                 return;
             }
 
-            if (!dbServer.nodeId || !dbServer.containerId) {
-                console.error('❌ Server not configured for self-hosted mode');
-                ws.close(4004, 'Server not on managed node');
-                return;
-            }
+            console.log(`[WS] Proxying console for server ${serverEntity.name} (${serverEntity.pteroIdentifier})`);
 
-            console.log('✅ Server found:', dbServer.name, 'Container:', dbServer.containerId);
+            // Get Pterodactyl WebSocket Details
+            const pteroDetails = await getConsoleDetails(serverEntity.pteroIdentifier);
 
-            // Send auth success event
-            ws.send(JSON.stringify({ event: 'auth success' }));
+            // Connect to Pterodactyl Wings
+            const pteroWs = new WebSocket(pteroDetails.socket);
 
-            // Start streaming Docker logs
-            let logStream: { close: () => void } | null = null;
-
-            try {
-                logStream = await containerService.streamContainerLogs(
-                    dbServer.nodeId,
-                    dbServer.containerId,
-                    (data) => {
-                        if (ws.readyState === WebSocket.OPEN) {
-                            ws.send(JSON.stringify({
-                                event: 'console output',
-                                args: [data]
-                            }));
-                        }
-                    }
-                );
-
-                console.log('✅ Log streaming started');
-            } catch (err: any) {
-                console.error('❌ Failed to start log stream:', err.message);
-                ws.send(JSON.stringify({
-                    event: 'console output',
-                    args: [`[FreeDash] Failed to connect to container: ${err.message}\n`]
+            // Handle Ptero Open -> Auth
+            pteroWs.on('open', () => {
+                pteroWs.send(JSON.stringify({
+                    event: 'auth',
+                    args: [pteroDetails.token]
                 }));
-            }
+            });
 
-            // Get initial container stats
-            try {
-                const stats = await containerService.getContainerStats(
-                    dbServer.nodeId,
-                    dbServer.containerId
-                );
-                ws.send(JSON.stringify({ event: 'stats', args: [JSON.stringify(stats)] }));
-            } catch (err) {
-                // Stats not critical, ignore error
-            }
-
-            // Handle incoming messages (commands)
-            ws.on('message', async (data) => {
-                try {
-                    const message = JSON.parse(data.toString());
-
-                    if (message.event === 'send command' && message.args?.[0]) {
-                        const command = message.args[0];
-                        console.log(`[Console] Command: ${command}`);
-
-                        await containerService.sendCommand(
-                            dbServer.nodeId!,
-                            dbServer.containerId!,
-                            command
-                        );
-                    }
-                } catch (err) {
-                    console.error('Failed to process message:', err);
+            // Proxy Messages: Ptero -> Client
+            pteroWs.on('message', (data) => {
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(data);
                 }
             });
 
-            // Handle disconnect
-            ws.on('close', () => {
-                console.log('🔌 WebSocket closed');
-                if (logStream) {
-                    logStream.close();
+            // Proxy Messages: Client -> Ptero
+            ws.on('message', (data) => {
+                if (pteroWs.readyState === WebSocket.OPEN) {
+                    pteroWs.send(data);
                 }
             });
 
-            ws.on('error', (err) => {
-                console.error('❌ WebSocket error:', err);
-                if (logStream) {
-                    logStream.close();
-                }
+            // Cleanup
+            const closeAll = () => {
+                if (pteroWs.readyState === WebSocket.OPEN) pteroWs.close();
+                if (ws.readyState === WebSocket.OPEN) ws.close();
+            };
+
+            ws.on('close', closeAll);
+            pteroWs.on('close', closeAll);
+            pteroWs.on('error', (err) => {
+                console.error('[WS] Pterodactyl Error:', err.message);
+                ws.close(1011, 'Upstream Error');
             });
 
         } catch (error: any) {
-            console.error('❌ Unexpected error:', error);
-            ws.close(1011, 'Internal server error');
+            console.error('[WS] Connection Error:', error.message);
+            ws.close(1008, 'Authentication Failed');
         }
     });
+
+    // Heartbeat
+    const interval = setInterval(() => {
+        wss.clients.forEach((ws: any) => {
+            if (ws.isAlive === false) return ws.terminate();
+            ws.isAlive = false;
+            ws.ping();
+        });
+    }, 30000);
+
+    wss.on('close', () => clearInterval(interval));
+
+    console.log('[WebSocket] Initialized for Pterodactyl Proxy');
 };

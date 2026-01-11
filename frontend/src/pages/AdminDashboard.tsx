@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useTheme } from '../context/ThemeContext';
 import { Plus, Loader2 } from 'lucide-react';
-import NodeManager from './admin/NodeManager';
+
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -125,7 +125,7 @@ const AdminDashboard = () => {
             <div className="relative z-10 bg-white/5 backdrop-blur-md border-b border-white/10">
                 <div className="container mx-auto px-6">
                     <div className="flex gap-2">
-                        {['settings', 'users', 'servers', 'nodes', 'plans', 'codes', 'ads', 'customize', 'bot', 'social'].map((tab) => (
+                        {['settings', 'users', 'servers', 'plans', 'codes', 'ads', 'customize', 'bot', 'social'].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
@@ -152,7 +152,7 @@ const AdminDashboard = () => {
                     {activeTab === 'settings' && <SettingsTab settings={settings} fetchSettings={fetchSettings} refreshTheme={refreshTheme} />}
                     {activeTab === 'users' && <UsersTab users={users} fetchUsers={fetchUsers} loading={loading} />}
                     {activeTab === 'servers' && <ServersTab servers={servers} fetchServers={fetchServers} loading={loading} />}
-                    {activeTab === 'nodes' && <NodeManager />}
+
                     {activeTab === 'plans' && <PlansTab plans={plans} fetchPlans={fetchPlans} loading={loading} />}
                     {activeTab === 'codes' && <CodesTab codes={codes} fetchCodes={fetchCodes} loading={loading} />}
                     {activeTab === 'ads' && <AdsTab />}
