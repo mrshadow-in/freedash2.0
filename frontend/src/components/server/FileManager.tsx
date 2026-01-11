@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/client';
 import {
-    Folder, FileText, Download, Edit, Trash2,
-    MoreVertical, Upload, Plus, ChevronRight,
-    Home, RefreshCw, FolderPlus, File as FileIcon
+    Folder, Edit, Trash2,
+    Upload, ChevronRight,
+    RefreshCw, FolderPlus, File as FileIcon
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
@@ -118,11 +118,7 @@ const FileManager = ({ serverId }: FileManagerProps) => {
         }
     };
 
-    const handleNavigate = (path: string) => {
-        // If clicking a file, open editor/download
-        // If clicking a folder, append to directory
-        setDirectory(path);
-    };
+
 
     const handleBreadcrumbClick = (index: number) => {
         if (directory === '') return;
