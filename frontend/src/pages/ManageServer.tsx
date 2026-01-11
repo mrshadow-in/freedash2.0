@@ -3,8 +3,9 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import { motion } from 'framer-motion';
-import { Loader2, ShoppingCart, Copy, Check } from 'lucide-react';
+import { Loader2, ShoppingCart, Copy, Check, Terminal, FolderOpen, Settings, Info, Folder, Edit, Trash2, Upload, ChevronRight, RefreshCw, FolderPlus, File as FileIcon } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { format } from 'date-fns';
 
 // Components
 import Header from '../components/Header';
@@ -12,7 +13,6 @@ import ServerHeader from '../components/server/ServerHeader';
 import ShopModal from '../components/shop/ShopModal';
 import Console from '../components/server/Console';
 import FileManager from '../components/server/FileManager';
-import { Terminal, FolderOpen, Settings, Info } from 'lucide-react';
 
 
 const ManageServer = () => {
@@ -22,6 +22,7 @@ const ManageServer = () => {
     const [isShopOpen, setIsShopOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'console' | 'resources' | 'files' | 'settings' | 'shop'>('console');
     const [copiedIP, setCopiedIP] = useState(false);
+    const [showReinstallConfirm, setShowReinstallConfirm] = useState(false);
 
     // Fetch Server Details
     const { data: server, isLoading, error } = useQuery({
