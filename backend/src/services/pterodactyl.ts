@@ -616,30 +616,3 @@ export const renamePteroFile = async (
     );
 };
 
-// Upload file (Binary/Multipart)
-export const uploadFileToPtero = async (identifier: string, directory: string, filename: string, content: Buffer) => {
-    // 1. Get Signed Upload URL
-    const uploadUrl = await getUploadUrl(identifier);
-
-    // 2. Construct Multipart Body Manually (No 'form-data' dependency)
-    const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2);
-    const header = `--${boundary}\r\nContent-Disposition: form-data; name="files"; filename="${filename}"\r\nContent-Type: application/java-archive\r\n\r\n`;
-    const footer = `\r\n--${boundary}--`;
-
-    const body = Buffer.concat([
-        Buffer.from(header),
-        content,
-        Buffer.from(footer)
-    ]);
-
-    // 3. Upload to Node
-    await axios.post(`${uploadUrl}&directory=${encodeURIComponent(directory)}`, body, {
-        headers: {
-            'Content-Type': `multipart/form-data; boundary=${boundary}`,
-            'Content-Length': body.length
-        },
-        maxBodyLength: Infinity,
-        maxContentLength: Infinity
-    } as any);
-};
-

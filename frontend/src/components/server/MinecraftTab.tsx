@@ -39,9 +39,7 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
 
     // Version Changer State
     const [selectedPaperVersion, setSelectedPaperVersion] = useState('');
-    const [provider, setProvider] = useState('modrinth');
-    const [sortBy, setSortBy] = useState('Downloads');
-    const [pageSize, setPageSize] = useState('12');
+    const [provider, setProvider] = useState('spigot');
 
     // Fetch Minecraft versions from API
     const { data: minecraftVersions = FALLBACK_VERSIONS } = useQuery({
@@ -200,14 +198,7 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
 
         setSearching(true);
         try {
-            // Include filters in query
-            const queryParams = new URLSearchParams({
-                q: searchQuery,
-                provider,
-                sort: sortBy,
-                limit: pageSize
-            });
-            const { data } = await api.get(`/servers/${server.id}/minecraft/plugins?${queryParams}`);
+            const { data } = await api.get(`/servers/${server.id}/minecraft/plugins?q=${encodeURIComponent(searchQuery)}&provider=${provider}`);
             setPlugins(data);
         } catch (error) {
             toast.error('Failed to search plugins');
@@ -251,8 +242,8 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
             {/* Plugins Tab */}
             {subTab === 'plugins' && (
                 <div className="space-y-6">
-                    {/* Installed Plugins (New UI) */}
-                    <div className="bg-[#14161F] rounded-xl p-6 border border-white/5">
+                    {/* Installed Plugins */}
+                    <div className="bg-white/5 rounded-xl p-6 border border-white/10">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-bold text-white flex items-center gap-2">
                                 <Package size={20} className="text-green-400" />
@@ -261,27 +252,25 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
                             <button
                                 onClick={() => refetchInstalled()}
                                 className="p-2 hover:bg-white/10 rounded-lg transition"
-                                title="Refresh List"
                             >
                                 <RefreshCw size={16} className="text-gray-400" />
                             </button>
                         </div>
 
                         {installedPlugins.length === 0 ? (
-                            <p className="text-gray-500 text-sm text-center py-4">No plugins installed yet.</p>
+                            <p className="text-gray-400 text-sm">No plugins installed yet</p>
                         ) : (
                             <div className="space-y-2">
                                 {installedPlugins.map((plugin: any) => (
-                                    <div key={plugin.name} className="flex items-center justify-between p-4 bg-[#0F1115] rounded-lg border border-white/5 hover:border-white/10 transition group">
-                                        <div className="flex flex-col">
-                                            <p className="text-white font-bold text-sm bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">{plugin.name}</p>
-                                            <p className="text-xs text-gray-500 mt-0.5">{(plugin.size / 1024).toFixed(2)} KB</p>
+                                    <div key={plugin.name} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                                        <div>
+                                            <p className="text-white font-medium">{plugin.name}</p>
+                                            <p className="text-xs text-gray-400">{(plugin.size / 1024).toFixed(2)} KB</p>
                                         </div>
                                         <button
                                             onClick={() => deleteMutation.mutate(plugin.name)}
                                             disabled={deleteMutation.isPending}
-                                            className="p-2 hover:bg-red-500/10 text-gray-500 hover:text-red-400 rounded-lg transition"
-                                            title="Uninstall Plugin"
+                                            className="p-2 hover:bg-red-500/20 text-red-400 rounded-lg transition disabled:opacity-50"
                                         >
                                             <Trash2 size={16} />
                                         </button>
@@ -292,135 +281,73 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
                     </div>
 
                     {/* Plugin Search */}
-                    {/* Plugin Browser (Grid Layout) */}
-                    <div className="bg-[#14161F] rounded-xl p-6 border border-white/5">
+                    <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+                        <h3 className="text-lg font-bold text-white mb-4">Plugin Manager</h3>
 
-                        <div className="flex flex-col gap-4 mb-8">
-                            {/* Search Bar */}
-                            <form onSubmit={handleSearchPlugins} className="relative">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
+                        <form onSubmit={handleSearchPlugins} className="flex gap-2 mb-6">
+                            <select
+                                value={provider}
+                                onChange={(e) => setProvider(e.target.value)}
+                                className="bg-[#0F1115] border border-white/10 rounded-lg text-white px-3 focus:outline-none focus:border-purple-500"
+                            >
+                                <option value="spigot">SpigotMC</option>
+                                <option value="modrinth">Modrinth</option>
+                            </select>
+                            <div className="flex-1 relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                                 <input
                                     type="text"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    placeholder="Search plugins..."
-                                    className="w-full pl-12 pr-4 py-3 bg-[#0F1115] border border-white/5 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 transition"
+                                    placeholder="Search plugins (e.g., Essentials, WorldEdit)..."
+                                    className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
                                 />
-                            </form>
-
-                            {/* Filters Row */}
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                                {/* Versions */}
-                                <div className="space-y-1">
-                                    <label className="text-xs text-gray-500 ml-1">Versions</label>
-                                    <select
-                                        value={selectedVersion}
-                                        onChange={(e) => setSelectedVersion(e.target.value)}
-                                        className="w-full bg-[#0F1115] border border-white/5 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-purple-500"
-                                    >
-                                        <option value="latest">Any</option>
-                                        {minecraftVersions.map((v: string) => <option key={v} value={v}>{v}</option>)}
-                                    </select>
-                                </div>
-
-                                {/* Loaders (Visual for now) */}
-                                <div className="space-y-1">
-                                    <label className="text-xs text-gray-500 ml-1">Server Loaders</label>
-                                    <select className="w-full bg-[#0F1115] border border-white/5 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-purple-500">
-                                        <option>PaperMC</option>
-                                        <option>Spigot</option>
-                                        <option>Bukkit</option>
-                                    </select>
-                                </div>
-
-                                {/* Sort By */}
-                                <div className="space-y-1">
-                                    <label className="text-xs text-gray-500 ml-1">Sort By</label>
-                                    <select
-                                        value={sortBy}
-                                        onChange={(e) => setSortBy(e.target.value)}
-                                        className="w-full bg-[#0F1115] border border-white/5 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-purple-500"
-                                    >
-                                        <option value="Downloads">Downloads</option>
-                                        <option value="Updated">Updated</option>
-                                        <option value="Created">Created</option>
-                                    </select>
-                                </div>
-
-                                {/* Providers */}
-                                <div className="space-y-1">
-                                    <label className="text-xs text-gray-500 ml-1">Providers</label>
-                                    <select
-                                        value={provider}
-                                        onChange={(e) => setProvider(e.target.value)}
-                                        className="w-full bg-[#0F1115] border border-white/5 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-purple-500"
-                                    >
-                                        <option value="modrinth">Modrinth</option>
-                                        <option value="spigot">SpigotMC</option>
-                                        <option value="curseforge">CurseForge</option>
-                                    </select>
-                                </div>
-
-                                {/* Size/PageSize */}
-                                <div className="space-y-1">
-                                    <label className="text-xs text-gray-500 ml-1">Size</label>
-                                    <select
-                                        value={pageSize}
-                                        onChange={(e) => setPageSize(e.target.value)}
-                                        className="w-full bg-[#0F1115] border border-white/5 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-purple-500"
-                                    >
-                                        <option value="12">12</option>
-                                        <option value="24">24</option>
-                                        <option value="48">48</option>
-                                    </select>
-                                </div>
                             </div>
+                            <button
+                                type="submit"
+                                disabled={searching}
+                                className="px-6 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-bold transition disabled:opacity-50 flex items-center gap-2"
+                            >
+                                {searching ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
+                                Search
+                            </button>
+                        </form>
+
+                        {/* Version Selector */}
+                        <div className="mb-4">
+                            <label className="block text-sm text-gray-400 mb-2">Minecraft Version</label>
+                            <select
+                                value={selectedVersion}
+                                onChange={(e) => setSelectedVersion(e.target.value)}
+                                className="w-full px-4 py-2 bg-[#0F1115] border border-white/10 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                            >
+                                <option value="latest">Latest</option>
+                                {minecraftVersions.map((v: string) => (
+                                    <option key={v} value={v}>{v}</option>
+                                ))}
+                            </select>
                         </div>
 
-                        {/* Results Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {/* Plugin Results */}
+                        <div className="space-y-3">
                             {plugins.length === 0 && !searching && (
-                                <div className="col-span-full text-center py-12 text-gray-500">
-                                    Search for plugins above
-                                </div>
+                                <p className="text-gray-400 text-center py-8">Search for plugins or browse popular ones above</p>
                             )}
-
                             {plugins.map((plugin) => (
-                                <div key={plugin.id} className="bg-[#1A1D24] p-4 rounded-xl border border-white/5 flex flex-col gap-4 hover:border-purple-500/50 transition group">
-                                    <div className="flex gap-4">
-                                        {/* Icon */}
-                                        <div className="w-12 h-12 rounded-lg bg-[#0F1115] flex items-center justify-center shrink-0 overflow-hidden">
-                                            {plugin.icon ? (
-                                                <img src={plugin.icon} alt="" className="w-full h-full object-cover" />
-                                            ) : (
-                                                <Package className="text-gray-600" size={24} />
-                                            )}
-                                        </div>
-
-                                        <div className="flex-1 min-w-0">
-                                            <h4 className="text-white font-bold truncate group-hover:text-purple-400 transition">{plugin.name}</h4>
-                                            <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
-                                                <span className="truncate">{plugin.author || 'Unknown'}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
-                                                <Download size={12} />
-                                                <span>{typeof plugin.downloads === 'number' ? (plugin.downloads / 1000).toFixed(1) + 'k' : plugin.downloads}</span>
+                                <div key={plugin.id} className="p-4 bg-white/5 rounded-lg border border-white/10 hover:border-purple-500/50 transition">
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                            <h4 className="text-white font-bold">{plugin.name}</h4>
+                                            <p className="text-sm text-gray-400 mt-1">{plugin.description || 'No description'}</p>
+                                            <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                                                <span>By {plugin.author || 'Unknown'}</span>
+                                                <span>• {plugin.downloads || 'N/A'} downloads</span>
                                             </div>
                                         </div>
-                                    </div>
-
-                                    <p className="text-sm text-gray-400 line-clamp-2 h-10">
-                                        {plugin.tag || plugin.description || 'No description available for this plugin.'}
-                                    </p>
-
-                                    <div className="flex gap-2 mt-auto">
-                                        <button className="flex-1 py-2 rounded-lg bg-[#0F1115] hover:bg-white/5 text-gray-400 text-sm font-medium transition border border-white/5">
-                                            Version
-                                        </button>
                                         <button
                                             onClick={() => handleInstallPlugin(plugin)}
                                             disabled={installMutation.isPending}
-                                            className="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition flex items-center justify-center gap-2"
+                                            className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold transition disabled:opacity-50 flex items-center gap-2"
                                         >
                                             {installMutation.isPending && installMutation.variables?.plugin.id === plugin.id ? (
                                                 <Loader2 size={16} className="animate-spin" />
