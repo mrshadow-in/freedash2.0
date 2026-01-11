@@ -11,6 +11,8 @@ export type AdZonePosition =
     | 'between-widgets'
     | 'before-servers'
     | 'after-servers'
+    | 'server-sidebar-left'
+    | 'server-sidebar-right'
     | 'footer'
     | 'floating-left'
     | 'floating-right'

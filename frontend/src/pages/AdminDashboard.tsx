@@ -2710,6 +2710,8 @@ function AdsTab() {
     const [filterPosition, setFilterPosition] = useState('all');
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState({ positionIndex: 0, priority: 0 });
+    const [targetAdId, setTargetAdId] = useState<string | null>(null);
+    const [isEditing, setIsEditing] = useState(false);
     const [showCreate, setShowCreate] = useState(false);
     const [newAd, setNewAd] = useState({
         title: '',
@@ -2719,7 +2721,8 @@ function AdsTab() {
         type: 'leaderboard',
         position: 'top',
         priority: 1,
-        isAFK: false
+        isAFK: false,
+        rewardCoins: 0
     });
     const [creating, setCreating] = useState(false);
 
@@ -2741,8 +2744,13 @@ function AdsTab() {
         }
         setCreating(true);
         try {
-            await api.post('/ads/admin/create', newAd);
-            toast.success('Advertisement created successfully!');
+            if (isEditing && targetAdId) {
+                await api.put(`/ads/admin/update/${targetAdId}`, newAd);
+                toast.success('Advertisement updated successfully!');
+            } else {
+                await api.post('/ads/admin/create', newAd);
+                toast.success('Advertisement created successfully!');
+            }
             setShowCreate(false);
             setNewAd({
                 title: '',
@@ -2752,11 +2760,14 @@ function AdsTab() {
                 type: 'leaderboard',
                 position: 'top',
                 priority: 1,
-                isAFK: false
+                isAFK: false,
+                rewardCoins: 0
             });
+            setIsEditing(false);
+            setTargetAdId(null);
             fetchAds();
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to create ad');
+            toast.error(error.response?.data?.message || 'Failed to save ad');
         } finally {
             setCreating(false);
         }
@@ -2810,6 +2821,8 @@ function AdsTab() {
         { id: 'empty-server-zone', label: 'Empty Server Zone' },
         { id: 'after-servers', label: 'After Server List' },
         { id: 'footer', label: 'Global Footer' },
+        { id: 'server-sidebar-left', label: 'Server Page - Left Sidebar' },
+        { id: 'server-sidebar-right', label: 'Server Page - Right Sidebar' },
         { id: 'afk-top', label: 'AFK Zone Top' },
         { id: 'afk-middle', label: 'AFK Zone Middle' },
         { id: 'afk-bottom', label: 'AFK Zone Bottom' },
@@ -2840,12 +2853,29 @@ function AdsTab() {
                     </h2>
                     <p className="text-gray-400 mt-1">Manage positions, priorities, and unlimited dashboard ad zones</p>
                 </div>
-                <button
-                    onClick={() => setShowCreate(true)}
-                    className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-purple-500/20"
-                >
-                    <Plus size={18} /> Create New Ad
-                </button>
+                <div className="flex gap-3">
+                    <button
+                        onClick={async () => {
+                            const enabled = ads.some(ad => ad.status === 'paused');
+                            try {
+                                await api.post('/ads/admin/toggle-all', { enabled });
+                                toast.success(`All ads ${enabled ? 'enabled' : 'disabled'}`);
+                                fetchAds();
+                            } catch (err) {
+                                toast.error('Failed to toggle ads');
+                            }
+                        }}
+                        className="px-6 py-3 bg-yellow-600/20 border border-yellow-500/30 text-yellow-400 rounded-xl font-bold flex items-center gap-2 hover:bg-yellow-600/30 transition"
+                    >
+                        {ads.some(ad => ad.status === 'paused') ? '✅' : '⏸️'} Toggle All Ads
+                    </button>
+                    <button
+                        onClick={() => setShowCreate(true)}
+                        className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-purple-500/20"
+                    >
+                        <Plus size={18} /> Create New Ad
+                    </button>
+                </div>
             </div>
 
             {/* Create Ad Modal */}
@@ -2853,7 +2883,7 @@ function AdsTab() {
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowCreate(false)} />
                     <div className="relative w-full max-w-2xl bg-gray-900 border border-white/10 rounded-3xl p-8 shadow-2xl">
-                        <h3 className="text-2xl font-bold mb-6">📢 Create New Advertisement</h3>
+                        <h3 className="text-2xl font-bold mb-6">{isEditing ? '✏️ Edit Advertisement' : '📢 Create New Advertisement'}</h3>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                             <div className="space-y-4">
@@ -2918,6 +2948,16 @@ function AdsTab() {
                                     />
                                 </div>
                                 <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-1">Corner Coins Reward (Per Click)</label>
+                                    <input
+                                        type="number"
+                                        value={newAd.rewardCoins}
+                                        onChange={e => setNewAd({ ...newAd, rewardCoins: parseFloat(e.target.value) })}
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                                <div>
                                     <label className="block text-sm font-medium text-gray-400 mb-1">Redirect URL</label>
                                     <input
                                         type="text"
@@ -2961,7 +3001,7 @@ function AdsTab() {
                                 disabled={creating}
                                 className="flex-[2] py-4 bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl font-bold text-lg hover:opacity-90 transition disabled:opacity-50"
                             >
-                                {creating ? 'Creating Ad...' : '🚀 Launch Advertisement'}
+                                {creating ? 'Saving...' : (isEditing ? '💾 Save Changes' : '🚀 Launch Advertisement')}
                             </button>
                         </div>
                     </div>
@@ -3010,6 +3050,27 @@ function AdsTab() {
                                         <p className="text-blue-400 text-xs font-medium truncate max-w-[200px] mt-1">{ad.redirectUrl}</p>
                                     </div>
                                     <div className="flex gap-2">
+                                        <button
+                                            onClick={() => {
+                                                setNewAd({
+                                                    title: ad.title,
+                                                    imageUrl: ad.imageUrl || '',
+                                                    redirectUrl: ad.redirectUrl || '',
+                                                    rawCode: ad.rawCode || '',
+                                                    type: ad.type,
+                                                    position: ad.position,
+                                                    priority: ad.priority,
+                                                    isAFK: ad.isAFK,
+                                                    rewardCoins: ad.rewardCoins || 0
+                                                });
+                                                setTargetAdId(ad.id);
+                                                setIsEditing(true);
+                                                setShowCreate(true);
+                                            }}
+                                            className="p-2 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 rounded-lg transition"
+                                        >
+                                            ✏️
+                                        </button>
                                         <button
                                             onClick={() => handleDelete(ad.id)}
                                             className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg transition"
