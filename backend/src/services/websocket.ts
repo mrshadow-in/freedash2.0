@@ -58,8 +58,10 @@ export const initWebSocketServer = (server: Server) => {
             // Get Pterodactyl WebSocket Details
             const pteroDetails = await getConsoleDetails(serverEntity.pteroIdentifier);
 
-            // Connect to Pterodactyl Wings
-            const pteroWs = new WebSocket(pteroDetails.socket);
+            // Connect to Pterodactyl Wings with lax SSL (fixes self-signed/internal issues)
+            const pteroWs = new WebSocket(pteroDetails.socket, {
+                rejectUnauthorized: false
+            });
 
             // Handle Ptero Open -> Auth
             pteroWs.on('open', () => {
@@ -93,7 +95,11 @@ export const initWebSocketServer = (server: Server) => {
             pteroWs.on('close', closeAll);
             pteroWs.on('error', (err) => {
                 console.error('[WS] Pterodactyl Error:', err.message);
-                ws.close(1011, 'Upstream Error');
+                // Send distinct error to client
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ event: 'console output', args: [`\u001b[31m[System] Connection Error: ${err.message}\r\n`] }));
+                    ws.close(1011, `Upstream: ${err.message}`);
+                }
             });
 
         } catch (error: any) {
