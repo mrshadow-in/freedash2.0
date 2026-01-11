@@ -260,6 +260,7 @@ export const powerServer = async (req: AuthRequest, res: Response) => {
         });
 
         if (!server) return res.status(404).json({ message: 'Server not found' });
+        if (!server.pteroIdentifier) return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
 
         await powerPteroServer(server.pteroIdentifier, signal);
 
@@ -283,31 +284,33 @@ export const getServer = async (req: AuthRequest, res: Response) => {
         }
 
         // Sync with Pterodactyl (Live Status Check)
-        try {
-            const pteroServer = await getPteroServer(server.pteroServerId);
-            const pteroStatus = pteroServer.status || (pteroServer.suspended ? 'suspended' : 'running');
+        if (server.pteroServerId) {
+            try {
+                const pteroServer = await getPteroServer(server.pteroServerId);
+                const pteroStatus = pteroServer.status || (pteroServer.suspended ? 'suspended' : 'running');
 
-            // basic allocation check
-            const allocations = pteroServer.relationships?.allocations?.data || [];
-            const defaultAlloc = allocations.find((a: any) => a.attributes.is_default) || allocations[0];
-            let serverIp = server.serverIp;
-            if (defaultAlloc) {
-                serverIp = `${defaultAlloc.attributes.ip}:${defaultAlloc.attributes.port}`;
-            }
+                // basic allocation check
+                const allocations = pteroServer.relationships?.allocations?.data || [];
+                const defaultAlloc = allocations.find((a: any) => a.attributes.is_default) || allocations[0];
+                let serverIp = server.serverIp;
+                if (defaultAlloc) {
+                    serverIp = `${defaultAlloc.attributes.ip}:${defaultAlloc.attributes.port}`;
+                }
 
-            if (server.status !== pteroStatus || server.serverIp !== serverIp) {
-                server = await prisma.server.update({
-                    where: { id: server.id },
-                    data: {
-                        status: pteroStatus,
-                        serverIp: serverIp
-                    },
-                    include: { plan: true }
-                });
+                if (server.status !== pteroStatus || server.serverIp !== serverIp) {
+                    server = await prisma.server.update({
+                        where: { id: server.id },
+                        data: {
+                            status: pteroStatus,
+                            serverIp: serverIp
+                        },
+                        include: { plan: true }
+                    });
+                }
+            } catch (syncError) {
+                console.error('Failed to sync with Pterodactyl:', syncError);
+                // Ignore sync error and return cached server, but log it
             }
-        } catch (syncError) {
-            console.error('Failed to sync with Pterodactyl:', syncError);
-            // Ignore sync error and return cached server, but log it
         }
 
         res.json(server);
@@ -397,6 +400,9 @@ export const getServerUsage = async (req: Request, res: Response) => {
         if (!server) {
             return res.status(404).json({ message: 'Server not found' });
         }
+        if (!server.pteroIdentifier) {
+            return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
+        }
 
         const stats = await getPteroServerResources(server.pteroIdentifier);
         res.json(stats);
@@ -414,6 +420,9 @@ export const getConsoleCredentials = async (req: AuthRequest, res: Response) => 
         });
 
         if (!server) return res.status(404).json({ message: 'Server not found' });
+        if (!server.pteroServerId || !server.pteroIdentifier) {
+            return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
+        }
 
         // Check if server is ready
         const pteroServer = await getPteroServer(server.pteroServerId);
@@ -447,6 +456,7 @@ export const getServerFiles = async (req: AuthRequest, res: Response) => {
             where: { id: id, ownerId: req.user!.userId }
         });
         if (!server) return res.status(404).json({ message: 'Server not found' });
+        if (!server.pteroIdentifier) return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
 
         const files = await listFiles(server.pteroIdentifier, directory as string);
         res.json(files);
@@ -464,6 +474,7 @@ export const getFile = async (req: AuthRequest, res: Response) => {
             where: { id: id, ownerId: req.user!.userId }
         });
         if (!server) return res.status(404).json({ message: 'Server not found' });
+        if (!server.pteroIdentifier) return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
 
         const content = await getFileContent(server.pteroIdentifier, file as string);
         res.send(content);
@@ -498,6 +509,7 @@ export const renameServerFile = async (req: AuthRequest, res: Response) => {
             where: { id: id, ownerId: req.user!.userId }
         });
         if (!server) return res.status(404).json({ message: 'Server not found' });
+        if (!server.pteroIdentifier) return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
 
         await renameFile(server.pteroIdentifier, root, files);
         res.json({ message: 'Renamed successfully' });
@@ -515,6 +527,7 @@ export const deleteServerFile = async (req: AuthRequest, res: Response) => {
             where: { id: id, ownerId: req.user!.userId }
         });
         if (!server) return res.status(404).json({ message: 'Server not found' });
+        if (!server.pteroIdentifier) return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
 
         await deleteFile(server.pteroIdentifier, root, files);
         res.json({ message: 'Deleted successfully' });
@@ -533,6 +546,7 @@ export const createServerFolder = async (req: AuthRequest, res: Response) => {
             where: { id: id, ownerId: req.user!.userId }
         });
         if (!server) return res.status(404).json({ message: 'Server not found' });
+        if (!server.pteroIdentifier) return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
 
         await createFolder(server.pteroIdentifier, root, name);
         res.json({ message: 'Folder created' });
@@ -549,6 +563,7 @@ export const getServerUploadUrl = async (req: AuthRequest, res: Response) => {
             where: { id: id, ownerId: req.user!.userId }
         });
         if (!server) return res.status(404).json({ message: 'Server not found' });
+        if (!server.pteroIdentifier) return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
 
         const url = await getUploadUrl(server.pteroIdentifier);
         res.json({ url });
@@ -565,6 +580,7 @@ export const reinstallServerAction = async (req: AuthRequest, res: Response) => 
             where: { id: id, ownerId: req.user!.userId }
         });
         if (!server) return res.status(404).json({ message: 'Server not found' });
+        if (!server.pteroIdentifier) return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
 
         await reinstallServer(server.pteroIdentifier);
 

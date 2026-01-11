@@ -130,11 +130,14 @@ export const purchaseItem = async (req: Request, res: Response) => {
 
                 // Get current allocation from Pterodactyl and update
                 // Note: We are doing this INSIDE transaction so if it fails, we rollback coins
-                const { getPteroServer } = await import('../services/pterodactyl');
-                const pteroServer = await getPteroServer(server.pteroServerId);
-                const currentAllocationId = pteroServer.allocation;
+                // Only apply to Pterodactyl if server has Pterodactyl config
+                if (server.pteroServerId) {
+                    const { getPteroServer } = await import('../services/pterodactyl');
+                    const pteroServer = await getPteroServer(server.pteroServerId);
+                    const currentAllocationId = pteroServer.allocation;
 
-                await updatePteroServerBuild(server.pteroServerId, newRam, newDisk, newCpu * 100, currentAllocationId);
+                    await updatePteroServerBuild(server.pteroServerId, newRam, newDisk, newCpu * 100, currentAllocationId);
+                }
             }
 
             return user.coins - cost;
