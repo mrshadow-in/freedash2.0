@@ -57,14 +57,14 @@ const ShopModal = ({ isOpen, onClose, server, pricing }: ShopModalProps) => {
             // Let's do parallel requests for now if multiple selected.
 
             const promises = [];
-            if (ramToAdd > 0) promises.push(api.post('/servers/shop/purchase', { serverId: server._id, itemId: 'ram', quantity: ramToAdd, paymentMethod: 'coins' }));
-            if (diskToAdd > 0) promises.push(api.post('/servers/shop/purchase', { serverId: server._id, itemId: 'disk', quantity: diskToAdd, paymentMethod: 'coins' }));
-            if (cpuToAdd > 0) promises.push(api.post('/servers/shop/purchase', { serverId: server._id, itemId: 'cpu', quantity: cpuToAdd, paymentMethod: 'coins' }));
+            if (ramToAdd > 0) promises.push(api.post('/servers/shop/purchase', { serverId: server.id, itemId: 'ram', quantity: ramToAdd, paymentMethod: 'coins' }));
+            if (diskToAdd > 0) promises.push(api.post('/servers/shop/purchase', { serverId: server.id, itemId: 'disk', quantity: diskToAdd, paymentMethod: 'coins' }));
+            if (cpuToAdd > 0) promises.push(api.post('/servers/shop/purchase', { serverId: server.id, itemId: 'cpu', quantity: cpuToAdd, paymentMethod: 'coins' }));
 
             return Promise.all(promises);
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['server', server._id] });
+            queryClient.invalidateQueries({ queryKey: ['server', server.id] });
             queryClient.invalidateQueries({ queryKey: ['servers'] }); // Balance update
             toast.success('Purchase successful! Resources are being applied.');
             onClose();
