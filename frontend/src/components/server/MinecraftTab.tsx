@@ -319,7 +319,7 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
                             <select
                                 value={selectedVersion}
                                 onChange={(e) => setSelectedVersion(e.target.value)}
-                                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                                className="w-full px-4 py-2 bg-[#0F1115] border border-white/10 rounded-lg text-white focus:outline-none focus:border-purple-500"
                             >
                                 <option value="latest">Latest</option>
                                 {minecraftVersions.map((v: string) => (

@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.renamePteroFile = exports.updateStartupVariable = exports.getStartup = exports.pullPteroFile = exports.getPteroNodeConfiguration = exports.createPteroNode = exports.getPteroLocations = exports.getPteroNodes = exports.getPteroServerResources = exports.reinstallServer = exports.getUploadUrl = exports.createFolder = exports.deleteFile = exports.renameFile = exports.writeFileContent = exports.getFileContent = exports.listFiles = exports.getConsoleDetails = exports.powerPteroServer = exports.updatePteroServerBuild = exports.getPteroServer = exports.unsuspendPteroServer = exports.suspendPteroServer = exports.deletePteroServer = exports.createPteroServer = exports.updatePteroUserPassword = exports.createPteroUser = exports.getPteroUrl = void 0;
+exports.uploadFileToPtero = exports.renamePteroFile = exports.updateStartupVariable = exports.getStartup = exports.pullPteroFile = exports.getPteroNodeConfiguration = exports.createPteroNode = exports.getPteroLocations = exports.getPteroNodes = exports.getPteroServerResources = exports.reinstallServer = exports.getUploadUrl = exports.createFolder = exports.deleteFile = exports.renameFile = exports.writeFileContent = exports.getFileContent = exports.listFiles = exports.getConsoleDetails = exports.powerPteroServer = exports.updatePteroServerBuild = exports.getPteroServer = exports.unsuspendPteroServer = exports.suspendPteroServer = exports.deletePteroServer = exports.createPteroServer = exports.updatePteroUserPassword = exports.createPteroUser = exports.getPteroUrl = void 0;
 const axios_1 = __importDefault(require("axios"));
 const env_1 = require("../config/env");
 const prisma_1 = require("../prisma");
@@ -481,3 +481,27 @@ const renamePteroFile = async (identifier, root, from, to) => {
     });
 };
 exports.renamePteroFile = renamePteroFile;
+// Upload file (Binary/Multipart)
+const uploadFileToPtero = async (identifier, directory, filename, content) => {
+    // 1. Get Signed Upload URL
+    const uploadUrl = await (0, exports.getUploadUrl)(identifier);
+    // 2. Construct Multipart Body Manually (No 'form-data' dependency)
+    const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2);
+    const header = `--${boundary}\r\nContent-Disposition: form-data; name="files"; filename="${filename}"\r\nContent-Type: application/java-archive\r\n\r\n`;
+    const footer = `\r\n--${boundary}--`;
+    const body = Buffer.concat([
+        Buffer.from(header),
+        content,
+        Buffer.from(footer)
+    ]);
+    // 3. Upload to Node
+    await axios_1.default.post(`${uploadUrl}&directory=${encodeURIComponent(directory)}`, body, {
+        headers: {
+            'Content-Type': `multipart/form-data; boundary=${boundary}`,
+            'Content-Length': body.length
+        },
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity
+    });
+};
+exports.uploadFileToPtero = uploadFileToPtero;

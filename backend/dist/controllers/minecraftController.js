@@ -204,22 +204,30 @@ const installPlugin = async (req, res) => {
         let downloadUrl = '';
         if (provider === 'modrinth') {
             // Modrinth: Fetch version to get download URL
-            // Get versions for this project
             const verRes = await axios_1.default.get(`https://api.modrinth.com/v2/project/${resourceId}/version`);
             const versions = verRes.data;
             if (!versions || versions.length === 0) {
                 return res.status(404).json({ message: 'No versions found for this plugin' });
             }
-            // Pick the first one (latest) - ideally filter by game version but for now just latest
+            // Pick the first one (latest)
             const latestVersion = versions[0];
             const file = latestVersion.files.find((f) => f.primary) || latestVersion.files[0];
-            downloadUrl = file.url;
+            await (0, pterodactyl_1.pullPteroFile)(server.pteroIdentifier, file.url, '/plugins');
         }
         else {
-            // Spigot: Direct API Download
-            downloadUrl = `https://api.spiget.org/v2/resources/${resourceId}/download`;
+            // Spigot: Proxy Download (Backend -> Ptero)
+            const downloadUrl = `https://api.spiget.org/v2/resources/${resourceId}/download`;
+            console.log(`[Plugin] Proxy downloading Spigot resource ${resourceId}...`);
+            // 1. Download to memory
+            const dlResponse = await axios_1.default.get(downloadUrl, {
+                responseType: 'arraybuffer',
+                headers: { 'User-Agent': 'FreeDash/2.0' }
+            });
+            // 2. Upload to Server
+            // Use fileName from body
+            const finalName = req.body.fileName || `${resourceId}.jar`;
+            await (0, pterodactyl_1.uploadFileToPtero)(server.pteroIdentifier, '/plugins', finalName, Buffer.from(dlResponse.data));
         }
-        await (0, pterodactyl_1.pullPteroFile)(server.pteroIdentifier, downloadUrl, '/plugins');
         res.json({ message: `Plugin installation started from ${provider}` });
     }
     catch (error) {
