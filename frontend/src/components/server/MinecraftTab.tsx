@@ -17,8 +17,8 @@ const POPULAR_PLUGINS = [
     { id: '274', name: 'WorldGuard', author: 'sk89q', downloads: '18M+', description: 'Region protection' },
 ];
 
-// Paper versions
-const PAPER_VERSIONS = [
+// Fallback versions if API fails
+const FALLBACK_VERSIONS = [
     '1.21.1', '1.21', '1.20.6', '1.20.4', '1.20.2', '1.20.1',
     '1.19.4', '1.19.3', '1.19.2', '1.18.2', '1.17.1', '1.16.5'
 ];
@@ -40,6 +40,26 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
     // Version Changer State
     const [selectedPaperVersion, setSelectedPaperVersion] = useState('');
 
+    // Fetch Minecraft versions from API
+    const { data: minecraftVersions = FALLBACK_VERSIONS } = useQuery({
+        queryKey: ['minecraft-versions'],
+        queryFn: async () => {
+            const res = await api.get(`/servers/${server.id}/minecraft/versions`);
+            return res.data;
+        },
+        staleTime: 3600000 // Cache for 1 hour
+    });
+
+    // Fetch Paper versions from API
+    const { data: paperVersions = FALLBACK_VERSIONS } = useQuery({
+        queryKey: ['paper-versions'],
+        queryFn: async () => {
+            const res = await api.get(`/servers/${server.id}/minecraft/paper-versions`);
+            return res.data;
+        },
+        staleTime: 3600000 // Cache for 1 hour
+    });
+
     // Fetch installed plugins
     const { data: installedPlugins = [], refetch: refetchInstalled } = useQuery({
         queryKey: ['installed-plugins', server.id],
@@ -60,11 +80,13 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
             });
         },
         onSuccess: (_, variables) => {
-            toast.success(`Installing ${variables.plugin.name}...`);
-            setTimeout(() => refetchInstalled(), 3000);
+            toast.success(`Installing ${variables.plugin.name}... Check installed plugins in 5-10 seconds.`);
+            setTimeout(() => refetchInstalled(), 5000);
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to install plugin');
+            console.error('Plugin install error:', error);
+            const message = error.response?.data?.message || 'Failed to install plugin. Check server logs.';
+            toast.error(message);
         }
     });
 
@@ -264,7 +286,7 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
                                 className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-purple-500"
                             >
                                 <option value="latest">Latest</option>
-                                {PAPER_VERSIONS.map(v => (
+                                {minecraftVersions.map((v: string) => (
                                     <option key={v} value={v}>{v}</option>
                                 ))}
                             </select>
@@ -326,7 +348,7 @@ const MinecraftTab = ({ server }: MinecraftTabProps) => {
                                 className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-purple-500"
                             >
                                 <option value="">-- Select Version --</option>
-                                {PAPER_VERSIONS.map(v => (
+                                {paperVersions.map((v: string) => (
                                     <option key={v} value={v}>{v}</option>
                                 ))}
                             </select>

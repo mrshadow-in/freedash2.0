@@ -60,6 +60,8 @@ router.post('/:id/minecraft/plugins/install', mcController.installPlugin as any)
 router.get('/:id/minecraft/plugins/installed', mcController.getInstalledPlugins as any);
 router.delete('/:id/minecraft/plugins/:filename', mcController.deletePlugin as any);
 router.post('/:id/minecraft/version', mcController.changeServerVersion as any);
+router.get('/:id/minecraft/versions', mcController.getMinecraftVersions as any);
+router.get('/:id/minecraft/paper-versions', mcController.getPaperVersions as any);
 
 // Shop Routes
 router.post('/shop/estimate', estimateCost as any);

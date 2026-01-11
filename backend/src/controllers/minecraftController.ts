@@ -251,3 +251,27 @@ export const changeServerVersion = async (req: AuthRequest, res: Response) => {
         res.status(500).json({ message: 'Failed to change server version' });
     }
 };
+
+// Get Minecraft versions from Mojang API
+export const getMinecraftVersions = async (req: AuthRequest, res: Response) => {
+    try {
+        const { getMinecraftVersions: fetchVersions } = await import('../services/minecraft');
+        const versions = await fetchVersions();
+        res.json(versions);
+    } catch (error) {
+        console.error('Error fetching Minecraft versions:', error);
+        res.status(500).json({ message: 'Failed to fetch versions' });
+    }
+};
+
+// Get Paper versions
+export const getPaperVersions = async (req: AuthRequest, res: Response) => {
+    try {
+        const { getPaperVersions: fetchPaperVersions } = await import('../services/minecraft');
+        const versions = await fetchPaperVersions();
+        res.json(versions);
+    } catch (error) {
+        console.error('Error fetching Paper versions:', error);
+        res.status(500).json({ message: 'Failed to fetch Paper versions' });
+    }
+};
