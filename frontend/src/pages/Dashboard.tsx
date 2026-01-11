@@ -362,19 +362,19 @@ const Dashboard = () => {
                                                 whileHover={{ scale: 1.02, x: 5 }}
                                                 whileTap={{ scale: 0.98 }}
                                                 onClick={() => setSelectedPlanId(plan._id)}
-                                                className={`border - 4 p - 4 rounded - lg flex justify - between items - center cursor - pointer relative overflow - hidden transition ${selectedPlanId === plan._id
+                                                className={`border-4 p-4 rounded-lg flex justify-between items-center cursor-pointer relative overflow-hidden transition ${selectedPlanId === plan._id
                                                     ? 'border-yellow-500 bg-gradient-to-r from-yellow-900/40 to-amber-900/40 shadow-lg shadow-yellow-500/50'
                                                     : 'border-[#654321] bg-gradient-to-r from-[#3d2817]/60 to-[#2d1f12]/60 hover:border-yellow-700'
-                                                    } `}
+                                                    }`}
                                             >
                                                 {/* Pickaxe Icon for selected */}
                                                 {selectedPlanId === plan._id && (
                                                     <motion.div
-                                                        initial={{ rotate: -45, opacity: 0 }}
-                                                        animate={{ rotate: 0, opacity: 1 }}
-                                                        className="absolute -right-1 -top-1 text-4xl"
+                                                        initial={{ scale: 0, rotate: -45 }}
+                                                        animate={{ scale: 1, rotate: 0 }}
+                                                        className="absolute top-1 left-1 text-3xl"
                                                     >
-                                                        ✅
+                                                        ⛏️
                                                     </motion.div>
                                                 )}
 
@@ -400,7 +400,7 @@ const Dashboard = () => {
                                                 <div className="text-right relative flex flex-col items-end">
                                                     <div className="flex items-center gap-1">
                                                         <span className="text-yellow-400 text-xl">🪙</span>
-                                                        <span className={`font - extrabold text - 2xl ${selectedPlanId === plan._id ? 'text-yellow-300' : 'text-yellow-500'} `} style={{ textShadow: '2px 2px 0 rgba(0,0,0,0.5)' }}>
+                                                        <span className={`font-extrabold text-2xl ${selectedPlanId === plan._id ? 'text-yellow-300' : 'text-yellow-500'}`} style={{ textShadow: '2px 2px 0 rgba(0,0,0,0.5)' }}>
                                                             {plan.priceCoins}
                                                         </span>
                                                     </div>
@@ -418,8 +418,21 @@ const Dashboard = () => {
                                         <motion.button
                                             whileHover={{ scale: 1.05 }}
                                             whileTap={{ scale: 0.95 }}
-                                            onClick={() => createServerMutation.mutate({ name: serverName, planId: selectedPlanId })}
-                                            disabled={!serverName || !selectedPlanId || createServerMutation.isPending}
+                                            onClick={() => {
+                                                // Validate before submitting
+                                                const trimmedName = serverName.trim();
+                                                if (!trimmedName) {
+                                                    toast.error('Please enter a world name!');
+                                                    return;
+                                                }
+                                                if (!selectedPlanId) {
+                                                    toast.error('Please select a plan!');
+                                                    return;
+                                                }
+                                                // Submit
+                                                createServerMutation.mutate({ name: trimmedName, planId: selectedPlanId });
+                                            }}
+                                            disabled={!serverName.trim() || !selectedPlanId || createServerMutation.isPending}
                                             className="flex-[2] py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-lg text-sm font-extrabold shadow-lg border-4 border-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 relative overflow-hidden"
                                             style={{ textShadow: '2px 2px 0 rgba(0,0,0,0.6)' }}
                                         >
