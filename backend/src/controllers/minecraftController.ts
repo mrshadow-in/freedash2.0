@@ -6,7 +6,8 @@ import {
     listFiles,
     deleteFile,
     updateStartupVariable,
-    renamePteroFile
+    renamePteroFile,
+    reinstallServer
 } from '../services/pterodactyl';
 import { prisma } from '../prisma';
 import axios from 'axios';
@@ -225,11 +226,15 @@ export const deletePlugin = async (req: AuthRequest, res: Response) => {
     }
 };
 
-// Change server version (Paper only)
+// Change server version
 export const changeServerVersion = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
         const { version } = req.body;
+
+        if (!version) {
+            return res.status(400).json({ message: 'Version is required' });
+        }
 
         if (!version) {
             return res.status(400).json({ message: 'Version is required' });
@@ -243,31 +248,16 @@ export const changeServerVersion = async (req: AuthRequest, res: Response) => {
             return res.status(403).json({ message: 'Unauthorized' });
         }
 
-        // Get latest Paper build for this version
-        const buildsRes = await axios.get(
-            `https://api.papermc.io/v2/projects/paper/versions/${version}/builds`
-        );
-        const builds = (buildsRes.data as any).builds;
-        const latestBuild = builds[builds.length - 1];
-        const buildNumber = latestBuild.build;
-
-        // Construct download URL
-        const downloadUrl = `https://api.papermc.io/v2/projects/paper/versions/${version}/builds/${buildNumber}/downloads/paper-${version}-${buildNumber}.jar`;
-
-        // Download JAR to server root
-        await pullPteroFile(server.pteroIdentifier, downloadUrl, '/');
-
-        // Rename to server.jar
-        const newFilename = `paper-${version}-${buildNumber}.jar`;
-        await renamePteroFile(server.pteroIdentifier, '/', newFilename, 'server.jar');
-
-        // Update MINECRAFT_VERSION variable
+        // 1. Update MINECRAFT_VERSION variable
         await updateStartupVariable(server.pteroIdentifier, 'MINECRAFT_VERSION', version);
 
+        // 2. Trigger Server Reinstall
+        // This will stop the server and run the egg's install script which downloads the version
+        await reinstallServer(server.pteroIdentifier);
+
         res.json({
-            message: `Downloaded Paper ${version} build ${buildNumber}`,
-            version,
-            build: buildNumber
+            message: `Server version set to ${version}. Reinstall started automatically to apply changes.`,
+            version
         });
     } catch (error) {
         console.error('Error changing server version:', error);

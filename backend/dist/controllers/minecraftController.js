@@ -238,11 +238,14 @@ const deletePlugin = async (req, res) => {
     }
 };
 exports.deletePlugin = deletePlugin;
-// Change server version (Paper only)
+// Change server version
 const changeServerVersion = async (req, res) => {
     try {
         const { id } = req.params;
         const { version } = req.body;
+        if (!version) {
+            return res.status(400).json({ message: 'Version is required' });
+        }
         if (!version) {
             return res.status(400).json({ message: 'Version is required' });
         }
@@ -253,24 +256,14 @@ const changeServerVersion = async (req, res) => {
         if (server.ownerId !== req.user.userId && req.user.role !== 'admin') {
             return res.status(403).json({ message: 'Unauthorized' });
         }
-        // Get latest Paper build for this version
-        const buildsRes = await axios_1.default.get(`https://api.papermc.io/v2/projects/paper/versions/${version}/builds`);
-        const builds = buildsRes.data.builds;
-        const latestBuild = builds[builds.length - 1];
-        const buildNumber = latestBuild.build;
-        // Construct download URL
-        const downloadUrl = `https://api.papermc.io/v2/projects/paper/versions/${version}/builds/${buildNumber}/downloads/paper-${version}-${buildNumber}.jar`;
-        // Download JAR to server root
-        await (0, pterodactyl_1.pullPteroFile)(server.pteroIdentifier, downloadUrl, '/');
-        // Rename to server.jar
-        const newFilename = `paper-${version}-${buildNumber}.jar`;
-        await (0, pterodactyl_1.renamePteroFile)(server.pteroIdentifier, '/', newFilename, 'server.jar');
-        // Update MINECRAFT_VERSION variable
+        // 1. Update MINECRAFT_VERSION variable
         await (0, pterodactyl_1.updateStartupVariable)(server.pteroIdentifier, 'MINECRAFT_VERSION', version);
+        // 2. Trigger Server Reinstall
+        // This will stop the server and run the egg's install script which downloads the version
+        await (0, pterodactyl_1.reinstallServer)(server.pteroIdentifier);
         res.json({
-            message: `Downloaded Paper ${version} build ${buildNumber}`,
-            version,
-            build: buildNumber
+            message: `Server version set to ${version}. Reinstall started automatically to apply changes.`,
+            version
         });
     }
     catch (error) {
