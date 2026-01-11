@@ -16,6 +16,15 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
     const fitAddonRef = useRef<FitAddon | null>(null);
     const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error' | 'installing'>('connecting');
     const [stats, setStats] = useState<any>(null);
+    const [command, setCommand] = useState('');
+
+    const sendCommand = () => {
+        if (!command.trim()) return;
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ event: 'send command', args: [command] }));
+            setCommand('');
+        }
+    };
 
     const connect = async () => {
         // Check server status first
@@ -223,6 +232,22 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
                     </div>
                 )}
                 <div ref={terminalRef} className="h-full w-full" />
+            </div>
+
+            {/* Command Input */}
+            <div className="flex items-center gap-2 px-4 py-3 bg-[#161b22] border-t border-white/5">
+                <span className="text-gray-500 font-mono text-lg">{'>'}</span>
+                <input
+                    type="text"
+                    value={command}
+                    onChange={(e) => setCommand(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') sendCommand();
+                    }}
+                    placeholder="Type a command..."
+                    className="flex-1 bg-transparent border-none outline-none text-gray-200 font-mono placeholder-gray-600 focus:ring-0"
+                    disabled={status !== 'connected'}
+                />
             </div>
         </div>
     );
