@@ -218,7 +218,7 @@ const ManageServer = () => {
                         onClick={() => setActiveTab('minecraft')}
                         className={`flex items-center gap-2 px-6 py-3 font-bold transition whitespace-nowrap rounded-t-lg ${activeTab === 'minecraft' ? 'text-white bg-white/5 border-b-2 border-green-500' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
                     >
-                        <Gamepad2 size={18} /> Minecraft
+                        <Gamepad size={18} /> Minecraft
                     </button>
                 </div>
 

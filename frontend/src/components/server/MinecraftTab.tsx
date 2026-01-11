@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Settings, Package, Search, Download, Save, Loader2, Check, AlertCircle } from 'lucide-react';
+
+import { Settings, Package, Search, Download, Save, Loader2 } from 'lucide-react';
 import api from '../../api/client';
 import toast from 'react-hot-toast';
 
