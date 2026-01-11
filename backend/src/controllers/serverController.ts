@@ -492,6 +492,7 @@ export const writeFile = async (req: AuthRequest, res: Response) => {
             where: { id: id, ownerId: req.user!.userId }
         });
         if (!server) return res.status(404).json({ message: 'Server not found' });
+        if (!server.pteroIdentifier) return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
 
         await writeFileContent(server.pteroIdentifier, file, content);
         res.json({ message: 'File saved' });
