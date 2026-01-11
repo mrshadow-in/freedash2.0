@@ -3,7 +3,7 @@ import { WebSocket, WebSocketServer } from 'ws';
 import jwt from 'jsonwebtoken';
 import { ENV } from '../config/env';
 import { prisma } from '../prisma';
-import { getConsoleDetails } from './pterodactyl';
+import { getConsoleDetails, getPteroUrl } from './pterodactyl';
 
 interface ExtWebSocket extends WebSocket {
     isAlive: boolean;
@@ -58,9 +58,13 @@ export const initWebSocketServer = (server: Server) => {
             // Get Pterodactyl WebSocket Details
             const pteroDetails = await getConsoleDetails(serverEntity.pteroIdentifier);
 
-            // Connect to Pterodactyl Wings with lax SSL (fixes self-signed/internal issues)
+            const pteroUrl = await getPteroUrl();
+            // Connect to Pterodactyl Wings with lax SSL and Origin header
             const pteroWs = new WebSocket(pteroDetails.socket, {
-                rejectUnauthorized: false
+                rejectUnauthorized: false,
+                headers: {
+                    'Origin': pteroUrl
+                }
             });
 
             // Handle Ptero Open -> Auth
