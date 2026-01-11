@@ -606,7 +606,8 @@ export const createServerFolder = async (req: AuthRequest, res: Response) => {
         if (!server) return res.status(404).json({ message: 'Server not found' });
         if (!server.pteroIdentifier) return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
 
-        await createFolder(server.pteroIdentifier, root, name);
+        const folderRoot = root || '/';
+        await createFolder(server.pteroIdentifier, folderRoot, name);
         res.json({ message: 'Folder created' });
     } catch (error: any) {
         res.status(500).json({ message: 'Failed to create folder' });
@@ -672,5 +673,31 @@ export const getServerResources = async (req: AuthRequest, res: Response) => {
     } catch (error: any) {
         console.error("Resources fetch error:", error);
         res.status(500).json({ message: 'Failed to fetch resources' });
+    }
+};
+
+export const updateServer = async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    try {
+        const server = await prisma.server.findUnique({ where: { id } });
+        if (!server) return res.status(404).json({ message: 'Server not found' });
+
+        if (server.ownerId !== req.user!.userId && req.user!.role !== 'admin') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const updatedServer = await prisma.server.update({
+            where: { id },
+            data: {
+                status: status
+            }
+        });
+
+        res.json(updatedServer);
+    } catch (error) {
+        console.error('Update Server Error:', error);
+        res.status(500).json({ message: 'Failed to update server' });
     }
 };

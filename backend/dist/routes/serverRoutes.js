@@ -49,6 +49,7 @@ router.use(auth_1.authenticate);
 router.post('/create', serverController_1.createServer);
 router.get('/', serverController_1.getMyServers);
 router.get('/:id', serverController_1.getServer);
+router.put('/:id', serverController_1.updateServer); // Added update route
 router.delete('/:id', serverController_1.deleteServer);
 router.post('/:id/upgrade', serverController_1.upgradeServer);
 router.post('/:id/power', serverController_1.powerServer);

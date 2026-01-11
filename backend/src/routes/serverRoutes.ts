@@ -19,7 +19,8 @@ import {
     reinstallServerAction,
     getServerResources,
     renameServerFile,
-    deleteServerFile
+    deleteServerFile,
+    updateServer
 } from '../controllers/serverController';
 import { estimateCost, purchaseItem } from '../controllers/shopController';
 import * as mcController from '../controllers/minecraftController';
@@ -37,6 +38,7 @@ router.use(authenticate as any);
 router.post('/create', createServer as any);
 router.get('/', getMyServers as any);
 router.get('/:id', getServer as any);
+router.put('/:id', updateServer as any); // Added update route
 router.delete('/:id', deleteServer as any);
 router.post('/:id/upgrade', upgradeServer as any);
 router.post('/:id/power', powerServer as any);

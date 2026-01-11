@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getServerResources = exports.reinstallServerAction = exports.getServerUploadUrl = exports.createServerFolder = exports.deleteServerFile = exports.renameServerFile = exports.writeFile = exports.getFile = exports.getServerFiles = exports.getConsoleCredentials = exports.getServerUsage = exports.upgradeServer = exports.getServer = exports.powerServer = exports.getUpgradePricing = exports.deleteServer = exports.getMyServers = exports.createServer = exports.getPlans = void 0;
+exports.updateServer = exports.getServerResources = exports.reinstallServerAction = exports.getServerUploadUrl = exports.createServerFolder = exports.deleteServerFile = exports.renameServerFile = exports.writeFile = exports.getFile = exports.getServerFiles = exports.getConsoleCredentials = exports.getServerUsage = exports.upgradeServer = exports.getServer = exports.powerServer = exports.getUpgradePricing = exports.deleteServer = exports.getMyServers = exports.createServer = exports.getPlans = void 0;
 const prisma_1 = require("../prisma");
 const pterodactyl_1 = require("../services/pterodactyl");
 const zod_1 = require("zod");
@@ -576,7 +576,8 @@ const createServerFolder = async (req, res) => {
             return res.status(404).json({ message: 'Server not found' });
         if (!server.pteroIdentifier)
             return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
-        await (0, pterodactyl_1.createFolder)(server.pteroIdentifier, root, name);
+        const folderRoot = root || '/';
+        await (0, pterodactyl_1.createFolder)(server.pteroIdentifier, folderRoot, name);
         res.json({ message: 'Folder created' });
     }
     catch (error) {
@@ -644,3 +645,27 @@ const getServerResources = async (req, res) => {
     }
 };
 exports.getServerResources = getServerResources;
+const updateServer = async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+    try {
+        const server = await prisma_1.prisma.server.findUnique({ where: { id } });
+        if (!server)
+            return res.status(404).json({ message: 'Server not found' });
+        if (server.ownerId !== req.user.userId && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+        const updatedServer = await prisma_1.prisma.server.update({
+            where: { id },
+            data: {
+                status: status
+            }
+        });
+        res.json(updatedServer);
+    }
+    catch (error) {
+        console.error('Update Server Error:', error);
+        res.status(500).json({ message: 'Failed to update server' });
+    }
+};
+exports.updateServer = updateServer;
