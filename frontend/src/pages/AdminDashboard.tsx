@@ -6,7 +6,7 @@ import api from '../api/client';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useTheme } from '../context/ThemeContext';
-import { Plus, Loader2, Server } from 'lucide-react';
+import { Plus, Loader2 } from 'lucide-react';
 import NodeManager from './admin/NodeManager';
 
 const AdminDashboard = () => {
