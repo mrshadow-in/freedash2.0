@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { toast } from 'react-hot-toast';
-import { Disc, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 
 const DiscordSuccess = () => {
     const navigate = useNavigate();
