@@ -160,7 +160,7 @@ const AdminDashboard = () => {
                     {activeTab === 'ads' && <AdsTab />}
                     {activeTab === 'customize' && <CustomizeTab refreshTheme={refreshTheme} />}
                     {activeTab === 'bot' && <BotTab settings={settings} fetchSettings={fetchSettings} />}
-                    {activeTab === 'bot' && <BotTab settings={settings} fetchSettings={fetchSettings} />}
+
                     {activeTab === 'social' && <SocialTab settings={settings} fetchSettings={fetchSettings} />}
                     {activeTab === 'plugins' && <PluginsManagementTab settings={settings} fetchSettings={fetchSettings} />}
 
@@ -2336,7 +2336,8 @@ function BotTab({ settings, fetchSettings }: any) {
         guildId: '',
         enabled: false,
         inviteChannelId: '',
-        boostChannelId: ''
+        boostChannelId: '',
+        gamesChannelId: ''
     });
 
     useEffect(() => {
@@ -2350,7 +2351,8 @@ function BotTab({ settings, fetchSettings }: any) {
                     guildId: settings.discordBot.guildId || '',
                     enabled: settings.discordBot.enabled || false,
                     inviteChannelId: settings.discordBot.inviteChannelId || '',
-                    boostChannelId: settings.discordBot.boostChannelId || ''
+                    boostChannelId: settings.discordBot.boostChannelId || '',
+                    gamesChannelId: settings.discordBot.gamesChannelId || ''
                 });
             }
         }
@@ -2507,6 +2509,16 @@ function BotTab({ settings, fetchSettings }: any) {
                             onChange={e => setDiscordConfig({ ...discordConfig, boostChannelId: e.target.value })}
                             className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
                             placeholder="Channel ID to log boosts"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-2">Games Channel ID (Required for Minigames)</label>
+                        <input
+                            type="text"
+                            value={discordConfig.gamesChannelId}
+                            onChange={e => setDiscordConfig({ ...discordConfig, gamesChannelId: e.target.value })}
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                            placeholder="Channel ID where games are allowed"
                         />
                     </div>
                 </div>
