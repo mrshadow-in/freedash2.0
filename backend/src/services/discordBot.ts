@@ -398,21 +398,35 @@ export async function startDiscordBot() {
                             } else {
                                 // Check Milestones from Settings
                                 const rewards = (settings?.inviteRewards as any) || {};
+
+                                // Validate rewards configuration
+                                if (Object.keys(rewards).length === 0) {
+                                    await interaction.editReply('⚠️ **No Rewards Configured**\nAsk the admin to set up invite rewards in the Admin Panel.');
+                                    break;
+                                }
+
                                 let bestTierCost = 0;
                                 let bestTierReward = 0;
 
                                 // Find the HIGHEST affordable tier
                                 for (const [reqStr, amount] of Object.entries(rewards)) {
                                     const cost = parseInt(reqStr);
-                                    if (availableInvites >= cost) {
-                                        if (cost > bestTierCost) {
-                                            bestTierCost = cost;
-                                            bestTierReward = Number(amount);
-                                        }
+                                    const reward = Number(amount);
+
+                                    // Validate tier
+                                    if (isNaN(cost) || isNaN(reward) || cost <= 0 || reward <= 0) {
+                                        console.warn(`[Bot] Invalid invite reward tier: ${reqStr} -> ${amount}`);
+                                        continue;
+                                    }
+
+                                    if (availableInvites >= cost && cost > bestTierCost) {
+                                        bestTierCost = cost;
+                                        bestTierReward = reward;
                                     }
                                 }
 
-                                if (bestTierCost > 0) {
+                                // Ensure we have a valid reward
+                                if (bestTierCost > 0 && bestTierReward > 0 && !isNaN(bestTierReward)) {
                                     // CLAIM REWARD
                                     const codeStr = `INV-${bestTierCost}-${generateRandomCode()}`;
 
