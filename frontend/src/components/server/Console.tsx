@@ -179,12 +179,17 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
 
     const [isFullscreen, setIsFullscreen] = useState(false);
 
-    // ... existing code ...
+    // Trigger resize when fullscreen toggles
+    useEffect(() => {
+        setTimeout(() => {
+            fitAddonRef.current?.fit();
+        }, 100);
+    }, [isFullscreen]);
 
     return (
-        <div className={`flex flex-col lg:flex-row gap-6 ${isFullscreen ? 'fixed inset-0 z-50 bg-[#0c0229] p-4 h-screen w-screen' : 'h-[800px]'}`}>
+        <div className={`flex flex-col lg:flex-row gap-6 ${isFullscreen ? 'fixed inset-0 z-50 bg-[#0c0229] p-4 h-screen w-screen' : 'min-h-[600px] lg:h-[800px]'}`}>
             {/* Terminal Section */}
-            <div className={`flex-1 flex flex-col bg-[#0f111a] rounded-xl overflow-hidden border border-white/5 shadow-2xl min-w-0 ring-1 ring-white/5 ${isFullscreen ? 'h-full' : ''}`}>
+            <div className={`flex-1 flex flex-col bg-[#0f111a] rounded-xl overflow-hidden border border-white/5 shadow-2xl min-w-0 ring-1 ring-white/5 ${isFullscreen ? 'h-full' : 'min-h-[400px]'}`}>
                 {/* Header with Status */}
                 <div className="flex items-center justify-between px-5 py-3 bg-[#13161f] border-b border-white/5 backdrop-blur-sm">
                     <div className="flex items-center gap-2">
@@ -195,9 +200,17 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
                     {/* Fullscreen Toggle */}
                     <button
                         onClick={() => setIsFullscreen(!isFullscreen)}
-                        className="lg:hidden p-2 text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition"
+                        className="lg:hidden flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-gray-300 bg-white/10 hover:bg-white/20 hover:text-white rounded-lg transition border border-white/10"
                     >
-                        {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                        {isFullscreen ? (
+                            <>
+                                <Minimize2 size={14} /> <span>Exit Fullscreen</span>
+                            </>
+                        ) : (
+                            <>
+                                <Maximize2 size={14} /> <span>Maximize</span>
+                            </>
+                        )}
                     </button>
                 </div>
 
