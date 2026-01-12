@@ -107,6 +107,10 @@ const start = async () => {
     // Initialize Billing Job
     initBillingJob();
 
+    // Auto-start Discord Bot
+    const { startDiscordBot } = await import('./services/discordBot');
+    await startDiscordBot();
+
     server.listen(ENV.PORT, () => {
         console.log(`Server running on port ${ENV.PORT}`);
     });

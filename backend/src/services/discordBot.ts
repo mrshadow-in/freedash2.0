@@ -1,14 +1,10 @@
-import { Client, GatewayIntentBits, Events, EmbedBuilder, SlashCommandBuilder, REST, Routes, Guild, GuildMember, ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } from 'discord.js';
+import { Client, GatewayIntentBits, Events, SlashCommandBuilder, REST, Routes, Guild, EmbedBuilder } from 'discord.js';
 import { prisma } from '../prisma';
 
 let client: Client | null = null;
-let inviteCache = new Map<string, Map<string, number>>(); // guildId -> (inviterId -> uses)
+let inviteCache = new Map<string, Map<string, number>>();
 
-// In-memory Link Codes: code -> discordId
-// Expiration? Maybe clear regularly or set TTL. For now simple map.
 const linkCodes = new Map<string, string>();
-
-// Trivia State
 let triviaActive = false;
 let currentTriviaAnswer: string | null = null;
 
@@ -22,17 +18,16 @@ const generateCode = (prefix: string = 'REWARD') => {
     return `${prefix}-${result}`;
 };
 
-// Exported function for Controller to verify link
 export const verifyLinkCode = (code: string): string | null => {
     if (linkCodes.has(code)) {
         const discordId = linkCodes.get(code)!;
-        linkCodes.delete(code); // One-time use
+        linkCodes.delete(code);
         return discordId;
     }
     return null;
 };
 
-// Register slash commands
+// Register Slash Commands
 async function registerCommands(token: string, clientId: string, guildId: string) {
     const commands = [
         new SlashCommandBuilder().setName('invite-code').setDescription('Claim your invite reward code'),
@@ -57,7 +52,7 @@ async function registerCommands(token: string, clientId: string, guildId: string
     }
 }
 
-// Cache invites for a guild
+// Invite Tracking Helpers
 async function cacheInvites(guild: Guild) {
     try {
         const invites = await guild.invites.fetch();
@@ -69,12 +64,9 @@ async function cacheInvites(guild: Guild) {
             }
         });
         inviteCache.set(guild.id, guildInvites);
-    } catch (error) {
-        console.error(`Failed to cache invites for ${guild.name}:`, error);
-    }
+    } catch (e) { }
 }
 
-// Get user's total invites
 async function getUserInvites(guild: Guild, userId: string): Promise<number> {
     try {
         const invites = await guild.invites.fetch();
@@ -83,26 +75,18 @@ async function getUserInvites(guild: Guild, userId: string): Promise<number> {
             if (invite.inviter?.id === userId) total += invite.uses || 0;
         });
         return total;
-    } catch (error) {
-        return 0;
-    }
+    } catch (e) { return 0; }
 }
 
-// Create reward code in database
 async function createRewardCode(coins: number, prefix: string): Promise<string> {
     const code = generateCode(prefix);
     await prisma.redeemCode.create({
-        data: {
-            code,
-            amount: coins,
-            maxUses: 1,
-            usedCount: 0
-        }
+        data: { code, amount: coins, maxUses: 1, usedCount: 0 }
     });
     return code;
 }
 
-// Start Discord Bot
+// Start Bot
 export async function startDiscordBot() {
     try {
         const { getSettings } = await import('./settingsService');
@@ -132,18 +116,19 @@ export async function startDiscordBot() {
 
         client.once(Events.ClientReady, async (c) => {
             console.log(`🤖 Discord bot logged in as ${c.user.tag}`);
-            const guild = c.guilds.cache.get(discordBot.guildId);
-            if (guild) {
-                await cacheInvites(guild);
-                await registerCommands(discordBot.token, c.user.id, discordBot.guildId);
+            try {
+                const guild = c.guilds.cache.get(discordBot.guildId);
+                if (guild) {
+                    await cacheInvites(guild);
+                    await registerCommands(discordBot.token, c.user.id, discordBot.guildId);
+                }
+            } catch (error) {
+                console.error('Failed to init guild cache:', error);
             }
         });
 
-        // --- Event Listeners ---
-
+        // Member Add
         client.on(Events.GuildMemberAdd, async (member) => {
-            /* (Existing invite tracking logic omitted for brevity, but let's assume standard invite tracking) */
-            // Re-implement if needed or assume user wants full file. I'll include basic invite tracking.
             try {
                 const oldInvites = inviteCache.get(member.guild.id) || new Map();
                 const newInvites = await member.guild.invites.fetch();
@@ -158,32 +143,26 @@ export async function startDiscordBot() {
             } catch (e) { }
         });
 
-        // Chat Message Handling (Tasks + Bumps + Trivia)
+        // Message Handling (Tasks, Bumps, Trivia)
         client.on(Events.MessageCreate, async (message) => {
             if (message.author.bot) {
-                // Check for Bump Bots
-                // Disboard Bot ID: 302050872383242240
+                // Disboard Bump Check
                 if (message.author.id === '302050872383242240' && message.embeds.length > 0) {
                     const desc = message.embeds[0].description || '';
-                    if (desc.includes('Bumped!')) { // Adjust based on actual Disboard response
-                        // Disboard usually mentions the user in description: "Bumped by <@user>"
+                    if (desc.includes('Bumped!')) {
                         const match = desc.match(/<@!?(\d+)>/);
                         if (match) {
                             const userId = match[1];
-                            // Reward user
-                            // Need to check if user linked directly? Or generate code?
-                            // Generating code is safer if not linked.
-                            // But for "Bump Reward", auto-deposit is better if linked.
                             const user = await prisma.user.findUnique({ where: { discordId: userId } });
                             if (user) {
                                 await prisma.user.update({
                                     where: { id: user.id },
-                                    data: { coins: { increment: 50 } } // 50 coins reward
+                                    data: { coins: { increment: 50 } }
                                 });
-                                await message.channel.send(`🎉 <@${userId}> earned **50 coins** for bumping the server!`);
+                                await message.channel.send(`🎉 <@${userId}> earned **50 coins** for bumping!`);
                             } else {
                                 const code = await createRewardCode(50, 'BUMP');
-                                await message.channel.send(`🎉 <@${userId}> earned **50 coins**! Use code \`${code}\` in dashboard (or link account to auto-claim).`);
+                                await message.channel.send(`🎉 <@${userId}> earned **50 coins**! Code: \`${code}\``);
                             }
                         }
                     }
@@ -191,48 +170,43 @@ export async function startDiscordBot() {
                 return;
             }
 
-            // Trivia Answer Check
+            // Trivia
             if (triviaActive && currentTriviaAnswer && message.content.toLowerCase().includes(currentTriviaAnswer.toLowerCase())) {
                 triviaActive = false;
                 currentTriviaAnswer = null;
                 const reward = 25;
                 const user = await prisma.user.findUnique({ where: { discordId: message.author.id } });
                 if (user) {
-                    await prisma.user.update({
-                        where: { id: user.id },
-                        data: { coins: { increment: reward } }
-                    });
-                    await message.reply(`🎉 Correct! You earned **${reward} coins**!`);
+                    await prisma.user.update({ where: { id: user.id }, data: { coins: { increment: reward } } });
+                    await message.reply(`🎉 Correct! Earned **${reward} coins**!`);
                 } else {
                     const code = await createRewardCode(reward, 'TRIVIA');
-                    await message.reply(`🎉 Correct! Code: \`${code}\` (${reward} coins). Link account to auto-claim next time!`);
+                    await message.reply(`🎉 Correct! Code: \`${code}\``);
                 }
                 return;
             }
 
-            // Chat Task Logic
-            const activeTask = await prisma.discordChatTask.findUnique({
-                where: { discordId: message.author.id }
-            });
-
-            if (activeTask && activeTask.currentMessages < activeTask.targetMessages) {
-                // Anti-spam: check last message time? (Not implemented here for simplicity)
-                await prisma.discordChatTask.update({
-                    where: { id: activeTask.id },
-                    data: { currentMessages: { increment: 1 } }
-                });
+            // Chat Tasks
+            try {
+                const activeTask = await prisma.discordChatTask.findUnique({ where: { discordId: message.author.id } });
+                if (activeTask && activeTask.currentMessages < activeTask.targetMessages) {
+                    await prisma.discordChatTask.update({
+                        where: { id: activeTask.id },
+                        data: { currentMessages: { increment: 1 } }
+                    });
+                }
+            } catch (e) {
+                console.error('Chat task update error:', e);
             }
         });
 
         // Voice Farming
         client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
             const userId = newState.member?.id;
-            if (!userId) return;
-            if (newState.member?.user.bot) return;
+            if (!userId || newState.member?.user.bot) return;
 
             // Joined Voice
             if (!oldState.channelId && newState.channelId) {
-                // Create session
                 await prisma.discordVoiceSession.upsert({
                     where: { discordId: userId },
                     update: { joinedAt: new Date() },
@@ -248,7 +222,7 @@ export async function startDiscordBot() {
                     const minutes = Math.floor(diffMs / 60000);
 
                     if (minutes >= 10) {
-                        const coinsEarned = Math.floor(minutes / 10) * 10; // 10 coins per 10 mins
+                        const coinsEarned = Math.floor(minutes / 10) * 10;
                         if (coinsEarned > 0) {
                             const user = await prisma.user.findUnique({ where: { discordId: userId } });
                             if (user) {
@@ -256,144 +230,159 @@ export async function startDiscordBot() {
                                     where: { id: user.id },
                                     data: { coins: { increment: coinsEarned } }
                                 });
-                                // Optional: DM user? No, too spammy.
                             }
-                            // If not linked, coins lost? Or we store pending? For now, lost if not linked.
                         }
                     }
-                    await prisma.discordVoiceSession.delete({ where: { discordId: userId } });
+                    // Always delete session on leave
+                    await prisma.discordVoiceSession.delete({ where: { discordId: userId } }).catch(() => { });
                 }
             }
         });
 
-        // Slash Handler
+        // Interactions - Using deferReply for everything to prevent timeouts!
         client.on(Events.InteractionCreate, async (interaction) => {
             if (!interaction.isChatInputCommand()) return;
 
-            // /link
-            if (interaction.commandName === 'link') {
-                const code = generateCode('LINK');
-                linkCodes.set(code, interaction.user.id);
-                // Expire in 5 mins
-                setTimeout(() => linkCodes.delete(code), 300000);
+            try {
+                // /link
+                if (interaction.commandName === 'link') {
+                    await interaction.deferReply({ ephemeral: true });
+                    const code = generateCode('LINK');
+                    linkCodes.set(code, interaction.user.id);
+                    setTimeout(() => linkCodes.delete(code), 300000);
 
-                await interaction.reply({
-                    content: `🔐 **Link your Account**\nGo to your Panel > Account settings and enter this code:\n\`${code}\`\n*Expires in 5 minutes.*`,
-                    ephemeral: true
-                });
-            }
-
-            // /daily
-            if (interaction.commandName === 'daily') {
-                const user = await prisma.user.findUnique({ where: { discordId: interaction.user.id } });
-                if (!user) {
-                    return interaction.reply({ content: '❌ Account not linked! Use `/link` first.', ephemeral: true });
-                }
-
-                // Check last daily tx
-                const lastDaily = await prisma.transaction.findFirst({
-                    where: {
-                        userId: user.id,
-                        description: 'Daily Discord Reward',
-                        createdAt: { gt: new Date(Date.now() - 24 * 60 * 60 * 1000) }
-                    }
-                });
-
-                if (lastDaily) {
-                    return interaction.reply({ content: '⏳ You have already claimed your daily reward. Come back later!', ephemeral: true });
-                }
-
-                const amount = 50; // Daily amount
-                await prisma.user.update({
-                    where: { id: user.id },
-                    data: { coins: { increment: amount } }
-                });
-
-                await prisma.transaction.create({
-                    data: {
-                        userId: user.id,
-                        type: 'credit',
-                        amount,
-                        description: 'Daily Discord Reward',
-                        balanceAfter: user.coins + amount
-                    }
-                });
-
-                await interaction.reply(`💰 You claimed your daily **${amount} coins**!`);
-            }
-
-            // /task
-            if (interaction.commandName === 'task') {
-                const existing = await prisma.discordChatTask.findUnique({ where: { discordId: interaction.user.id } });
-                if (existing) {
-                    return interaction.reply({
-                        content: `You already have an active task!\nTarget: ${existing.currentMessages}/${existing.targetMessages} messages.`,
-                        ephemeral: true
+                    await interaction.editReply({
+                        content: `🔐 **Link Account Code**\nCode: \`${code}\`\nEnter this in your Dashboard > Account.\n*Expires in 5 mins.*`
                     });
                 }
 
-                const target = Math.floor(Math.random() * (100 - 30 + 1)) + 30; // 30-100 msgs
-                const reward = Math.floor(Math.random() * (300 - 50 + 1)) + 50; // 50-300 coins
-
-                await prisma.discordChatTask.create({
-                    data: {
-                        discordId: interaction.user.id,
-                        targetMessages: target,
-                        rewardAmount: reward
-                    }
-                });
-
-                await interaction.reply(`📝 **New Chat Task Started!**\nSend **${target}** messages in the server to earn **${reward} coins**!\nCheck progress with \`/task-reward\`.`);
-            }
-
-            // /task-reward
-            if (interaction.commandName === 'task-reward') {
-                const task = await prisma.discordChatTask.findUnique({ where: { discordId: interaction.user.id } });
-                if (!task) {
-                    return interaction.reply({ content: '❌ You don\'t have an active task. Start one with `/task`.', ephemeral: true });
-                }
-
-                if (task.currentMessages >= task.targetMessages) {
-                    // Complete
+                // /daily
+                else if (interaction.commandName === 'daily') {
+                    await interaction.deferReply();
                     const user = await prisma.user.findUnique({ where: { discordId: interaction.user.id } });
-                    if (user) {
-                        await prisma.user.update({
-                            where: { id: user.id },
-                            data: { coins: { increment: task.rewardAmount } }
-                        });
-                        await prisma.discordChatTask.delete({ where: { id: task.id } });
-                        await interaction.reply(`🎉 Task Complete! **${task.rewardAmount} coins** added to your account.`);
-                    } else {
-                        const code = await createRewardCode(task.rewardAmount, 'TASK');
-                        await prisma.discordChatTask.delete({ where: { id: task.id } });
-                        await interaction.reply(`🎉 Task Complete! Code: \`${code}\` (${task.rewardAmount} coins). Link account to auto-claim!`);
+
+                    if (!user) {
+                        await interaction.editReply({ content: '❌ Not linked! Use `/link` first.' });
+                        return;
                     }
-                } else {
-                    await interaction.reply({
-                        content: `📊 Progress: **${task.currentMessages}/${task.targetMessages}** messages.\nKeep chatting!`,
-                        ephemeral: true
+
+                    const lastDaily = await prisma.transaction.findFirst({
+                        where: {
+                            userId: user.id,
+                            description: 'Daily Discord Reward',
+                            createdAt: { gt: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+                        }
                     });
+
+                    if (lastDaily) {
+                        await interaction.editReply({ content: '⏳ Already claimed today. Come back tomorrow!' });
+                        return;
+                    }
+
+                    const amount = 50;
+                    await prisma.user.update({
+                        where: { id: user.id },
+                        data: { coins: { increment: amount } }
+                    });
+                    await prisma.transaction.create({
+                        data: {
+                            userId: user.id,
+                            type: 'credit',
+                            amount,
+                            description: 'Daily Discord Reward',
+                            balanceAfter: user.coins + amount
+                        }
+                    });
+
+                    await interaction.editReply(`💰 Claimed **${amount} coins**!`);
                 }
-            }
 
-            // /trivia (Admin)
-            if (interaction.commandName === 'trivia') {
-                if (!interaction.memberPermissions?.has('Administrator')) {
-                    return interaction.reply({ content: '❌ Admin only.', ephemeral: true });
+                // /task
+                else if (interaction.commandName === 'task') {
+                    await interaction.deferReply();
+                    const existing = await prisma.discordChatTask.findUnique({ where: { discordId: interaction.user.id } });
+
+                    if (existing) {
+                        await interaction.editReply({
+                            content: `⚠️ Active task exists!\nTarget: **${existing.currentMessages}/${existing.targetMessages}** messages.`
+                        });
+                        return;
+                    }
+
+                    const target = Math.floor(Math.random() * (100 - 30 + 1)) + 30;
+                    const reward = Math.floor(Math.random() * (300 - 50 + 1)) + 50;
+
+                    await prisma.discordChatTask.create({
+                        data: {
+                            discordId: interaction.user.id,
+                            targetMessages: target,
+                            rewardAmount: reward
+                        }
+                    });
+
+                    await interaction.editReply(`📝 **Task Started!**\nSend **${target}** messages to earn **${reward} coins**!\nCheck progress: \`/task-reward\``);
                 }
 
-                const questions = [
-                    { q: "What is the max RAM of a free server?", a: "Variable" }, // Example
-                    { q: "Which language is this bot written in?", a: "TypeScript" },
-                    { q: "What database does this panel use?", a: "PostgreSQL" },
-                    { q: "Command to check Java version?", a: "java -version" }
-                ];
+                // /task-reward
+                else if (interaction.commandName === 'task-reward') {
+                    await interaction.deferReply();
+                    const task = await prisma.discordChatTask.findUnique({ where: { discordId: interaction.user.id } });
 
-                const q = questions[Math.floor(Math.random() * questions.length)];
-                triviaActive = true;
-                currentTriviaAnswer = q.a;
+                    if (!task) {
+                        await interaction.editReply({ content: '❌ No active task. Start with `/task`.' });
+                        return;
+                    }
 
-                await interaction.reply(`🧠 **TRIVIA TIME!**\nFirst to answer correctly wins **25 coins**!\n\nQuestion: **${q.q}**`);
+                    if (task.currentMessages >= task.targetMessages) {
+                        const user = await prisma.user.findUnique({ where: { discordId: interaction.user.id } });
+                        if (user) {
+                            await prisma.user.update({
+                                where: { id: user.id },
+                                data: { coins: { increment: task.rewardAmount } }
+                            });
+                            await prisma.discordChatTask.delete({ where: { id: task.id } });
+                            await interaction.editReply(`🎉 Task Complete! **${task.rewardAmount} coins** added!`);
+                        } else {
+                            const code = await createRewardCode(task.rewardAmount, 'TASK');
+                            await prisma.discordChatTask.delete({ where: { id: task.id } });
+                            await interaction.editReply(`🎉 Task Complete! Code: \`${code}\` (${task.rewardAmount} coins).`);
+                        }
+                    } else {
+                        await interaction.editReply({
+                            content: `📊 Progress: **${task.currentMessages}/${task.targetMessages}** messages.`
+                        });
+                    }
+                }
+
+                // /trivia
+                else if (interaction.commandName === 'trivia') {
+                    await interaction.deferReply();
+                    if (!interaction.memberPermissions?.has('Administrator')) {
+                        await interaction.editReply({ content: '❌ Admin only.' });
+                        return;
+                    }
+
+                    const questions = [
+                        { q: "Max RAM of free server?", a: "Variable" },
+                        { q: "Bot language?", a: "TypeScript" },
+                        { q: "Database used?", a: "PostgreSQL" },
+                    ];
+                    const q = questions[Math.floor(Math.random() * questions.length)];
+
+                    triviaActive = true;
+                    currentTriviaAnswer = q.a;
+                    await interaction.editReply(`🧠 **TRIVIA!**\nFirst correct answer wins **25 coins**!\n\nQuestion: **${q.q}**`);
+                }
+
+            } catch (err) {
+                console.error('Interaction error:', err);
+                try {
+                    if (interaction.deferred || interaction.replied) {
+                        await interaction.editReply({ content: '❌ An error occurred.' });
+                    } else {
+                        await interaction.reply({ content: '❌ An error occurred.', ephemeral: true });
+                    }
+                } catch (e) { }
             }
         });
 
