@@ -56,9 +56,9 @@ const Header = () => {
     return (
         <>
             <div className="relative z-40 border-b border-white/5 bg-black/20 backdrop-blur-xl sticky top-0">
-                <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-                    <div className="flex items-center gap-6">
-                        <Link to="/" className="flex items-center gap-3">
+                <div className="w-full px-6 h-20 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <Link to="/" className="flex items-center gap-3 shrink-0">
                             {panelLogo ? (
                                 <img
                                     src={panelLogo}
@@ -75,8 +75,8 @@ const Header = () => {
                             </h1>
                         </Link>
 
-                        {/* Social Media Icons (Next to Logo) */}
-                        <div className="hidden md:flex items-center gap-3 border-l border-white/10 pl-6 h-8">
+                        {/* Social Media Icons (Immediately Next to Logo) */}
+                        <div className="hidden md:flex items-center gap-3 pl-2 h-10">
                             {socialLinks.map(({ key, icon: Icon, color }) => {
                                 const url = social[key];
                                 if (!url) return null;
@@ -86,7 +86,7 @@ const Header = () => {
                                         href={url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className={`hover:scale-110 transition-transform ${color} opacity-70 hover:opacity-100`}
+                                        className={`p-1.5 rounded-lg hover:bg-white/5 hover:scale-105 transition-all ${color} opacity-70 hover:opacity-100 `}
                                     >
                                         <Icon size={20} />
                                     </a>
