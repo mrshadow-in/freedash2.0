@@ -2,11 +2,10 @@ import { Client, GatewayIntentBits, Events, SlashCommandBuilder, REST, Routes, G
 import { prisma } from '../prisma';
 
 let client: Client | null = null;
-let inviteCache = new Map<string, Map<string, number>>();
-
 const linkCodes = new Map<string, string>();
 let triviaActive = false;
 let currentTriviaAnswer: string | null = null;
+let inviteCache = new Map<string, Map<string, number>>(); // GuildId -> UserId -> Count
 
 // Helpers
 const generateCode = (prefix: string = 'REWARD') => {
@@ -126,7 +125,22 @@ async function registerCommands(token: string, clientId: string, guildId: string
 }
 
 // Invite Tracking Helpers (Omitted for brevity - same as before, assume present)
-async function cacheInvites(guild: Guild) { /* ... same ... */ }
+
+// Invite Tracking Helpers
+async function cacheInvites(guild: Guild) {
+    try {
+        const invites = await guild.invites.fetch();
+        const memberInvites = new Map<string, number>();
+        invites.forEach(inv => {
+            const count = (memberInvites.get(inv.inviterId!) || 0) + (inv.uses || 0);
+            memberInvites.set(inv.inviterId!, count);
+        });
+        inviteCache.set(guild.id, memberInvites);
+    } catch (err) {
+        console.error('Invite cache error:', err);
+    }
+}
+
 
 // Start Bot
 export async function startDiscordBot() {
@@ -152,7 +166,7 @@ export async function startDiscordBot() {
         client.once(Events.ClientReady, async (c) => {
             console.log(`🤖 Discord bot logged in as ${c.user.tag}`);
             try {
-                // await cacheInvites(...)
+                await cacheInvites(c.guilds.cache.get(discordBot.guildId)!);
                 await registerCommands(discordBot.token, c.user.id, discordBot.guildId);
             } catch (error) { console.error('Failed to init guild cache:', error); }
         });
@@ -272,6 +286,151 @@ export async function startDiscordBot() {
                             `• Cooldown: **1 minute** between games.\n` +
                             `• Only works in the **Games Channel**.`;
                         await interaction.editReply(msg);
+                        return;
+                    }
+
+                    // --- NEW COMMANDS ---
+
+                    // 1. my-invites
+                    if (interaction.commandName === 'my-invites') {
+                        await interaction.deferReply({ ephemeral: true });
+                        const invData = inviteCache.get(interaction.guildId!) || new Map();
+                        const count = invData.get(interaction.user.id) || 0;
+
+                        await interaction.editReply(`📩 **Invite Stats**\nYou have **${count}** tracked invites in this server.`);
+                        return;
+                    }
+
+                    // 2. leaderboard (Invites)
+                    if (interaction.commandName === 'leaderboard') {
+                        await interaction.deferReply();
+                        const invData = inviteCache.get(interaction.guildId!) || new Map();
+                        // Sort desc
+                        const sorted = [...invData.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+
+                        if (sorted.length === 0) return interaction.editReply('📉 Leaderboard is empty.');
+
+                        const lines = sorted.map((entry, i) => {
+                            return `**#${i + 1}** <@${entry[0]}> - **${entry[1]} invites**`;
+                        });
+
+                        const embed = new EmbedBuilder()
+                            .setTitle('🏆 Top 10 Inviters')
+                            .setColor(0xFFD700)
+                            .setDescription(lines.join('\n'));
+
+                        await interaction.editReply({ embeds: [embed] });
+                        return;
+                    }
+
+                    // 3. invite-code (Reward Claimer)
+                    if (interaction.commandName === 'invite-code') {
+                        await interaction.deferReply({ ephemeral: true });
+
+                        const settingSvc = await import('./settingsService');
+                        const settings = await settingSvc.getSettings();
+
+                        // User check
+                        const user = await prisma.user.findUnique({ where: { discordId: interaction.user.id } });
+                        if (!user) return interaction.editReply('❌ Link your dashboard account first (`/link-account`).');
+
+                        // Get Invites
+                        const invData = inviteCache.get(interaction.guildId!) || new Map();
+                        const myInvites = invData.get(interaction.user.id) || 0;
+
+                        if (myInvites === 0) return interaction.editReply('❌ You have 0 invites. Invite people to earn coins!');
+
+                        // Check Milestones from Settings
+                        const rewards = (settings?.inviteRewards as any) || {};
+                        // Example structure: { "5": 100, "10": 200 }
+                        // Filter applicable rewards
+                        let totalEarned = 0;
+                        let claimedCount = 0;
+
+                        for (const [reqStr, amount] of Object.entries(rewards)) {
+                            const req = parseInt(reqStr);
+                            if (myInvites >= req) {
+                                // Check if already claimed this specific milestone
+                                const already = await prisma.inviteClaim.findUnique({
+                                    where: {
+                                        discordUserId_invitesRequired: {
+                                            discordUserId: interaction.user.id,
+                                            invitesRequired: req
+                                        }
+                                    }
+                                });
+
+                                if (!already) {
+                                    // Claim it
+                                    await prisma.inviteClaim.create({
+                                        data: {
+                                            discordUserId: interaction.user.id,
+                                            invitesRequired: req,
+                                            code: 'AUTO-CLAIMED'
+                                        }
+                                    });
+                                    totalEarned += Number(amount);
+                                    claimedCount++;
+                                }
+                            }
+                        }
+
+                        if (claimedCount > 0) {
+                            await prisma.user.update({
+                                where: { id: user.id },
+                                data: { coins: { increment: totalEarned } }
+                            });
+                            await interaction.editReply(`🎉 **Reward Claimed!**\nYou hit ${claimedCount} milestone(s) with **${myInvites} invites**.\nAdded **+${totalEarned} coins** to your balance.`);
+                        } else {
+                            await interaction.editReply(`ℹ️ **No New Rewards**\nYou have **${myInvites} invites**. Keep inviting to reach the next milestone!`);
+                        }
+                        return;
+                    }
+
+                    // 4. boost-reward
+                    if (interaction.commandName === 'boost-reward') {
+                        await interaction.deferReply({ ephemeral: true });
+
+                        // Check if booster
+                        const member = await interaction.guild?.members.fetch(interaction.user.id);
+                        if (!member?.premiumSince) {
+                            return interaction.editReply('❌ You are not boosting this server! Boost us to earn rewards.');
+                        }
+
+                        // Check User
+                        const user = await prisma.user.findUnique({ where: { discordId: interaction.user.id } });
+                        if (!user) return interaction.editReply('❌ Link your dashboard account first (`/link-account`).');
+
+                        // Check Cooldown (30 days)
+                        // Using 'boost-reward' key in DiscordGameStats cooldowns
+                        let stats = await prisma.discordGameStats.findUnique({ where: { discordId: interaction.user.id } });
+                        if (!stats) stats = await prisma.discordGameStats.create({ data: { discordId: interaction.user.id } });
+
+                        const cdMap = (stats.cooldowns as any) || {};
+                        const lastClaim = cdMap['boost-reward'] ? new Date(cdMap['boost-reward']).getTime() : 0;
+                        const now = Date.now();
+                        const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+
+                        if (now - lastClaim < thirtyDays) {
+                            const daysLeft = Math.ceil((thirtyDays - (now - lastClaim)) / (1000 * 60 * 60 * 24));
+                            return interaction.editReply(`⏳ You already claimed your monthly boost reward. Come back in **${daysLeft} days**.`);
+                        }
+
+                        // Give Reward
+                        const reward = 500; // Configurable ideally
+                        await prisma.user.update({
+                            where: { id: user.id },
+                            data: { coins: { increment: reward } }
+                        });
+
+                        // Set Cooldown
+                        cdMap['boost-reward'] = new Date();
+                        await prisma.discordGameStats.update({
+                            where: { id: stats.id },
+                            data: { cooldowns: cdMap }
+                        });
+
+                        await interaction.editReply(`💎 **Thank You for Boosting!**\nYou claimed your monthly reward of **${reward} coins**!`);
                         return;
                     }
 
