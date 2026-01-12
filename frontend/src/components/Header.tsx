@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../api/client';
 import MobileMenu from './MobileMenu';
 import TransactionHistoryModal from './TransactionHistoryModal';
+import NotificationCenter from './NotificationCenter';
 
 const Header = () => {
     const { user: authUser, logout } = useAuthStore();
@@ -65,6 +66,8 @@ const Header = () => {
                             <Clock size={18} className="text-green-400 group-hover:animate-pulse" />
                             <span className="font-bold text-sm">AFK Zone</span>
                         </Link>
+
+                        <NotificationCenter />
 
                         <button
                             onClick={() => setIsLogsOpen(true)}
