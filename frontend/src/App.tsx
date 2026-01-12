@@ -14,6 +14,7 @@ import BrandingLoader from './components/BrandingLoader';
 import SessionHeartbeat from './components/SessionHeartbeat';
 import DiscordSuccess from './pages/DiscordSuccess';
 import NotificationListener from './components/NotificationListener';
+import VerifiedFooter from './components/VerifiedFooter';
 
 
 function App() {
@@ -41,6 +42,7 @@ function App() {
         <Route path="/auth/discord/success" element={<DiscordSuccess />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <VerifiedFooter />
     </Router>
   );
 }
