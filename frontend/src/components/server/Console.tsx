@@ -187,9 +187,9 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
     }, [isFullscreen]);
 
     return (
-        <div className={`flex flex-col lg:flex-row gap-6 ${isFullscreen ? 'fixed inset-0 z-50 bg-[#0c0229] p-4 h-screen w-screen' : 'min-h-[600px] lg:h-[800px]'}`}>
+        <div className={`flex flex-col lg:flex-row gap-6 ${isFullscreen ? 'fixed inset-0 z-50 bg-[#0c0229] p-4 h-screen w-screen' : 'min-h-[800px]'}`}>
             {/* Terminal Section */}
-            <div className={`flex-1 flex flex-col bg-[#0f111a] rounded-xl overflow-hidden border border-white/5 shadow-2xl min-w-0 ring-1 ring-white/5 ${isFullscreen ? 'h-full' : 'min-h-[400px]'}`}>
+            <div className={`flex-1 flex flex-col bg-[#0f111a] rounded-xl overflow-hidden border border-white/5 shadow-2xl min-w-0 ring-1 ring-white/5 ${isFullscreen ? 'h-full' : 'min-h-[600px]'}`}>
                 {/* Header with Status */}
                 <div className="flex items-center justify-between px-5 py-3 bg-[#13161f] border-b border-white/5 backdrop-blur-sm">
                     <div className="flex items-center gap-2">

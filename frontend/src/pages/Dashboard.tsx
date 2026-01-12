@@ -423,10 +423,10 @@ const Dashboard = () => {
                                         )}
                                     </div>
                                     <div className="pt-4 flex gap-3">
-                                        <button onClick={() => setShowCreateModal(false)} className="flex-1 py-3 text-sm font-bold text-red-200 bg-red-900/40 hover:bg-red-900/60 border-4 border-red-800/50 rounded-lg transition shadow-lg">❌ Cancel</button>
+                                        <button onClick={() => setShowCreateModal(false)} className="flex-1 py-3 text-sm font-bold text-gray-300 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition shadow-lg hover:text-white">Cancel</button>
                                         <motion.button
-                                            whileHover={{ scale: 1.05 }}
-                                            whileTap={{ scale: 0.95 }}
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.98 }}
                                             onClick={() => {
                                                 // Validate before submitting
                                                 const trimmedName = serverName.trim();
@@ -446,7 +446,7 @@ const Dashboard = () => {
                                                 createServerMutation.mutate({ name: trimmedName, planId: selectedPlanId });
                                             }}
                                             disabled={!serverName.trim() || !selectedPlanId || createServerMutation.isPending}
-                                            className="flex-[2] py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-lg text-sm font-extrabold shadow-lg border-4 border-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 relative overflow-hidden"
+                                            className="flex-[2] py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white rounded-xl text-sm font-extrabold shadow-lg shadow-purple-500/25 border border-white/10 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 relative overflow-hidden"
                                             style={{ textShadow: '2px 2px 0 rgba(0,0,0,0.6)' }}
                                         >
                                             {createServerMutation.isPending ? (

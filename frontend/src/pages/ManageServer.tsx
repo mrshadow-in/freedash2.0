@@ -143,7 +143,7 @@ const ManageServer = () => {
             <div className="relative z-10 max-w-[1600px] mx-auto px-4 sm:px-6 py-6 sm:py-10">
                 <div className="flex gap-6 items-start">
                     {/* Left Sidebar Ad */}
-                    <div className="hidden 2xl:block w-[300px] shrink-0 sticky top-24">
+                    <div className="hidden xl:block w-[300px] shrink-0 sticky top-24">
                         <AdZone position="server-sidebar-left" className="w-full" />
                     </div>
 
@@ -393,7 +393,7 @@ const ManageServer = () => {
                     </div>
 
                     {/* Right Sidebar Ad */}
-                    <div className="hidden 2xl:block w-[300px] shrink-0 sticky top-24">
+                    <div className="hidden xl:block w-[300px] shrink-0 sticky top-24">
                         <AdZone position="server-sidebar-right" className="w-full" />
                     </div>
                 </div>
