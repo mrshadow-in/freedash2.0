@@ -28,6 +28,17 @@ const createServerSchema = z.object({
     planId: z.string()
 });
 
+// Helper to ensure EULA exists
+const ensureEula = async (pteroIdentifier: string) => {
+    try {
+        await writeFileContent(pteroIdentifier, 'eula.txt', 'eula=true');
+        console.log(`[EULA] Ensured eula.txt for ${pteroIdentifier}`);
+    } catch (error) {
+        // Silently fail if server is installing or not ready, it's fine
+        console.warn(`[EULA] Failed to ensure eula.txt for ${pteroIdentifier} (might be installing)`);
+    }
+};
+
 export const getPlans = async (req: Request, res: Response) => {
     try {
         const plans = await prisma.plan.findMany();
@@ -154,6 +165,15 @@ export const createServer = async (req: AuthRequest, res: Response) => {
             // We can return data to be used outside
             return { server, user, plan, settings };
         }).then(async (result: any) => {
+
+            // === AUTO EULA ON CREATE ===
+            if (result.server && result.server.pteroIdentifier) {
+                // Clean up delay to allow server to be "ready" enough or just try? 
+                // Usually on create it might be Installing, so it might fail. 
+                // But we can try.
+                setTimeout(() => ensureEula(result.server.pteroIdentifier), 5000);
+            }
+
             // Send Discord webhook notification
             const { sendServerCreatedWebhook } = await import('../services/webhookService');
             sendServerCreatedWebhook({
@@ -311,6 +331,12 @@ export const powerServer = async (req: AuthRequest, res: Response) => {
 
         if (!server) return res.status(404).json({ message: 'Server not found' });
         if (!server.pteroIdentifier) return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
+
+        // === AUTO EULA ON START ===
+        // Only check on start or restart
+        if (signal === 'start' || signal === 'restart') {
+            await ensureEula(server.pteroIdentifier);
+        }
 
         await powerPteroServer(server.pteroIdentifier, signal);
 
