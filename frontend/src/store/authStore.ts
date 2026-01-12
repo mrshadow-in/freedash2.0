@@ -7,6 +7,7 @@ interface User {
     email: string;
     coins: number;
     role: string;
+    discordId?: string;
 }
 
 interface AuthState {

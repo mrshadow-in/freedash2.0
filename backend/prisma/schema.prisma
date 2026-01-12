@@ -265,3 +265,18 @@ model Ad {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
+
+model DiscordChatTask {
+  id              String   @id @default(uuid())
+  discordId       String   @unique
+  targetMessages  Int
+  currentMessages Int      @default(0)
+  rewardAmount    Int
+  createdAt       DateTime @default(now())
+}
+
+model DiscordVoiceSession {
+  id        String   @id @default(uuid())
+  discordId String   @unique
+  joinedAt  DateTime @default(now())
+}

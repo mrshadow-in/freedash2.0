@@ -115,3 +115,37 @@ export const linkDiscord = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Failed to link Discord' });
     }
 };
+
+// Link Discord using Verification Code
+export const linkDiscordAccount = async (req: Request, res: Response) => {
+    try {
+        const userId = (req.user as any).userId;
+        const { code } = req.body;
+
+        if (!code) return res.status(400).json({ message: 'Code is required' });
+
+        const { verifyLinkCode } = await import('../services/discordBot');
+        const discordId = verifyLinkCode(code);
+
+        if (!discordId) {
+            return res.status(400).json({ message: 'Invalid or expired code' });
+        }
+
+        // Check if Discord ID is already in use
+        const existing = await prisma.user.findUnique({ where: { discordId } });
+        if (existing) {
+            if (existing.id === userId) return res.status(400).json({ message: 'Already linked to this account' });
+            return res.status(400).json({ message: 'Discord ID already linked to another account' });
+        }
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: { discordId }
+        });
+
+        res.json({ message: 'Discord account linked successfully!' });
+    } catch (error) {
+        console.error('Link Discord Error:', error);
+        res.status(500).json({ message: 'Failed to link account' });
+    }
+};

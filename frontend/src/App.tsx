@@ -12,6 +12,7 @@ import PrivateRoute from './components/PrivateRoute';
 import AdminRoute from './components/AdminRoute';
 import BrandingLoader from './components/BrandingLoader';
 import SessionHeartbeat from './components/SessionHeartbeat';
+import DiscordSuccess from './pages/DiscordSuccess';
 
 
 function App() {
@@ -35,6 +36,7 @@ function App() {
         <Route path="/server/:id" element={<PrivateRoute><ManageServer /></PrivateRoute>} />
         <Route path="/account" element={<PrivateRoute><Account /></PrivateRoute>} />
         <Route path="/afk" element={<PrivateRoute><AFKPage /></PrivateRoute>} />
+        <Route path="/auth/discord/success" element={<DiscordSuccess />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>

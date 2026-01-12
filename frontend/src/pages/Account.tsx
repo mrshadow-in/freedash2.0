@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import api from '../api/client';
 import { toast } from 'react-hot-toast';
-import { Mail, Lock, Shield } from 'lucide-react';
+import { Mail, Lock, Shield, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 import Header from '../components/Header';
@@ -176,6 +176,67 @@ const Account = () => {
                             {passwordLoading ? 'Updating...' : 'Update Password'}
                         </button>
                     </form>
+                </motion.section>
+
+                {/* Link Discord Account */}
+                <motion.section
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15 }}
+                    className="bg-white/5 border border-white/10 rounded-2xl p-8 mb-6"
+                >
+                    <div className="flex items-center gap-3 mb-6">
+                        <Shield className="text-purple-400" size={24} />
+                        <h2 className="text-2xl font-bold">Connect Discord</h2>
+                    </div>
+
+                    {user?.discordId ? (
+                        <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 flex items-center gap-3">
+                            <Check className="text-green-400" />
+                            <div>
+                                <p className="text-green-400 font-bold">Account Linked</p>
+                                <p className="text-sm text-gray-400">ID: {user.discordId}</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <p className="text-gray-400">
+                                Link your Discord account to earn coins from daily rewards, chatting, and more!
+                                <br />
+                                <span className="text-sm text-gray-500">Run <code className="bg-black/30 px-1 rounded">/link</code> in our Discord server to get a code.</span>
+                            </p>
+
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="Enter LINK-XXXX code"
+                                    className="flex-1 bg-white/10 border border-white/10 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    id="discord-code-input"
+                                />
+                                <button
+                                    onClick={async () => {
+                                        const input = document.getElementById('discord-code-input') as HTMLInputElement;
+                                        const code = input.value;
+                                        if (!code) return toast.error('Please enter a code');
+
+                                        try {
+                                            const res = await api.put('/auth/link-discord', { code });
+                                            toast.success(res.data.message);
+                                            // Refresh user
+                                            const userRes = await api.get('/auth/me');
+                                            setUser(userRes.data);
+                                            input.value = '';
+                                        } catch (err: any) {
+                                            toast.error(err.response?.data?.message || 'Failed to link account');
+                                        }
+                                    }}
+                                    className="px-6 py-3 bg-[#5865F2] hover:bg-[#4752c4] rounded-lg font-bold transition"
+                                >
+                                    Link Account
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </motion.section>
 
                 {/* Two Factor Authentication (Placeholder) */}

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { register, login, refreshToken, getMe, updateEmail, updatePassword, updatePreferences } from '../controllers/authController';
+import { linkDiscordAccount } from '../controllers/discordAuthController';
 import { authenticate } from '../middleware/auth';
 
 const router = Router();
@@ -102,5 +103,6 @@ router.get('/me', authenticate as any, getMe);
 router.put('/update-email', authenticate as any, updateEmail);
 router.put('/update-password', authenticate as any, updatePassword);
 router.put('/update-preferences', authenticate as any, updatePreferences);
+router.put('/link-discord', authenticate as any, linkDiscordAccount);
 
 export default router;
