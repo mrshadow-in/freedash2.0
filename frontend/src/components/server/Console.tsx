@@ -178,22 +178,23 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
     };
 
     return (
-        <div className="flex flex-col lg:flex-row gap-4 h-[600px]">
+        <div className="flex flex-col lg:flex-row gap-6 h-[800px]">
             {/* Terminal Section */}
-            <div className="flex-1 flex flex-col bg-[#0d1117] rounded-xl overflow-hidden border border-white/10 shadow-xl min-w-0">
+            <div className="flex-1 flex flex-col bg-[#0f111a] rounded-xl overflow-hidden border border-white/5 shadow-2xl min-w-0 ring-1 ring-white/5">
                 {/* Header with Status */}
-                <div className="flex items-center justify-between px-4 py-2 bg-[#161b22] border-b border-white/5">
+                <div className="flex items-center justify-between px-5 py-3 bg-[#13161f] border-b border-white/5 backdrop-blur-sm">
                     <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${status === 'connected' ? 'bg-green-500' : 'bg-red-500'}`} />
-                        <span className="text-xs font-mono text-gray-400 uppercase">{status}</span>
+                        <div className={`w-2 h-2 rounded-full ${status === 'connected' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'}`} />
+                        <span className="text-xs font-mono text-gray-400 uppercase tracking-widest font-semibold">{status}</span>
                     </div>
                 </div>
 
-                <div className="flex-1 relative min-h-0">
+                <div className="flex-1 relative min-h-0 bg-[#0f111a]">
                     {/* Loaders/Error overlays */}
                     {status === 'connecting' && (
-                        <div className="absolute inset-0 flex flex-col z-20 items-center justify-center bg-[#0d1117]/80 gap-4">
-                            <Loader2 className="animate-spin text-purple-500" size={32} />
+                        <div className="absolute inset-0 flex flex-col z-20 items-center justify-center bg-[#0f111a]/90 gap-4 backdrop-blur-sm transition-all duration-300">
+                            <Loader2 className="animate-spin text-indigo-500" size={32} />
+                            <span className="text-gray-400 text-sm font-mono tracking-wider">CONNECTING TO WINGS...</span>
                         </div>
                     )}
 
@@ -201,8 +202,8 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
                 </div>
 
                 {/* Input */}
-                <div className="flex items-center gap-2 px-4 py-3 bg-[#161b22] border-t border-white/5">
-                    <span className="text-gray-500 font-mono text-lg">{'>'}</span>
+                <div className="flex items-center gap-3 px-5 py-4 bg-[#13161f] border-t border-white/5">
+                    <span className="text-indigo-400 font-mono text-lg font-bold">{'>'}</span>
                     <input
                         type="text"
                         value={command}
@@ -219,54 +220,55 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
             <div className="w-full lg:w-72 flex flex-col gap-4">
 
                 {/* Uptime/State Card */}
-                <div className="bg-[#161b22] border border-white/10 rounded-xl p-4">
-                    <h3 className="text-gray-400 text-xs uppercase font-bold mb-2">State</h3>
-                    <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full ${stats?.state === 'running' ? 'bg-green-500' : 'bg-red-500'}`} />
-                        <span className="text-white font-mono capitalize">{stats?.state || 'Unknown'}</span>
+                <div className="bg-[#0f111a] border border-white/5 rounded-xl p-5 shadow-lg ring-1 ring-white/5 backdrop-blur-sm">
+                    <h3 className="text-gray-500 text-xs uppercase font-bold mb-2 tracking-wider">Server State</h3>
+                    <div className="flex items-center gap-3">
+                        <div className={`w-3 h-3 rounded-full ${stats?.state === 'running' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'}`} />
+                        <span className="text-white font-mono capitalize text-lg font-semibold">{stats?.state || 'Unknown'}</span>
                     </div>
-                    <div className="mt-2 text-xs text-gray-500 font-mono">
-                        Uptime: {stats?.uptime ? (stats.uptime / 1000).toFixed(0) + 's' : '--'}
+                    <div className="mt-3 text-xs text-gray-500 font-mono flex justify-between">
+                        <span>Uptime:</span>
+                        <span className="text-gray-300">{stats?.uptime ? (stats.uptime / 1000).toFixed(0) + 's' : '--'}</span>
                     </div>
                 </div>
 
                 {/* CPU Graph */}
-                <div className="bg-[#161b22] border border-white/10 rounded-xl p-4 flex-1 min-h-[140px]">
-                    <div className="flex justify-between items-center mb-2">
-                        <h3 className="text-gray-400 text-xs uppercase font-bold flex items-center gap-1"><Cpu size={12} /> CPU Load</h3>
-                        <span className="text-green-400 font-mono text-xs">{stats?.cpu_absolute?.toFixed(1) || 0}%</span>
+                <div className="bg-[#0f111a] border border-white/5 rounded-xl p-5 flex-1 min-h-[180px] shadow-lg ring-1 ring-white/5 flex flex-col justify-between">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-gray-500 text-xs uppercase font-bold flex items-center gap-2 tracking-wider"><Cpu size={14} className="text-indigo-500" /> CPU Load</h3>
+                        <span className="text-indigo-400 font-mono text-sm font-bold">{stats?.cpu_absolute?.toFixed(1) || 0}%</span>
                     </div>
-                    <div className="h-24 w-full">
+                    <div className="h-32 w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={statsHistory}>
                                 <defs>
                                     <linearGradient id="cpuGradient" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#4ade80" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#4ade80" stopOpacity={0} />
+                                        <stop offset="5%" stopColor="#818cf8" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#818cf8" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
-                                <Area type="monotone" dataKey="cpu" stroke="#4ade80" fill="url(#cpuGradient)" strokeWidth={2} isAnimationActive={false} />
+                                <Area type="monotone" dataKey="cpu" stroke="#818cf8" fill="url(#cpuGradient)" strokeWidth={2} isAnimationActive={false} />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
                 {/* Memory Graph */}
-                <div className="bg-[#161b22] border border-white/10 rounded-xl p-4 flex-1 min-h-[140px]">
-                    <div className="flex justify-between items-center mb-2">
-                        <h3 className="text-gray-400 text-xs uppercase font-bold flex items-center gap-1"><Activity size={12} /> Memory</h3>
-                        <span className="text-blue-400 font-mono text-xs">{formatBytes(stats?.memory_bytes || 0)}</span>
+                <div className="bg-[#0f111a] border border-white/5 rounded-xl p-5 flex-1 min-h-[180px] shadow-lg ring-1 ring-white/5 flex flex-col justify-between">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-gray-500 text-xs uppercase font-bold flex items-center gap-2 tracking-wider"><Activity size={14} className="text-blue-500" /> Memory</h3>
+                        <span className="text-blue-400 font-mono text-sm font-bold">{formatBytes(stats?.memory_bytes || 0)}</span>
                     </div>
-                    <div className="h-24 w-full">
+                    <div className="h-32 w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={statsHistory}>
                                 <defs>
                                     <linearGradient id="memGradient" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#60a5fa" stopOpacity={0} />
+                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
-                                <Area type="monotone" dataKey="memory" stroke="#60a5fa" fill="url(#memGradient)" strokeWidth={2} isAnimationActive={false} />
+                                <Area type="monotone" dataKey="memory" stroke="#3b82f6" fill="url(#memGradient)" strokeWidth={2} isAnimationActive={false} />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
@@ -274,19 +276,23 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
 
                 {/* Network / Disk Text */}
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-[#161b22] border border-white/10 rounded-xl p-3">
-                        <h3 className="text-gray-500 text-[10px] uppercase font-bold mb-1 flex items-center gap-1"><HardDrive size={10} /> Disk</h3>
-                        <div className="text-purple-400 font-mono text-xs truncate">
+                    <div className="bg-[#0f111a] border border-white/5 rounded-xl p-4 shadow-lg ring-1 ring-white/5">
+                        <h3 className="text-gray-500 text-xs uppercase font-bold mb-2 flex items-center gap-2 tracking-wider"><HardDrive size={12} className="text-purple-500" /> Disk</h3>
+                        <div className="text-purple-400 font-mono text-sm font-bold truncate">
                             {formatBytes(stats?.disk_bytes || 0)}
                         </div>
                     </div>
-                    <div className="bg-[#161b22] border border-white/10 rounded-xl p-3">
-                        <h3 className="text-gray-500 text-[10px] uppercase font-bold mb-1 flex items-center gap-1"><Wifi size={10} /> Net</h3>
-                        <div className="text-yellow-400 font-mono text-[10px] truncate">
-                            In: {formatBytes(stats?.network?.rx_bytes || 0)}
-                        </div>
-                        <div className="text-yellow-400 font-mono text-[10px] truncate">
-                            Out: {formatBytes(stats?.network?.tx_bytes || 0)}
+                    <div className="bg-[#0f111a] border border-white/5 rounded-xl p-4 shadow-lg ring-1 ring-white/5">
+                        <h3 className="text-gray-500 text-xs uppercase font-bold mb-2 flex items-center gap-2 tracking-wider"><Wifi size={12} className="text-yellow-500" /> Net</h3>
+                        <div className="flex flex-col gap-1">
+                            <div className="flex justify-between text-[10px] text-gray-400">
+                                <span>IN</span>
+                                <span className="text-yellow-400 font-mono">{formatBytes(stats?.network?.rx_bytes || 0)}</span>
+                            </div>
+                            <div className="flex justify-between text-[10px] text-gray-400">
+                                <span>OUT</span>
+                                <span className="text-yellow-400 font-mono">{formatBytes(stats?.network?.tx_bytes || 0)}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
