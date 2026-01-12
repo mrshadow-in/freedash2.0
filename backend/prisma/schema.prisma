@@ -283,6 +283,7 @@ model DiscordVoiceSession {
   joinedAt  DateTime @default(now())
 }
 
+model DiscordGameStats {
   id             String   @id @default(uuid())
   discordId      String   @unique
   dailyEarnings  Float    @default(0)
