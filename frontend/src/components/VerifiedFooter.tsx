@@ -11,7 +11,7 @@ const VerifiedFooter = () => {
                 const currentYear = new Date().getFullYear();
 
                 // Expected Strings
-                const line1 = `Free-Dash- 2015 - ${currentYear}`;
+                const line1 = `Free-Dash- 2025 - ${currentYear}`;
                 const line2 = "LordCloud- WeebPoll Technologies India Private Limited";
 
                 if (!footer) {
