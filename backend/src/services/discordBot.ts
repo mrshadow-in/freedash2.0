@@ -1,6 +1,12 @@
 import { Client, GatewayIntentBits, Events, EmbedBuilder, SlashCommandBuilder, REST, Routes, Guild, GuildMember } from 'discord.js';
 import { prisma } from '../prisma';
 
+// Type definitions
+interface RewardTier {
+    invites: number;
+    coins: number;
+}
+
 let client: Client | null = null;
 let inviteCache = new Map<string, Map<string, number>>(); // guildId -> (inviterId -> uses)
 const linkCodes = new Map<string, string>();
@@ -382,7 +388,7 @@ export async function startDiscordBot() {
                     try {
                         const { getSettings } = await import('./settingsService');
                         const settings = await getSettings();
-                        let rewardArray = (settings?.inviteRewards as any) || [];
+                        let rewardArray: any[] = (settings?.inviteRewards as any) || [];
 
                         // Handle both array and object formats
                         if (!Array.isArray(rewardArray)) {
@@ -393,14 +399,14 @@ export async function startDiscordBot() {
                         }
 
                         // Filter valid rewards
-                        const validRewards = rewardArray.filter((r: any) =>
+                        const validRewards: RewardTier[] = rewardArray.filter((r: any) =>
                             r && typeof r === 'object' &&
                             !isNaN(Number(r.invites)) && !isNaN(Number(r.coins)) &&
                             Number(r.invites) > 0 && Number(r.coins) > 0
                         ).map((r: any) => ({
                             invites: Number(r.invites),
                             coins: Number(r.coins)
-                        })).sort((a: any, b: any) => a.invites - b.invites);
+                        })).sort((a: RewardTier, b: RewardTier) => a.invites - b.invites);
 
                         if (validRewards.length === 0) {
                             await interaction.editReply('❌ No invite rewards configured. Ask admin to add rewards!');
@@ -471,7 +477,7 @@ export async function startDiscordBot() {
                         }
 
                         // Find eligible reward (highest tier not yet claimed)
-                        const sortedRewards = validRewards.sort((a, b) => b.invites - a.invites);
+                        const sortedRewards: RewardTier[] = validRewards.sort((a: RewardTier, b: RewardTier) => b.invites - a.invites);
                         let eligibleReward = null;
 
                         for (const reward of sortedRewards) {
@@ -495,8 +501,8 @@ export async function startDiscordBot() {
                         if (!eligibleReward) {
                             // Show progress
                             const nextReward = validRewards
-                                .filter(r => r.invites > inviteCount)
-                                .sort((a, b) => a.invites - b.invites)[0];
+                                .filter((r: RewardTier) => r.invites > inviteCount)
+                                .sort((a: RewardTier, b: RewardTier) => a.invites - b.invites)[0];
 
                             if (nextReward) {
                                 await interaction.editReply(
