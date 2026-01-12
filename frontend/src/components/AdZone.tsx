@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
 import api from '../api/client';
-import { Plus, ExternalLink, Loader2 } from 'lucide-react';
+import { Plus, ExternalLink, Loader2, ScanEye } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../store/authStore';
+import { useAdStore } from '../store/adStore';
 
 export type AdZonePosition =
     | 'top'
@@ -66,7 +67,8 @@ const sizeClasses: Record<string, string> = {
     banner: 'w-full max-w-[468px] h-[60px]',
     square: 'w-full max-w-[300px] h-auto min-h-[100px]',
     'promo-strip': 'w-full h-[40px]',
-    'full-width': 'w-full h-auto min-h-[100px]'
+    'full-width': 'w-full h-auto min-h-[100px]',
+    'debug': 'w-full h-[100px]'
 };
 
 const RawAdRenderer: React.FC<{ code: string }> = ({ code }) => {
@@ -99,7 +101,8 @@ const AdZone: React.FC<AdZoneProps> = ({
 }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const { user } = useAuthStore(); // Get current user
-    const isAdmin = user?.role === 'ADMIN'; // Check if user is admin
+    const { isDebugMode } = useAdStore(); // Debug mode from store
+    const isAdmin = user?.role === 'ADMIN';
 
     const { data: ads, isLoading } = useQuery({
         queryKey: ['ads', position, isAFK],
@@ -135,8 +138,6 @@ const AdZone: React.FC<AdZoneProps> = ({
                     }
                 });
             } else {
-                // Debug feedback for the user who says "no coin"
-                // If they see this, it means connection works but reward is 0
                 toast('Ad Clicked (No Reward Configured)', {
                     icon: 'ℹ️',
                     style: {
@@ -161,17 +162,46 @@ const AdZone: React.FC<AdZoneProps> = ({
     }
 
     const currentAds = rotate && ads && ads.length > 0 ? [ads[currentIndex]] : ads;
+    const hasAds = currentAds && currentAds.length > 0;
 
-    // ADMIN-ONLY FEATURE: Hide ad placeholders from normal users
-    // - Admin users: See "Advertise Here" placeholders to manage ad positions
-    // - Normal users: See nothing if no ads exist (clean UI)
-    // This applies to ALL pages (Dashboard, AFK, etc.) since AdZone is shared
-    if ((!currentAds || currentAds.length === 0) && !isAdmin) {
+    // Logic: If there are no ads, normally we return null.
+    // BUT if debug mode is on AND user is admin, we show a visualization.
+    if (!hasAds && !isAdmin && !isDebugMode) {
         return null;
     }
 
+    if (!hasAds && isAdmin && !isDebugMode) {
+        // Old behavior: Admin sees nothing unless "show buy button" (not implemented fully here but standard behavior)
+        if (!showBuyButton) return null;
+        // If we want to hide "Advertise Here" for admin unless debug is on? 
+        // Current logic in previous code was returning null if !currentAds && !isAdmin.
+        // So admins WOULD see "Advertise Here" button if showBuyButton was true (it was default true).
+        // Let's keep that but add debug overlay.
+    }
+
+    // DEBUG MODE OVERLAY
+    if (isDebugMode && isAdmin && !hasAds) {
+        return (
+            <div className={`w-full border-2 border-dashed border-yellow-500/50 bg-yellow-500/10 rounded-lg flex flex-col items-center justify-center p-4 gap-2 ${className} min-h-[100px]`}>
+                <ScanEye className="text-yellow-500" />
+                <span className="text-yellow-500 font-mono text-xs font-bold">{position}</span>
+                <span className="text-yellow-500/50 text-[10px] uppercase">Empty Ad Zone</span>
+            </div>
+        );
+    }
+
+    // If we are here, we either have ads OR we are admin showing "Advertise Here"
+    if (!hasAds && !isDebugMode) return null; // Fallback to hide if no ads and not debug
+
     return (
         <div className={`flex flex-col items-center gap-4 w-full ${className}`}>
+            {/* DEBUG LABEL FOR EXISTING ADS */}
+            {isDebugMode && isAdmin && (
+                <div className="w-full text-center mb-1">
+                    <span className="text-[10px] bg-yellow-500 text-black px-1 rounded font-mono">{position}</span>
+                </div>
+            )}
+
             <AnimatePresence mode="wait">
                 {currentAds && currentAds.length > 0 ? (
                     currentAds.map((ad) => (
@@ -209,17 +239,21 @@ const AdZone: React.FC<AdZoneProps> = ({
                             )}
                         </motion.div>
                     ))
-                ) : showBuyButton && (
-                    <motion.button
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 0.5 }}
-                        whileHover={{ opacity: 1 }}
-                        onClick={onBuyClick}
-                        className="w-full max-w-[728px] h-[60px] border border-dashed border-white/20 rounded-lg flex items-center justify-center gap-2 text-gray-400 hover:text-purple-400 hover:border-purple-500/50 transition-all group"
-                    >
-                        <Plus size={16} />
-                        <span className="text-xs font-bold uppercase tracking-wider">Advertise Here</span>
-                    </motion.button>
+                ) : (
+                    // This will only show if isDebugMode is false but showBuyButton logic falls through
+                    // But we actually handled empty+debug above. This is for empty+no-debug+admin (optional)
+                    showBuyButton && (
+                        <motion.button
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 0.5 }}
+                            whileHover={{ opacity: 1 }}
+                            onClick={onBuyClick}
+                            className="w-full max-w-[728px] h-[60px] border border-dashed border-white/20 rounded-lg flex items-center justify-center gap-2 text-gray-400 hover:text-purple-400 hover:border-purple-500/50 transition-all group"
+                        >
+                            <Plus size={16} />
+                            <span className="text-xs font-bold uppercase tracking-wider">Advertise Here</span>
+                        </motion.button>
+                    )
                 )}
             </AnimatePresence>
         </div>

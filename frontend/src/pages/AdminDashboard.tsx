@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '../store/authStore';
+import { useAdStore } from '../store/adStore';
 import api from '../api/client';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -2774,146 +2775,13 @@ function SocialTab({ settings, fetchSettings }: any) {
 
 // Ads Management Tab
 function AdsTab() {
+    const { isDebugMode, toggleDebugMode } = useAdStore();
     const [ads, setAds] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [filterPosition, setFilterPosition] = useState('all');
-    const [editingId, setEditingId] = useState<string | null>(null);
-    const [editForm, setEditForm] = useState({ positionIndex: 0, priority: 0 });
-    const [targetAdId, setTargetAdId] = useState<string | null>(null);
-    const [isEditing, setIsEditing] = useState(false);
-    const [showCreate, setShowCreate] = useState(false);
-    const [newAd, setNewAd] = useState({
-        title: '',
-        imageUrl: '',
-        redirectUrl: '',
-        rawCode: '',
-        type: 'leaderboard',
-        position: 'top',
-        priority: 1,
-        isAFK: false,
-        rewardCoins: 0
-    });
-    const [creating, setCreating] = useState(false);
+    // ... existing state ...
 
-    const fetchAds = async () => {
-        setLoading(true);
-        try {
-            const res = await api.get('/ads/admin/all');
-            setAds(res.data);
-        } catch (error) {
-            toast.error('Failed to fetch ads');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleCreateAd = async () => {
-        if (!newAd.title || (!newAd.imageUrl && !newAd.rawCode)) {
-            return toast.error('Title and either Image or Raw Code are required');
-        }
-        setCreating(true);
-        try {
-            if (isEditing && targetAdId) {
-                await api.put(`/ads/admin/update/${targetAdId}`, newAd);
-                toast.success('Advertisement updated successfully!');
-            } else {
-                await api.post('/ads/admin/create', newAd);
-                toast.success('Advertisement created successfully!');
-            }
-            setShowCreate(false);
-            setNewAd({
-                title: '',
-                imageUrl: '',
-                redirectUrl: '',
-                rawCode: '',
-                type: 'leaderboard',
-                position: 'top',
-                priority: 1,
-                isAFK: false,
-                rewardCoins: 0
-            });
-            setIsEditing(false);
-            setTargetAdId(null);
-            fetchAds();
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to save ad');
-        } finally {
-            setCreating(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchAds();
-    }, []);
-
-    const handleSaveEdit = async (id: string) => {
-        try {
-            await api.put(`/ads/admin/update/${id}`, editForm);
-            toast.success('Ad updated');
-            setEditingId(null);
-            fetchAds();
-        } catch (error) {
-            toast.error('Update failed');
-        }
-    };
-
-    const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this ad?')) return;
-        try {
-            await api.delete(`/ads/admin/delete/${id}`);
-            toast.success('Ad deleted');
-            fetchAds();
-        } catch (error) {
-            toast.error('Delete failed');
-        }
-    };
-
-    const handleUpdateStatus = async (id: string, status: string) => {
-        try {
-            await api.put(`/ads/admin/update/${id}`, { status });
-            toast.success(`Ad marked as ${status}`);
-            fetchAds();
-        } catch (error) {
-            toast.error('Update failed');
-        }
-    };
-
-    const adPositions = [
-        { id: 'all', label: 'All Positions' },
-        { id: 'top', label: 'Dashboard Top' },
-        { id: 'after-header', label: 'After Header' },
-        { id: 'sidebar-left', label: 'Sidebar Left (Floating)' },
-        { id: 'sidebar-right', label: 'Sidebar Right (Floating)' },
-        { id: 'between-stats', label: 'Between Stats Cards' },
-        { id: 'below-stats', label: 'Below Stats Cards' },
-        { id: 'before-servers', label: 'Before Server List' },
-        { id: 'empty-server-zone', label: 'Empty Server Zone' },
-        { id: 'after-servers', label: 'After Server List' },
-        { id: 'footer', label: 'Global Footer' },
-        { id: 'server-sidebar-left', label: 'Server Page - Left Sidebar' },
-        { id: 'server-sidebar-right', label: 'Server Page - Right Sidebar' },
-        { id: 'server-header', label: 'Server Page - Header Top' },
-        { id: 'server-footer', label: 'Server Page - Footer Bottom' },
-        { id: 'afk-top', label: 'AFK Zone Top' },
-        { id: 'afk-middle', label: 'AFK Zone Middle' },
-        { id: 'afk-bottom', label: 'AFK Zone Bottom' },
-        { id: 'afk-sidebar-left', label: 'AFK Sidebar Left' },
-        { id: 'afk-sidebar-right', label: 'AFK Sidebar Right' },
-        { id: 'afk-left-1', label: 'AFK Left Position 1 (Top)' },
-        { id: 'afk-left-2', label: 'AFK Left Position 2' },
-        { id: 'afk-left-3', label: 'AFK Left Position 3' },
-        { id: 'afk-left-4', label: 'AFK Left Position 4' },
-        { id: 'afk-left-5', label: 'AFK Left Position 5 (Bottom)' },
-        { id: 'afk-right-1', label: 'AFK Right Position 1 (Top)' },
-        { id: 'afk-right-2', label: 'AFK Right Position 2' },
-        { id: 'afk-right-3', label: 'AFK Right Position 3' },
-        { id: 'afk-right-4', label: 'AFK Right Position 4' },
-        { id: 'afk-right-5', label: 'AFK Right Position 5 (Bottom)' }
-    ];
-
-    const filteredAds = filterPosition === 'all'
-        ? ads
-        : ads.filter(ad => ad.position === filterPosition);
+    // ... existing functions ...
 
     return (
         <div className="space-y-8">
@@ -2926,8 +2794,19 @@ function AdsTab() {
                 </div>
                 <div className="flex gap-3">
                     <button
+                        onClick={toggleDebugMode}
+                        className={`px-4 py-3 rounded-xl font-bold transition flex items-center gap-2 border ${isDebugMode
+                                ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/50'
+                                : 'bg-white/5 text-gray-400 border-white/10 hover:text-white'
+                            }`}
+                    >
+                        <span>{isDebugMode ? '👁️' : '🙈'}</span>
+                        {isDebugMode ? 'Hide Positions' : 'Show Positions'}
+                    </button>
+                    <button
                         onClick={async () => {
                             const enabled = ads.some(ad => ad.status === 'paused');
+
                             try {
                                 await api.post('/ads/admin/toggle-all', { enabled });
                                 toast.success(`All ads ${enabled ? 'enabled' : 'disabled'}`);
