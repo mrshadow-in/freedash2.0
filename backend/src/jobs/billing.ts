@@ -265,6 +265,10 @@ export const processBillingCycle = async () => {
                             status: 'active'
                         }
                     });
+
+                    // Send Real-time Notification
+                    const { sendUserNotification } = await import('../services/websocket');
+                    sendUserNotification(server.ownerId, 'Server Resumed', `Your server "${server.name}" has been auto-resumed (sufficient coins).`, 'success');
                 }
             } catch (err) {
                 console.error(`[Billing] Resume Error ${server.id}:`, err);

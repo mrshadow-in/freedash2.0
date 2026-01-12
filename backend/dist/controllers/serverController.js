@@ -178,6 +178,9 @@ const createServer = async (req, res) => {
             }).catch((err) => console.error('Webhook error:', err));
             // Send email notification
             // ... email logic ...
+            // Send Real-time Notification
+            const { sendUserNotification } = await Promise.resolve().then(() => __importStar(require('../services/websocket')));
+            sendUserNotification(result.user.id, 'Server Created', `Your server "${name}" has been successfully created!`, 'success');
             res.status(201).json({ message: 'Server created', server: result.server });
         });
     }
@@ -289,6 +292,9 @@ const deleteServer = async (req, res) => {
             serverName: server.name,
             reason: userRole === 'admin' ? 'Admin Action' : 'User Action'
         }).catch(console.error);
+        // Send Real-time Notification
+        const { sendUserNotification } = await Promise.resolve().then(() => __importStar(require('../services/websocket')));
+        sendUserNotification(userId, 'Server Deleted', `Your server "${server.name}" has been deleted.`, 'info');
         res.json({ message: 'Server deleted successfully' });
     }
     catch (error) {
@@ -391,7 +397,7 @@ const upgradeServer = async (req, res) => {
     const { ramMb, diskMb, cpuCores } = req.body;
     const userId = req.user.userId;
     try {
-        await prisma_1.prisma.$transaction(async (tx) => {
+        const result = await prisma_1.prisma.$transaction(async (tx) => {
             const server = await tx.server.findFirst({ where: { id: id, ownerId: userId } });
             if (!server)
                 throw new Error('Server not found');
@@ -439,7 +445,12 @@ const upgradeServer = async (req, res) => {
                     cpuCores
                 }
             });
+            return server;
         });
+        // Send Real-time Notification
+        const { sendUserNotification } = await Promise.resolve().then(() => __importStar(require('../services/websocket')));
+        // 'result' contains the server object returned from transaction
+        sendUserNotification(userId, 'Server Upgraded', `Your server "${result.name}" has been upgraded (RAM: ${ramMb}MB, Disk: ${diskMb}MB).`, 'success');
         res.json({ message: 'Upgrade successful' });
     }
     catch (error) {

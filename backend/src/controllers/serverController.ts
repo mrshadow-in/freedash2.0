@@ -193,6 +193,10 @@ export const createServer = async (req: AuthRequest, res: Response) => {
             // Send email notification
             // ... email logic ...
 
+            // Send Real-time Notification
+            const { sendUserNotification } = await import('../services/websocket');
+            sendUserNotification(result.user.id, 'Server Created', `Your server "${name}" has been successfully created!`, 'success');
+
             res.status(201).json({ message: 'Server created', server: result.server });
         });
 
@@ -315,6 +319,10 @@ export const deleteServer = async (req: AuthRequest, res: Response) => {
             reason: userRole === 'admin' ? 'Admin Action' : 'User Action'
         }).catch(console.error);
 
+        // Send Real-time Notification
+        const { sendUserNotification } = await import('../services/websocket');
+        sendUserNotification(userId, 'Server Deleted', `Your server "${server.name}" has been deleted.`, 'info');
+
         res.json({ message: 'Server deleted successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Error deleting server' });
@@ -422,7 +430,7 @@ export const upgradeServer = async (req: AuthRequest, res: Response) => {
     const userId = req.user!.userId;
 
     try {
-        await prisma.$transaction(async (tx: any) => {
+        const result = await prisma.$transaction(async (tx: any) => {
             const server = await tx.server.findFirst({ where: { id: id, ownerId: userId } });
             if (!server) throw new Error('Server not found');
 
@@ -475,7 +483,13 @@ export const upgradeServer = async (req: AuthRequest, res: Response) => {
                     cpuCores
                 }
             });
+            return server;
         });
+
+        // Send Real-time Notification
+        const { sendUserNotification } = await import('../services/websocket');
+        // 'result' contains the server object returned from transaction
+        sendUserNotification(userId, 'Server Upgraded', `Your server "${result.name}" has been upgraded (RAM: ${ramMb}MB, Disk: ${diskMb}MB).`, 'success');
 
         res.json({ message: 'Upgrade successful' });
 

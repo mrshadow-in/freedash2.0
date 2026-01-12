@@ -83,6 +83,11 @@ passport_1.default.use(new passport_discord_1.Strategy({
                 role: 'user'
             }
         });
+        // Send Real-time Notification for New User
+        const { sendUserNotification } = await Promise.resolve().then(() => __importStar(require('../services/websocket')));
+        // We use global sender because we might not have WS connection established yet for this user?
+        // Actually, upon login they will connect. So we can persist it now.
+        sendUserNotification(user.id, 'Welcome!', 'Welcome to LordCloud! You received 100 starting coins.', 'success');
         return done(null, user);
     }
     catch (error) {
@@ -123,6 +128,9 @@ const linkDiscord = async (req, res) => {
         });
         // Manually Exclude password manually
         const { password, ...userWithoutPassword } = user;
+        // Send Real-time Notification
+        const { sendUserNotification } = await Promise.resolve().then(() => __importStar(require('../services/websocket')));
+        sendUserNotification(userId, 'Discord Linked', `Your Discord account (${discordId}) has been successfully linked.`, 'success');
         res.json({ message: 'Discord linked successfully', user: userWithoutPassword });
     }
     catch (error) {
@@ -153,6 +161,9 @@ const linkDiscordAccount = async (req, res) => {
             where: { id: userId },
             data: { discordId }
         });
+        // Send Real-time Notification
+        const { sendUserNotification } = await Promise.resolve().then(() => __importStar(require('../services/websocket')));
+        sendUserNotification(userId, 'Discord Linked', `Your Discord account (${discordId}) has been successfully linked via code.`, 'success');
         res.json({ message: 'Discord account linked successfully!' });
     }
     catch (error) {

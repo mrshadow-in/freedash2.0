@@ -279,6 +279,9 @@ const processBillingCycle = async () => {
                             status: 'active'
                         }
                     });
+                    // Send Real-time Notification
+                    const { sendUserNotification } = await Promise.resolve().then(() => __importStar(require('../services/websocket')));
+                    sendUserNotification(server.ownerId, 'Server Resumed', `Your server "${server.name}" has been auto-resumed (sufficient coins).`, 'success');
                 }
             }
             catch (err) {

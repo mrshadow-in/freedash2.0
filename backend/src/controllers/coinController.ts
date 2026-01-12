@@ -87,6 +87,10 @@ export const redeemCode = async (req: AuthRequest, res: Response) => {
             return redeemCodeDoc.amount;
         });
 
+        // Send Real-time Notification
+        const { sendUserNotification } = await import('../services/websocket');
+        sendUserNotification(userId, 'Code Redeemed', `You successfully redeemed code "${code}" for ${result} coins.`, 'success');
+
         res.json({ message: 'Code redeemed', added: result });
 
     } catch (error: any) {
