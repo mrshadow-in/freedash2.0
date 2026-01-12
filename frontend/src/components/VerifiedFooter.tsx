@@ -24,7 +24,7 @@ const VerifiedFooter = () => {
                 // CRITICAL Checks
                 // Check if BOTH lines exist in the footer text
                 const missingLine1 = !content.includes(line1);
-                const missingLine2 = !content.includes("LordCloud- WeebPoll Technologies India Private Limited"); // Hardcoded string to match exactly
+                const missingLine2 = !content.includes(line2);
 
                 const isHidden = window.getComputedStyle(footer).display === 'none' ||
                     window.getComputedStyle(footer).visibility === 'hidden' ||
