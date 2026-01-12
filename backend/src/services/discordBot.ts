@@ -304,22 +304,30 @@ export async function startDiscordBot() {
                     // 2. leaderboard (Invites)
                     if (interaction.commandName === 'leaderboard') {
                         await interaction.deferReply();
-                        const invData = inviteCache.get(interaction.guildId!) || new Map();
-                        // Sort desc
-                        const sorted = [...invData.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+                        try {
+                            const invData = inviteCache.get(interaction.guildId!) || new Map();
+                            // Sort desc
+                            const sorted = [...invData.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
 
-                        if (sorted.length === 0) return interaction.editReply('📉 Leaderboard is empty.');
+                            if (sorted.length === 0) {
+                                await interaction.editReply('📉 Leaderboard is empty.');
+                                return;
+                            }
 
-                        const lines = sorted.map((entry, i) => {
-                            return `**#${i + 1}** <@${entry[0]}> - **${entry[1]} invites**`;
-                        });
+                            const lines = sorted.map((entry, i) => {
+                                return `**#${i + 1}** <@${entry[0]}> - **${entry[1]} invites**`;
+                            });
 
-                        const embed = new EmbedBuilder()
-                            .setTitle('🏆 Top 10 Inviters')
-                            .setColor(0xFFD700)
-                            .setDescription(lines.join('\n'));
+                            const embed = new EmbedBuilder()
+                                .setTitle('🏆 Top 10 Inviters')
+                                .setColor(0xFFD700)
+                                .setDescription(lines.join('\n'));
 
-                        await interaction.editReply({ embeds: [embed] });
+                            await interaction.editReply({ embeds: [embed] });
+                        } catch (err) {
+                            console.error('Leaderboard error:', err);
+                            await interaction.editReply('❌ Failed to fetch leaderboard.');
+                        }
                         return;
                     }
 
@@ -327,62 +335,73 @@ export async function startDiscordBot() {
                     if (interaction.commandName === 'invite-code') {
                         await interaction.deferReply({ ephemeral: true });
 
-                        const settingSvc = await import('./settingsService');
-                        const settings = await settingSvc.getSettings();
+                        try {
+                            const settingSvc = await import('./settingsService');
+                            const settings = await settingSvc.getSettings();
 
-                        // User check
-                        const user = await prisma.user.findUnique({ where: { discordId: interaction.user.id } });
-                        if (!user) return interaction.editReply('❌ Link your dashboard account first (`/link-account`).');
+                            // User check
+                            const user = await prisma.user.findUnique({ where: { discordId: interaction.user.id } });
+                            if (!user) {
+                                await interaction.editReply('❌ Link your dashboard account first (`/link-account`).');
+                                return;
+                            }
 
-                        // Get Invites
-                        const invData = inviteCache.get(interaction.guildId!) || new Map();
-                        const myInvites = invData.get(interaction.user.id) || 0;
+                            // Get Invites
+                            const invData = inviteCache.get(interaction.guildId!) || new Map();
+                            const myInvites = invData.get(interaction.user.id) || 0;
 
-                        if (myInvites === 0) return interaction.editReply('❌ You have 0 invites. Invite people to earn coins!');
+                            if (myInvites === 0) {
+                                await interaction.editReply('❌ You have 0 invites. Invite people to earn coins!');
+                                return;
+                            }
 
-                        // Check Milestones from Settings
-                        const rewards = (settings?.inviteRewards as any) || {};
-                        // Example structure: { "5": 100, "10": 200 }
-                        // Filter applicable rewards
-                        let totalEarned = 0;
-                        let claimedCount = 0;
+                            // Check Milestones from Settings
+                            const rewards = (settings?.inviteRewards as any) || {};
+                            // Example structure: { "5": 100, "10": 200 }
+                            // Filter applicable rewards
+                            let totalEarned = 0;
+                            let claimedCount = 0;
 
-                        for (const [reqStr, amount] of Object.entries(rewards)) {
-                            const req = parseInt(reqStr);
-                            if (myInvites >= req) {
-                                // Check if already claimed this specific milestone
-                                const already = await prisma.inviteClaim.findUnique({
-                                    where: {
-                                        discordUserId_invitesRequired: {
-                                            discordUserId: interaction.user.id,
-                                            invitesRequired: req
-                                        }
-                                    }
-                                });
-
-                                if (!already) {
-                                    // Claim it
-                                    await prisma.inviteClaim.create({
-                                        data: {
-                                            discordUserId: interaction.user.id,
-                                            invitesRequired: req,
-                                            code: 'AUTO-CLAIMED'
+                            for (const [reqStr, amount] of Object.entries(rewards)) {
+                                const req = parseInt(reqStr);
+                                if (myInvites >= req) {
+                                    // Check if already claimed this specific milestone
+                                    const already = await prisma.inviteClaim.findUnique({
+                                        where: {
+                                            discordUserId_invitesRequired: {
+                                                discordUserId: interaction.user.id,
+                                                invitesRequired: req
+                                            }
                                         }
                                     });
-                                    totalEarned += Number(amount);
-                                    claimedCount++;
+
+                                    if (!already) {
+                                        // Claim it
+                                        await prisma.inviteClaim.create({
+                                            data: {
+                                                discordUserId: interaction.user.id,
+                                                invitesRequired: req,
+                                                code: 'AUTO-CLAIMED'
+                                            }
+                                        });
+                                        totalEarned += Number(amount);
+                                        claimedCount++;
+                                    }
                                 }
                             }
-                        }
 
-                        if (claimedCount > 0) {
-                            await prisma.user.update({
-                                where: { id: user.id },
-                                data: { coins: { increment: totalEarned } }
-                            });
-                            await interaction.editReply(`🎉 **Reward Claimed!**\nYou hit ${claimedCount} milestone(s) with **${myInvites} invites**.\nAdded **+${totalEarned} coins** to your balance.`);
-                        } else {
-                            await interaction.editReply(`ℹ️ **No New Rewards**\nYou have **${myInvites} invites**. Keep inviting to reach the next milestone!`);
+                            if (claimedCount > 0) {
+                                await prisma.user.update({
+                                    where: { id: user.id },
+                                    data: { coins: { increment: totalEarned } }
+                                });
+                                await interaction.editReply(`🎉 **Reward Claimed!**\nYou hit ${claimedCount} milestone(s) with **${myInvites} invites**.\nAdded **+${totalEarned} coins** to your balance.`);
+                            } else {
+                                await interaction.editReply(`ℹ️ **No New Rewards**\nYou have **${myInvites} invites**. Keep inviting to reach the next milestone!`);
+                            }
+                        } catch (err) {
+                            console.error('Invite-code error:', err);
+                            await interaction.editReply('❌ An error occurred while checking rewards.');
                         }
                         return;
                     }
