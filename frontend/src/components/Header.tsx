@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import { Coins, LogOut, Server, Clock, Menu } from 'lucide-react';
+import {
+    Coins, LogOut, Server, Clock, Menu,
+    Disc, Twitter, Instagram, Youtube, Facebook, Github, Globe
+} from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -38,27 +41,59 @@ const Header = () => {
     const user = userData || authUser;
     const panelName = settings?.panelName || 'Panel';
     const panelLogo = settings?.panelLogo;
+    const social = settings?.socialMedia || {};
+
+    const socialLinks = [
+        { key: 'discord', icon: Disc, color: 'text-indigo-400' },
+        { key: 'twitter', icon: Twitter, color: 'text-blue-400' },
+        { key: 'instagram', icon: Instagram, color: 'text-pink-500' },
+        { key: 'youtube', icon: Youtube, color: 'text-red-500' },
+        { key: 'facebook', icon: Facebook, color: 'text-blue-600' },
+        { key: 'github', icon: Github, color: 'text-gray-400' },
+        { key: 'website', icon: Globe, color: 'text-emerald-400' },
+    ];
 
     return (
         <>
             <div className="relative z-40 border-b border-white/5 bg-black/20 backdrop-blur-xl sticky top-0">
                 <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-                    <Link to="/" className="flex items-center gap-3">
-                        {panelLogo ? (
-                            <img
-                                src={panelLogo}
-                                alt={panelName}
-                                className="w-10 h-10 rounded-xl object-cover shadow-lg"
-                            />
-                        ) : (
-                            <div className="w-10 h-10 bg-gradient-to-tr from-purple-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20">
-                                <Server className="text-white" size={20} />
-                            </div>
-                        )}
-                        <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-                            {panelName}
-                        </h1>
-                    </Link>
+                    <div className="flex items-center gap-6">
+                        <Link to="/" className="flex items-center gap-3">
+                            {panelLogo ? (
+                                <img
+                                    src={panelLogo}
+                                    alt={panelName}
+                                    className="w-10 h-10 rounded-xl object-cover shadow-lg"
+                                />
+                            ) : (
+                                <div className="w-10 h-10 bg-gradient-to-tr from-purple-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20">
+                                    <Server className="text-white" size={20} />
+                                </div>
+                            )}
+                            <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+                                {panelName}
+                            </h1>
+                        </Link>
+
+                        {/* Social Media Icons (Next to Logo) */}
+                        <div className="hidden md:flex items-center gap-3 border-l border-white/10 pl-6 h-8">
+                            {socialLinks.map(({ key, icon: Icon, color }) => {
+                                const url = social[key];
+                                if (!url) return null;
+                                return (
+                                    <a
+                                        key={key}
+                                        href={url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={`hover:scale-110 transition-transform ${color} opacity-70 hover:opacity-100`}
+                                    >
+                                        <Icon size={20} />
+                                    </a>
+                                );
+                            })}
+                        </div>
+                    </div>
 
                     <div className="flex items-center gap-2 sm:gap-6">
                         {/* AFK Zone - Always visible on desktop, moved to menu on mobile but let's keep it here for accessibility if room */}
