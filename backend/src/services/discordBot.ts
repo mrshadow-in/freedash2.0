@@ -28,6 +28,7 @@ export const verifyLinkCode = (code: string): string | null => {
 async function registerCommands(token: string, clientId: string, guildId: string) {
     const commands = [
         new SlashCommandBuilder().setName('invite-code').setDescription('Claim your invite reward code'),
+        new SlashCommandBuilder().setName('invite-reward-list').setDescription('View all available invite reward tiers'),
         new SlashCommandBuilder().setName('boost-reward').setDescription('Claim your boost reward'),
         new SlashCommandBuilder().setName('my-invites').setDescription('Check your invite count'),
         new SlashCommandBuilder().setName('leaderboard').setDescription('View invite leaderboard'),
@@ -374,6 +375,60 @@ export async function startDiscordBot() {
                     return;
                 }
 
+                // INVITE-REWARD-LIST
+                if (interaction.commandName === 'invite-reward-list') {
+                    await interaction.deferReply();
+
+                    try {
+                        const { getSettings } = await import('./settingsService');
+                        const settings = await getSettings();
+                        let rewardArray = (settings?.inviteRewards as any) || [];
+
+                        // Handle both array and object formats
+                        if (!Array.isArray(rewardArray)) {
+                            rewardArray = Object.entries(rewardArray).map(([invites, coins]) => ({
+                                invites: parseInt(invites),
+                                coins: Number(coins)
+                            }));
+                        }
+
+                        // Filter valid rewards
+                        const validRewards = rewardArray.filter((r: any) =>
+                            r && typeof r === 'object' &&
+                            !isNaN(Number(r.invites)) && !isNaN(Number(r.coins)) &&
+                            Number(r.invites) > 0 && Number(r.coins) > 0
+                        ).map((r: any) => ({
+                            invites: Number(r.invites),
+                            coins: Number(r.coins)
+                        })).sort((a: any, b: any) => a.invites - b.invites);
+
+                        if (validRewards.length === 0) {
+                            await interaction.editReply('❌ No invite rewards configured. Ask admin to add rewards!');
+                            return;
+                        }
+
+                        // Build reward list
+                        let description = '**📋 Available Invite Reward Tiers:**\n\n';
+                        for (const reward of validRewards) {
+                            description += `🎯 **${reward.invites}** invites → **${reward.coins}** coins\n`;
+                        }
+                        description += '\nUse `/invite-code` to claim your rewards!';
+
+                        const embed = new EmbedBuilder()
+                            .setColor(0x7c3aed)
+                            .setTitle('💰 Invite Rewards')
+                            .setDescription(description)
+                            .setFooter({ text: 'Invite more members to earn coins!' })
+                            .setTimestamp();
+
+                        await interaction.editReply({ embeds: [embed] });
+                    } catch (error) {
+                        console.error('Error in invite-reward-list command:', error);
+                        await interaction.editReply('❌ An error occurred.');
+                    }
+                    return;
+                }
+
                 // INVITE-CODE
                 if (interaction.commandName === 'invite-code') {
                     await interaction.deferReply({ ephemeral: true });
@@ -389,26 +444,34 @@ export async function startDiscordBot() {
 
                         const { getSettings } = await import('./settingsService');
                         const settings = await getSettings();
-                        const rewards = (settings?.inviteRewards as any) || {};
+                        let rewardArray = (settings?.inviteRewards as any) || [];
 
-                        if (Object.keys(rewards).length === 0) {
-                            await interaction.editReply('❌ No invite rewards are configured. Ask admin to set them up.');
-                            return;
+                        // Handle both array and object formats
+                        if (!Array.isArray(rewardArray)) {
+                            // Convert object to array if needed
+                            rewardArray = Object.entries(rewardArray).map(([invites, coins]) => ({
+                                invites: parseInt(invites),
+                                coins: Number(coins)
+                            }));
                         }
 
-                        // Convert to array [{invites: 5, coins: 100}, ...]
-                        const rewardArray = Object.entries(rewards).map(([invites, coins]) => ({
-                            invites: parseInt(invites),
-                            coins: Number(coins)
-                        })).filter(r => !isNaN(r.invites) && !isNaN(r.coins) && r.invites > 0 && r.coins > 0);
+                        // Filter valid rewards
+                        const validRewards = rewardArray.filter((r: any) =>
+                            r && typeof r === 'object' &&
+                            !isNaN(Number(r.invites)) && !isNaN(Number(r.coins)) &&
+                            Number(r.invites) > 0 && Number(r.coins) > 0
+                        ).map((r: any) => ({
+                            invites: Number(r.invites),
+                            coins: Number(r.coins)
+                        }));
 
-                        if (rewardArray.length === 0) {
-                            await interaction.editReply('❌ No valid invite rewards configured.');
+                        if (validRewards.length === 0) {
+                            await interaction.editReply('❌ No valid invite rewards configured. Ask admin to add rewards in the Admin Panel.');
                             return;
                         }
 
                         // Find eligible reward (highest tier not yet claimed)
-                        const sortedRewards = rewardArray.sort((a, b) => b.invites - a.invites);
+                        const sortedRewards = validRewards.sort((a, b) => b.invites - a.invites);
                         let eligibleReward = null;
 
                         for (const reward of sortedRewards) {
@@ -431,7 +494,7 @@ export async function startDiscordBot() {
 
                         if (!eligibleReward) {
                             // Show progress
-                            const nextReward = rewardArray
+                            const nextReward = validRewards
                                 .filter(r => r.invites > inviteCount)
                                 .sort((a, b) => a.invites - b.invites)[0];
 
