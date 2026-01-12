@@ -2871,6 +2871,8 @@ function AdsTab() {
         { id: 'footer', label: 'Global Footer' },
         { id: 'server-sidebar-left', label: 'Server Page - Left Sidebar' },
         { id: 'server-sidebar-right', label: 'Server Page - Right Sidebar' },
+        { id: 'server-header', label: 'Server Page - Header Top' },
+        { id: 'server-footer', label: 'Server Page - Footer Bottom' },
         { id: 'afk-top', label: 'AFK Zone Top' },
         { id: 'afk-middle', label: 'AFK Zone Middle' },
         { id: 'afk-bottom', label: 'AFK Zone Bottom' },
@@ -3215,6 +3217,27 @@ function AdsTab() {
                                             >
                                                 ✏️ Reorder
                                             </button>
+                                            <button
+                                                onClick={() => {
+                                                    setNewAd({
+                                                        title: `${ad.title} (Copy)`,
+                                                        imageUrl: ad.imageUrl || '',
+                                                        redirectUrl: ad.redirectUrl || '',
+                                                        rawCode: ad.rawCode || '',
+                                                        type: ad.type,
+                                                        position: ad.position,
+                                                        priority: ad.priority,
+                                                        isAFK: ad.isAFK,
+                                                        rewardCoins: ad.rewardCoins || 0
+                                                    });
+                                                    setTargetAdId(null);
+                                                    setIsEditing(false);
+                                                    setShowCreate(true);
+                                                }}
+                                                className="flex-1 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-xl text-xs font-bold transition"
+                                            >
+                                                📋 Copy
+                                            </button>
                                         </>
                                     )}
                                 </div>
@@ -3222,8 +3245,9 @@ function AdsTab() {
                         </div>
                     ))}
                 </div>
-            )}
-        </div>
+            )
+            }
+        </div >
     );
 }
 

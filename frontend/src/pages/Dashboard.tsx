@@ -434,6 +434,10 @@ const Dashboard = () => {
                                                     toast.error('Please enter a world name!');
                                                     return;
                                                 }
+                                                if (trimmedName.length < 3) {
+                                                    toast.error('Server name must be at least 3 characters!');
+                                                    return;
+                                                }
                                                 if (!selectedPlanId) {
                                                     toast.error('Please select a plan!');
                                                     return;

@@ -14,6 +14,8 @@ export type AdZonePosition =
     | 'after-servers'
     | 'server-sidebar-left'
     | 'server-sidebar-right'
+    | 'server-header'
+    | 'server-footer'
     | 'footer'
     | 'floating-left'
     | 'floating-right'

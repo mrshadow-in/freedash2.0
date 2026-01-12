@@ -148,6 +148,14 @@ const ManageServer = () => {
                     </div>
 
                     <div className="flex-1 min-w-0">
+                        {/* Server Header Ad Zone */}
+                        <AdZone
+                            position="server-header"
+                            className="mb-6"
+                            rotate={true}
+                            rotationInterval={45}
+                        />
+
                         <ServerHeader
                             server={server}
                             powerState={actualStatus}
@@ -373,6 +381,15 @@ const ManageServer = () => {
                                 pricing={pricing}
                             />
                         </div>
+
+                        {/* Server Footer Ad Zone */}
+                        <AdZone
+                            position="server-footer"
+                            className="mt-8 mb-4"
+                            rotate={true}
+                            rotationInterval={60}
+                        />
+
                     </div>
 
                     {/* Right Sidebar Ad */}
