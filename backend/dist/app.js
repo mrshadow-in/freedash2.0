@@ -56,6 +56,7 @@ const discordAuthController_1 = require("./controllers/discordAuthController");
 const passport_1 = __importDefault(require("passport"));
 const botRoutes_1 = __importDefault(require("./routes/botRoutes"));
 const adRoutes_1 = __importDefault(require("./routes/adRoutes"));
+const notificationRoutes_1 = __importDefault(require("./routes/notificationRoutes"));
 const app = (0, express_1.default)();
 // Middleware
 app.set('trust proxy', 1);
@@ -75,6 +76,7 @@ app.use('/api/afk', afkRoutes_1.default);
 app.use('/api/upgrades', upgradeRoutes_1.default);
 app.use('/api/bot', botRoutes_1.default);
 app.use('/api/ads', adRoutes_1.default);
+app.use('/api/notifications', notificationRoutes_1.default);
 // Coins & Tasks
 const coinRouter = express_1.default.Router();
 coinRouter.use(auth_1.authenticate);

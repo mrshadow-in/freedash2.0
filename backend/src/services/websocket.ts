@@ -140,7 +140,17 @@ export const initWebSocketServer = (server: Server) => {
     }, 30000);
 
     // Export sender function closure
-    (global as any).sendUserNotification = (userId: string, title: string, message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    (global as any).sendUserNotification = async (userId: string, title: string, message: string, type: 'success' | 'error' | 'info' = 'info') => {
+        // 1. Create in DB
+        try {
+            await prisma.notification.create({
+                data: { userId, title, message, type }
+            });
+        } catch (err) {
+            console.error('[Notification] Failed to persist:', err);
+        }
+
+        // 2. Send via WS
         const sockets = userNotificationSockets.get(userId);
         if (sockets) {
             const payload = JSON.stringify({ type, title, message });
@@ -153,8 +163,8 @@ export const initWebSocketServer = (server: Server) => {
     console.log('[WebSocket] Initialized (Console & Notifications)');
 };
 
-export const sendUserNotification = (userId: string, title: string, message: string, type: 'success' | 'error' | 'info' = 'info') => {
+export const sendUserNotification = async (userId: string, title: string, message: string, type: 'success' | 'error' | 'info' = 'info') => {
     if ((global as any).sendUserNotification) {
-        (global as any).sendUserNotification(userId, title, message, type);
+        await (global as any).sendUserNotification(userId, title, message, type);
     }
 };

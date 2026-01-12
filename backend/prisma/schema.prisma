@@ -61,6 +61,7 @@ model User {
 
   ads            Ad[]
   serverAccess   ServerAccess[]
+  notifications  Notification[]
 }
 
 model Server {
@@ -287,4 +288,15 @@ model DiscordGameStats {
   dailyEarnings  Float    @default(0)
   lastDailyReset DateTime @default(now())
   cooldowns      Json     @default("{}") // Store { cmdName: timestamp }
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  type      String   // info, success, warning, error
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
 }

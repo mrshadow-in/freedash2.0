@@ -18,6 +18,7 @@ import { discordLogin, discordCallback } from './controllers/discordAuthControll
 import passport from 'passport';
 import botRoutes from './routes/botRoutes';
 import adRoutes from './routes/adRoutes';
+import notificationRoutes from './routes/notificationRoutes';
 
 
 const app = express();
@@ -42,6 +43,7 @@ app.use('/api/afk', afkRoutes);
 app.use('/api/upgrades', upgradeRoutes);
 app.use('/api/bot', botRoutes);
 app.use('/api/ads', adRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Coins & Tasks
 const coinRouter = express.Router();
