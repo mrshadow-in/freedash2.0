@@ -869,7 +869,7 @@ function UsersTab({ users, fetchUsers, loading }: any) {
 
     const openEditModal = (user: any) => {
         setEditingUser({
-            _id: user.id,
+            id: user.id,
             username: user.username,
             email: user.email,
             password: '',
