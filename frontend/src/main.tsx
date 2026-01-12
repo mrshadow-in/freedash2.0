@@ -13,10 +13,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <App />
-        <Toaster position="bottom-right" toastOptions={{
+        <Toaster position="top-right" toastOptions={{
           style: {
-            background: '#333',
+            background: '#1f2937', // Gray-800
             color: '#fff',
+            border: '1px solid rgba(255,255,255,0.1)',
           }
         }} />
       </ThemeProvider>
