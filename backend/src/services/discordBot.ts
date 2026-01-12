@@ -93,7 +93,8 @@ async function registerCommands(token: string, clientId: string, guildId: string
         new SlashCommandBuilder().setName('leaderboard').setDescription('View invite leaderboard'),
 
         // Auth
-        new SlashCommandBuilder().setName('link').setDescription('Link your Discord account to the panel'),
+        new SlashCommandBuilder().setName('link-account').setDescription('Link your Discord account to the panel'),
+        new SlashCommandBuilder().setName('unlink-account').setDescription('Unlink your Discord account from the panel'),
 
         // Earning Tasks
         new SlashCommandBuilder().setName('daily').setDescription('Claim your daily coin reward'),
@@ -213,8 +214,8 @@ export async function startDiscordBot() {
             if (!interaction.isChatInputCommand()) return;
 
             try {
-                // --- EXISTING COMMANDS (/link, /daily, /task, /trivia) ---
-                if (['link', 'daily', 'task', 'task-reward', 'trivia', 'help', 'game-help', 'active-list'].includes(interaction.commandName)) {
+                // --- EXISTING COMMANDS ---
+                if (['link-account', 'unlink-account', 'daily', 'task', 'task-reward', 'trivia', 'help', 'game-help', 'active-list'].includes(interaction.commandName)) {
 
                     if (interaction.commandName === 'active-list') {
                         if (!(interaction.member as any)?.permissions.has('Administrator')) {
@@ -242,7 +243,7 @@ export async function startDiscordBot() {
                         const msg = `🤖 **Bot Assistance**\n\n` +
                             `**🔗 How to Connect:**\n` +
                             `1. Go to your **Dashboard > Account** page.\n` +
-                            `2. Run \`/link\` here to get your unique code.\n` +
+                            `2. Run \`/link-account\` here to get your unique code.\n` +
                             `3. Enter the code in the dashboard to sync balance.\n\n` +
                             `**💸 Features:**\n` +
                             `• **Daily**: \`/daily\` (50 coins)\n` +
@@ -274,12 +275,41 @@ export async function startDiscordBot() {
                         return;
                     }
 
-                    if (interaction.commandName === 'link') {
+                    if (interaction.commandName === 'link-account') {
                         await interaction.deferReply({ ephemeral: true });
                         const code = generateCode('LINK');
                         linkCodes.set(code, interaction.user.id);
-                        setTimeout(() => linkCodes.delete(code), 300000);
-                        await interaction.editReply(`🔐 **Link Code**: \`${code}\` (Expires in 5m)`);
+                        setTimeout(() => linkCodes.delete(code), 300000); // 5 mins
+
+                        const embed = new EmbedBuilder()
+                            .setTitle('🔗 Link Your Account')
+                            .setColor(0x7289DA) // Discord Blurple
+                            .setDescription('Follow these steps to connect your Discord account to the panel:')
+                            .addFields(
+                                { name: 'Step 1: Copy Code', value: `\`\`\`${code}\`\`\``, inline: false },
+                                { name: 'Step 2: Go to Dashboard', value: 'Navigate to **Settings > Account Connections** on the website.', inline: false },
+                                { name: 'Step 3: Enter Code', value: 'Paste the code above into the "Link Discord" box and click Link.', inline: false }
+                            )
+                            .setFooter({ text: 'Code expires in 5 minutes' });
+
+                        await interaction.editReply({ embeds: [embed] });
+                        return;
+                    }
+
+                    if (interaction.commandName === 'unlink-account') {
+                        await interaction.deferReply({ ephemeral: true });
+                        const user = await prisma.user.findUnique({ where: { discordId: interaction.user.id } });
+
+                        if (!user) {
+                            return interaction.editReply('❌ No account found linked to this Discord ID.');
+                        }
+
+                        await prisma.user.update({
+                            where: { id: user.id },
+                            data: { discordId: null }
+                        });
+
+                        await interaction.editReply('✅ **Unlink Successful!** Your Discord account has been disconnected from the dashboard.');
                         return;
                     }
 

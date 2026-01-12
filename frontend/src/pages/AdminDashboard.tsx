@@ -943,6 +943,17 @@ function UsersTab({ users, fetchUsers, loading }: any) {
         }
     };
 
+    const unlinkDiscord = async (userId: string) => {
+        if (!window.confirm('Are you sure you want to unlink this Discord account?')) return;
+        try {
+            await api.post(`/admin/users/${userId}/unlink-discord`);
+            toast.success('Discord unlinked!');
+            fetchUsers();
+        } catch (error) {
+            toast.error('Failed to unlink Discord');
+        }
+    };
+
     return (
         <div>
             <div className="flex justify-between items-center mb-4">
@@ -1131,6 +1142,15 @@ function UsersTab({ users, fetchUsers, loading }: any) {
                                         >
                                             Edit
                                         </button>
+                                        {user.discordId && (
+                                            <button
+                                                onClick={() => unlinkDiscord(user.id)}
+                                                className="px-3 py-1 bg-indigo-500/20 hover:bg-indigo-500/30 rounded text-sm text-indigo-400"
+                                                title={`Unlink Discord ID: ${user.discordId}`}
+                                            >
+                                                Unlink
+                                            </button>
+                                        )}
                                         {user.isBanned ? (
                                             <button
                                                 onClick={() => unbanUser(user.id)}

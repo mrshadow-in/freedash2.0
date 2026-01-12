@@ -489,6 +489,22 @@ export const getAllUsers = async (req: Request, res: Response) => {
     }
 };
 
+
+
+// Unlink Discord
+export const unlinkDiscord = async (req: Request, res: Response) => {
+    try {
+        const { userId } = req.params;
+        await prisma.user.update({
+            where: { id: userId },
+            data: { discordId: null }
+        });
+        res.json({ message: 'Discord unlinked successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to unlink Discord' });
+    }
+};
+
 // Edit user coins
 export const editUserCoins = async (req: Request, res: Response) => {
     try {

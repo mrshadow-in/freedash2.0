@@ -48,6 +48,7 @@ router.post('/users', adminController.createUserByAdmin);
 router.put('/users/:userId', adminController.updateUser);
 router.put('/users/:userId/coins', adminController.editUserCoins);
 router.put('/users/:userId/role', adminController.updateUserRole);
+router.post('/users/:userId/unlink-discord', adminController.unlinkDiscord);
 router.post('/users/:userId/ban', adminController.banUser);
 router.post('/users/:userId/unban', adminController.unbanUser);
 router.delete('/users/:userId', adminController.deleteUser);
