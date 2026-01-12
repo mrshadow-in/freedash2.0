@@ -283,11 +283,11 @@ model DiscordVoiceSession {
   joinedAt  DateTime @default(now())
 }
 
-model DiscordGameStats {
   id             String   @id @default(uuid())
   discordId      String   @unique
   dailyEarnings  Float    @default(0)
   lastDailyReset DateTime @default(now())
+  invitesConsumed Int     @default(0)
   cooldowns      Json     @default("{}") // Store { cmdName: timestamp }
 }
 
