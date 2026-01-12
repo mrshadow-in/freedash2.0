@@ -13,11 +13,13 @@ import AdminRoute from './components/AdminRoute';
 import BrandingLoader from './components/BrandingLoader';
 import SessionHeartbeat from './components/SessionHeartbeat';
 import DiscordSuccess from './pages/DiscordSuccess';
+import NotificationListener from './components/NotificationListener';
 
 
 function App() {
   return (
     <Router>
+      <NotificationListener />
       <BrandingLoader />
       <SessionHeartbeat />
       <Routes>

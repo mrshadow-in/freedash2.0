@@ -472,6 +472,9 @@ async function startDiscordBot() {
                         serverName: server.name,
                         reason: 'User left Discord server'
                     }).catch(console.error);
+                    // Send Real-time Notification
+                    const { sendUserNotification } = await Promise.resolve().then(() => __importStar(require('./websocket')));
+                    sendUserNotification(user.id, 'Server Suspended', `Server "${server.name}" suspended because you left our Discord server.`, 'error');
                 }
             }
             catch (error) {

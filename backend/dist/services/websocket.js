@@ -3,19 +3,22 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.initWebSocketServer = void 0;
+exports.sendUserNotification = exports.initWebSocketServer = void 0;
 const ws_1 = require("ws");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const env_1 = require("../config/env");
 const prisma_1 = require("../prisma");
 const pterodactyl_1 = require("./pterodactyl");
 const initWebSocketServer = (server) => {
-    const wss = new ws_1.WebSocketServer({ server, path: '/api/ws/console' });
-    wss.on('connection', async (ws, req) => {
+    const wssConsole = new ws_1.WebSocketServer({ noServer: true });
+    const wssNotifications = new ws_1.WebSocketServer({ noServer: true });
+    // Store user notification sockets: userId -> Set<WebSocket>
+    const userNotificationSockets = new Map();
+    // --- CONSOLE HANDLING ---
+    wssConsole.on('connection', async (ws, req) => {
         ws.isAlive = true;
         ws.on('pong', () => { ws.isAlive = true; });
         try {
-            // Parse URL params
             const url = new URL(req.url || '', `http://${req.headers.host}`);
             const token = url.searchParams.get('token');
             const serverId = url.searchParams.get('serverId');
@@ -23,76 +26,30 @@ const initWebSocketServer = (server) => {
                 ws.close(1008, 'Missing parameters');
                 return;
             }
-            // Verify User Token
             const decoded = jsonwebtoken_1.default.verify(token, env_1.ENV.JWT_SECRET);
             ws.userId = decoded.userId;
-            // Get Server
             const serverEntity = await prisma_1.prisma.server.findUnique({
                 where: { id: serverId },
                 include: { owner: true }
             });
-            if (!serverEntity || serverEntity.ownerId !== decoded.userId) {
-                // Allow admins? For now strict owner check
-                const user = await prisma_1.prisma.user.findUnique({ where: { id: decoded.userId } });
-                if (user?.role !== 'admin' && serverEntity?.ownerId !== decoded.userId) {
-                    ws.close(1008, 'Unauthorized');
-                    return;
-                }
+            if (!serverEntity || (serverEntity.ownerId !== decoded.userId && (await prisma_1.prisma.user.findUnique({ where: { id: decoded.userId } }))?.role !== 'admin')) {
+                ws.close(1008, 'Unauthorized');
+                return;
             }
-            if (!serverEntity?.pteroIdentifier) {
+            if (!serverEntity.pteroIdentifier) {
                 ws.send(JSON.stringify({ event: 'error', args: ['Server has no Pterodactyl ID'] }));
                 ws.close();
                 return;
             }
-            console.log(`[WS] Proxying console for server ${serverEntity.name} (${serverEntity.pteroIdentifier})`);
-            // Get Pterodactyl WebSocket Details
+            console.log(`[WS] Proxying console for server ${serverEntity.name}`);
             const pteroDetails = await (0, pterodactyl_1.getConsoleDetails)(serverEntity.pteroIdentifier);
             const pteroUrl = await (0, pterodactyl_1.getPteroUrl)();
-            // Connect to Pterodactyl Wings with lax SSL and Origin header
-            const pteroWs = new ws_1.WebSocket(pteroDetails.socket, {
-                rejectUnauthorized: false,
-                headers: {
-                    'Origin': pteroUrl
-                }
-            });
-            // Handle Ptero Open -> Auth
-            pteroWs.on('open', () => {
-                pteroWs.send(JSON.stringify({
-                    event: 'auth',
-                    args: [pteroDetails.token]
-                }));
-            });
-            // Proxy Messages: Ptero -> Client
-            pteroWs.on('message', (data) => {
-                if (ws.readyState === ws_1.WebSocket.OPEN) {
-                    try {
-                        const raw = data.toString();
-                        // Try to parse to ensure it's valid JSON
-                        const parsed = JSON.parse(raw);
-                        // If it's a console output, we can sanitize or just forward
-                        // But strictly forwarding raw is usually safest IF we trust the source.
-                        // However, user reports "mixed" output with current regex replace.
-                        // Current issue: The previous regex replaced \n globally in the JSON string,
-                        // which DOES break JSON if the strings contain escaped \n like "\\n" which becomes "\\\r\n".
-                        // Fix: Just forward the raw message precisely as is.
-                        // Let xterm.js 'convertEol: true' handle the visual newlines.
-                        // Pterodactyl sends clean JSON.
-                        ws.send(raw);
-                    }
-                    catch (e) {
-                        // If not JSON (jwt error etc), just forward safe string
-                        ws.send(data.toString());
-                    }
-                }
-            });
-            // Proxy Messages: Client -> Ptero
-            ws.on('message', (data) => {
-                if (pteroWs.readyState === ws_1.WebSocket.OPEN) {
-                    // Pterodactyl expects strings for commands
-                    pteroWs.send(data.toString());
-                }
-            });
-            // Cleanup
+            const pteroWs = new ws_1.WebSocket(pteroDetails.socket, { rejectUnauthorized: false, headers: { 'Origin': pteroUrl } });
+            pteroWs.on('open', () => { pteroWs.send(JSON.stringify({ event: 'auth', args: [pteroDetails.token] })); });
+            pteroWs.on('message', (data) => { if (ws.readyState === ws_1.WebSocket.OPEN)
+                ws.send(data.toString()); });
+            ws.on('message', (data) => { if (pteroWs.readyState === ws_1.WebSocket.OPEN)
+                pteroWs.send(data.toString()); });
             const closeAll = () => {
                 if (pteroWs.readyState === ws_1.WebSocket.OPEN)
                     pteroWs.close();
@@ -102,29 +59,94 @@ const initWebSocketServer = (server) => {
             ws.on('close', closeAll);
             pteroWs.on('close', closeAll);
             pteroWs.on('error', (err) => {
-                console.error('[WS] Pterodactyl Error:', err.message);
-                // Send distinct error to client
-                if (ws.readyState === ws_1.WebSocket.OPEN) {
-                    ws.send(JSON.stringify({ event: 'console output', args: [`\u001b[31m[System] Connection Error: ${err.message}\r\n`] }));
-                    ws.close(1011, `Upstream: ${err.message}`);
+                if (ws.readyState === ws_1.WebSocket.OPEN)
+                    ws.send(JSON.stringify({ event: 'console output', args: [`\u001b[31m[System] Error: ${err.message}\r\n`] }));
+            });
+        }
+        catch (error) {
+            console.error('[WS] Console Connection Error:', error.message);
+            ws.close(1008, 'Auth Failed');
+        }
+    });
+    // --- NOTIFICATION HANDLING ---
+    wssNotifications.on('connection', async (ws, req) => {
+        ws.isAlive = true;
+        ws.on('pong', () => { ws.isAlive = true; });
+        try {
+            const url = new URL(req.url || '', `http://${req.headers.host}`);
+            const token = url.searchParams.get('token');
+            if (!token) {
+                ws.close(1008, 'Missing token');
+                return;
+            }
+            const decoded = jsonwebtoken_1.default.verify(token, env_1.ENV.JWT_SECRET);
+            const userId = decoded.userId;
+            ws.userId = userId;
+            // Register Socket
+            if (!userNotificationSockets.has(userId)) {
+                userNotificationSockets.set(userId, new Set());
+            }
+            userNotificationSockets.get(userId).add(ws);
+            console.log(`[WS] Notification subscribed: ${userId}`);
+            ws.on('close', () => {
+                if (userNotificationSockets.has(userId)) {
+                    userNotificationSockets.get(userId).delete(ws);
+                    if (userNotificationSockets.get(userId).size === 0) {
+                        userNotificationSockets.delete(userId);
+                    }
                 }
             });
         }
         catch (error) {
-            console.error('[WS] Connection Error:', error.message);
-            ws.close(1008, 'Authentication Failed');
+            console.error('[WS] Notification Auth Error:', error.message);
+            ws.close(1008, 'Auth Failed');
+        }
+    });
+    // --- UPGRADE HANDLING ---
+    server.on('upgrade', (request, socket, head) => {
+        const pathname = new URL(request.url || '', `http://${request.headers.host}`).pathname;
+        if (pathname === '/api/ws/console') {
+            wssConsole.handleUpgrade(request, socket, head, (ws) => {
+                wssConsole.emit('connection', ws, request);
+            });
+        }
+        else if (pathname === '/api/ws/notifications') {
+            wssNotifications.handleUpgrade(request, socket, head, (ws) => {
+                wssNotifications.emit('connection', ws, request);
+            });
+        }
+        else {
+            socket.destroy();
         }
     });
     // Heartbeat
     const interval = setInterval(() => {
-        wss.clients.forEach((ws) => {
-            if (ws.isAlive === false)
-                return ws.terminate();
-            ws.isAlive = false;
-            ws.ping();
+        [wssConsole, wssNotifications].forEach(wss => {
+            wss.clients.forEach((ws) => {
+                if (ws.isAlive === false)
+                    return ws.terminate();
+                ws.isAlive = false;
+                ws.ping();
+            });
         });
     }, 30000);
-    wss.on('close', () => clearInterval(interval));
-    console.log('[WebSocket] Initialized for Pterodactyl Proxy');
+    // Export sender function closure
+    global.sendUserNotification = (userId, title, message, type = 'info') => {
+        const sockets = userNotificationSockets.get(userId);
+        if (sockets) {
+            const payload = JSON.stringify({ type, title, message });
+            sockets.forEach(ws => {
+                if (ws.readyState === ws_1.WebSocket.OPEN)
+                    ws.send(payload);
+            });
+        }
+    };
+    console.log('[WebSocket] Initialized (Console & Notifications)');
 };
 exports.initWebSocketServer = initWebSocketServer;
+const sendUserNotification = (userId, title, message, type = 'info') => {
+    if (global.sendUserNotification) {
+        global.sendUserNotification(userId, title, message, type);
+    }
+};
+exports.sendUserNotification = sendUserNotification;

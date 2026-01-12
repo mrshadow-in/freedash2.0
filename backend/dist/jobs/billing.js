@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -87,10 +120,49 @@ const processBillingCycle = async () => {
     for (const server of servers) {
         try {
             // Skip if user banned or special case (maybe admins are free? optional)
+            // Skip if user banned or special case
             if (server.owner.isBanned)
                 continue;
             if (!server.pteroIdentifier)
                 continue;
+            // --- RETROACTIVE DISCORD ENFORCEMENT ---
+            // Moved UP to check before online status. Suspend even if offline.
+            if (!server.owner.discordId && server.owner.role !== 'admin') {
+                console.log(`[Billing] Suspending server ${server.id} (User: ${server.owner.username}) - No Discord Link`);
+                // Suspend Pterodactyl
+                if (server.pteroServerId) {
+                    try {
+                        const { suspendPteroServer } = await Promise.resolve().then(() => __importStar(require('../services/pterodactyl')));
+                        await suspendPteroServer(server.pteroServerId);
+                    }
+                    catch (err) {
+                        console.error(`[Billing] Ptero Suspend Failed: ${err.message}`);
+                    }
+                }
+                // Update DB
+                await prisma_1.prisma.server.update({
+                    where: { id: server.id },
+                    data: {
+                        isSuspended: true,
+                        suspendedAt: new Date(),
+                        suspendedBy: 'System (Discord Enforcement)',
+                        suspendReason: 'Discord account not linked',
+                        status: 'suspended'
+                    }
+                });
+                // Send Webhook
+                const { sendServerSuspendedWebhook } = await Promise.resolve().then(() => __importStar(require('../services/webhookService')));
+                sendServerSuspendedWebhook({
+                    username: server.owner.username,
+                    serverName: server.name,
+                    reason: 'Discord account not linked'
+                }).catch(console.error);
+                // Send Real-time Notification
+                const { sendUserNotification } = await Promise.resolve().then(() => __importStar(require('../services/websocket')));
+                sendUserNotification(server.ownerId, 'Server Suspended', `Your server "${server.name}" was suspended because your Discord account is not linked.`, 'error');
+                continue; // Skip billing
+            }
+            // ---------------------------------------
             // 1. LIVE CHECK: Is server actually online?
             let isOnline = false;
             try {

@@ -94,8 +94,52 @@ export const processBillingCycle = async () => {
     for (const server of servers) {
         try {
             // Skip if user banned or special case (maybe admins are free? optional)
+            // Skip if user banned or special case
             if (server.owner.isBanned) continue;
             if (!server.pteroIdentifier) continue;
+
+            // --- RETROACTIVE DISCORD ENFORCEMENT ---
+            // Moved UP to check before online status. Suspend even if offline.
+            if (!server.owner.discordId && server.owner.role !== 'admin') {
+                console.log(`[Billing] Suspending server ${server.id} (User: ${server.owner.username}) - No Discord Link`);
+
+                // Suspend Pterodactyl
+                if (server.pteroServerId) {
+                    try {
+                        const { suspendPteroServer } = await import('../services/pterodactyl');
+                        await suspendPteroServer(server.pteroServerId);
+                    } catch (err: any) {
+                        console.error(`[Billing] Ptero Suspend Failed: ${err.message}`);
+                    }
+                }
+
+                // Update DB
+                await prisma.server.update({
+                    where: { id: server.id },
+                    data: {
+                        isSuspended: true,
+                        suspendedAt: new Date(),
+                        suspendedBy: 'System (Discord Enforcement)',
+                        suspendReason: 'Discord account not linked',
+                        status: 'suspended'
+                    }
+                });
+
+                // Send Webhook
+                const { sendServerSuspendedWebhook } = await import('../services/webhookService');
+                sendServerSuspendedWebhook({
+                    username: server.owner.username,
+                    serverName: server.name,
+                    reason: 'Discord account not linked'
+                }).catch(console.error);
+
+                // Send Real-time Notification
+                const { sendUserNotification } = await import('../services/websocket');
+                sendUserNotification(server.ownerId, 'Server Suspended', `Your server "${server.name}" was suspended because your Discord account is not linked.`, 'error');
+
+                continue; // Skip billing
+            }
+            // ---------------------------------------
 
             // 1. LIVE CHECK: Is server actually online?
             let isOnline = false;

@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import { motion } from 'framer-motion';
-import { Loader2, ShoppingCart, Copy, Check, Terminal, FolderOpen, Ghost, Users } from 'lucide-react';
+import { Loader2, ShoppingCart, Copy, Check, Terminal, FolderOpen, Ghost } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 
@@ -15,7 +15,7 @@ import ShopModal from '../components/shop/ShopModal';
 import Console from '../components/server/Console';
 import FileManager from '../components/server/FileManager';
 import MinecraftTab from '../components/server/MinecraftTab';
-import UsersTab from '../components/server/UsersTab';
+// import UsersTab from '../components/server/UsersTab';
 import AdZone from '../components/AdZone';
 
 
@@ -25,7 +25,7 @@ const ManageServer = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [isShopOpen, setIsShopOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<'console' | 'files' | 'settings' | 'startup' | 'users' | 'shop' | 'minecraft'>('console');
+    const [activeTab, setActiveTab] = useState<'console' | 'files' | 'settings' | 'startup' | 'shop' | 'minecraft'>('console');
     const [copiedIP, setCopiedIP] = useState(false);
 
     // Fetch Server Details
@@ -283,12 +283,7 @@ const ManageServer = () => {
                             >
                                 <FolderOpen size={18} /> Files
                             </button>
-                            <button
-                                onClick={() => setActiveTab('users')}
-                                className={`flex items-center gap-2 px-6 py-3 font-bold transition whitespace-nowrap rounded-t-lg ${activeTab === 'users' ? 'text-white bg-white/5 border-b-2 border-blue-400' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
-                            >
-                                <Users size={18} /> Users
-                            </button>
+
                             <button
                                 onClick={() => setActiveTab('shop')}
                                 className={`flex items-center gap-2 px-6 py-3 font-bold transition whitespace-nowrap rounded-t-lg ${activeTab === 'shop' ? 'text-white bg-white/5 border-b-2 border-purple-500' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
@@ -327,7 +322,7 @@ const ManageServer = () => {
                                         <MinecraftTab server={server} />
                                     )}
 
-                                    {activeTab === 'users' && <UsersTab server={server} />}
+
 
 
 
