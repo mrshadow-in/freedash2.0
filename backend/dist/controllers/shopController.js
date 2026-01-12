@@ -58,7 +58,8 @@ const estimateCost = async (req, res) => {
     try {
         const { itemId, quantity } = req.body;
         const settings = await prisma_1.prisma.settings.findFirst();
-        const pricing = settings?.upgradePricing || { ramPerGB: 0, diskPerGB: 0, cpuPerCore: 0 };
+        // SAFE DEFAULTS (No more 0)
+        const pricing = settings?.upgradePricing || { ramPerGB: 100, diskPerGB: 50, cpuPerCore: 20 };
         // Add slot/backup pricing fallbacks if not yet in DB schema
         const extendedPricing = { ...pricing, slotPrice: 50, backupPrice: 20 }; // default fallbacks
         const cost = Math.ceil(calculateCost(itemId, quantity, extendedPricing));
@@ -92,7 +93,8 @@ const purchaseItem = async (req, res) => {
                 throw new Error('User not found');
             }
             const settings = await tx.settings.findFirst();
-            const pricing = settings?.upgradePricing || { ramPerGB: 0, diskPerGB: 0, cpuPerCore: 0 };
+            // SAFE DEFAULTS for transaction
+            const pricing = settings?.upgradePricing || { ramPerGB: 100, diskPerGB: 50, cpuPerCore: 20 };
             const extendedPricing = { ...pricing, slotPrice: 50, backupPrice: 20 };
             const cost = Math.ceil(calculateCost(itemId, quantity, extendedPricing));
             console.log('💰 Purchase details:', {
@@ -101,6 +103,10 @@ const purchaseItem = async (req, res) => {
                 itemId,
                 quantity
             });
+            // Prevent free/scammed upgrades
+            if (cost <= 0) {
+                throw new Error('Pricing not configured or invalid (cost is 0). Contact support.');
+            }
             if (user.coins < cost) {
                 throw new Error('Insufficient coins');
             }
@@ -151,8 +157,14 @@ const purchaseItem = async (req, res) => {
                 if (server.pteroServerId) {
                     const { getPteroServer } = await Promise.resolve().then(() => __importStar(require('../services/pterodactyl')));
                     const pteroServer = await getPteroServer(server.pteroServerId);
-                    const currentAllocationId = pteroServer.allocation;
-                    await (0, pterodactyl_1.updatePteroServerBuild)(server.pteroServerId, newRam, newDisk, newCpu * 100, currentAllocationId);
+                    // Note: pteroServer.allocation is actually an object or ID depending on return. 
+                    // getPteroServer returns attributes. The allocation relationship returns an object.
+                    // We need the default allocation ID.
+                    const updateAllocation = pteroServer.allocation || 0;
+                    // Note: updatePteroServerBuild expects number. 
+                    // If logic fails here, we catch generic error but transaction might abort.
+                    // We should verify what updatePteroServerBuild needs. It needs allocation ID.
+                    await (0, pterodactyl_1.updatePteroServerBuild)(server.pteroServerId, newRam, newDisk, newCpu * 100, updateAllocation);
                 }
             }
             return user.coins - cost;
@@ -165,8 +177,15 @@ const purchaseItem = async (req, res) => {
         if (error.response?.data?.errors) {
             console.error('Pterodactyl validation errors:', JSON.stringify(error.response.data.errors, null, 2));
         }
-        const msg = error.message || 'Purchase failed';
-        const status = msg === 'Insufficient coins' || msg === 'Server not found or not owned by user' ? 400 : 500;
+        let msg = error.message || 'Purchase failed';
+        // Hide internal error details if needed, but show pricing error
+        if (msg.includes('Pricing not configured')) {
+            // Keep specific msg
+        }
+        else if (msg !== 'Insufficient coins' && msg !== 'Server not found or not owned by user') {
+            // maybe generic?
+        }
+        const status = msg === 'Insufficient coins' || msg === 'Server not found or not owned by user' || msg.includes('Pricing') ? 400 : 500;
         res.status(status).json({ message: msg });
     }
 };

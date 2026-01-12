@@ -35,6 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const authController_1 = require("../controllers/authController");
+const discordAuthController_1 = require("../controllers/discordAuthController");
 const auth_1 = require("../middleware/auth");
 const router = (0, express_1.Router)();
 router.post('/register', authController_1.register);
@@ -115,4 +116,5 @@ router.get('/me', auth_1.authenticate, authController_1.getMe);
 router.put('/update-email', auth_1.authenticate, authController_1.updateEmail);
 router.put('/update-password', auth_1.authenticate, authController_1.updatePassword);
 router.put('/update-preferences', auth_1.authenticate, authController_1.updatePreferences);
+router.put('/link-discord', auth_1.authenticate, discordAuthController_1.linkDiscordAccount);
 exports.default = router;

@@ -65,8 +65,24 @@ const initWebSocketServer = (server) => {
             // Proxy Messages: Ptero -> Client
             pteroWs.on('message', (data) => {
                 if (ws.readyState === ws_1.WebSocket.OPEN) {
-                    // Force CRLF for xterm.js compatibility and toString for Blob fix
-                    ws.send(data.toString().replace(/\n/g, '\r\n'));
+                    try {
+                        const raw = data.toString();
+                        // Try to parse to ensure it's valid JSON
+                        const parsed = JSON.parse(raw);
+                        // If it's a console output, we can sanitize or just forward
+                        // But strictly forwarding raw is usually safest IF we trust the source.
+                        // However, user reports "mixed" output with current regex replace.
+                        // Current issue: The previous regex replaced \n globally in the JSON string,
+                        // which DOES break JSON if the strings contain escaped \n like "\\n" which becomes "\\\r\n".
+                        // Fix: Just forward the raw message precisely as is.
+                        // Let xterm.js 'convertEol: true' handle the visual newlines.
+                        // Pterodactyl sends clean JSON.
+                        ws.send(raw);
+                    }
+                    catch (e) {
+                        // If not JSON (jwt error etc), just forward safe string
+                        ws.send(data.toString());
+                    }
                 }
             });
             // Proxy Messages: Client -> Ptero

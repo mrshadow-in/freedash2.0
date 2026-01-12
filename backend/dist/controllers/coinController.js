@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.redeemCode = void 0;
+exports.getTransactionHistory = exports.redeemCode = void 0;
 const prisma_1 = require("../prisma");
 const redeemCode = async (req, res) => {
     try {
@@ -81,3 +81,18 @@ const redeemCode = async (req, res) => {
     }
 };
 exports.redeemCode = redeemCode;
+const getTransactionHistory = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const transactions = await prisma_1.prisma.transaction.findMany({
+            where: { userId },
+            orderBy: { createdAt: 'desc' },
+            take: 50
+        });
+        res.json(transactions);
+    }
+    catch (error) {
+        res.status(500).json({ message: 'Failed to fetch transaction history' });
+    }
+};
+exports.getTransactionHistory = getTransactionHistory;

@@ -110,6 +110,7 @@ async function registerCommands(token: string, clientId: string, guildId: string
         // Help
         new SlashCommandBuilder().setName('help').setDescription('How to link account & bot features'),
         new SlashCommandBuilder().setName('game-help').setDescription('How to play minigames & rules'),
+        new SlashCommandBuilder().setName('active-list').setDescription('List all linked dashboard users (Admin Only)'),
     ].map(cmd => cmd.toJSON());
 
     const rest = new REST({ version: '10' }).setToken(token);
@@ -213,7 +214,28 @@ export async function startDiscordBot() {
 
             try {
                 // --- EXISTING COMMANDS (/link, /daily, /task, /trivia) ---
-                if (['link', 'daily', 'task', 'task-reward', 'trivia', 'help', 'game-help'].includes(interaction.commandName)) {
+                if (['link', 'daily', 'task', 'task-reward', 'trivia', 'help', 'game-help', 'active-list'].includes(interaction.commandName)) {
+
+                    if (interaction.commandName === 'active-list') {
+                        if (!(interaction.member as any)?.permissions.has('Administrator')) {
+                            return interaction.reply({ content: '❌ Admin Only.', ephemeral: true });
+                        }
+
+                        await interaction.deferReply({ ephemeral: true });
+
+                        const users = await prisma.user.findMany({
+                            where: { discordId: { not: null } },
+                            select: { username: true, discordId: true, email: true }
+                        });
+
+                        const embed = new EmbedBuilder()
+                            .setTitle(`📋 Linked Users (${users.length})`)
+                            .setColor(0x00FF00) // Green
+                            .setDescription(users.map(u => `• **${u.username}** - <@${u.discordId}>`).join('\n').slice(0, 4000) || 'No active users linked.');
+
+                        await interaction.editReply({ embeds: [embed] });
+                        return;
+                    }
 
                     if (interaction.commandName === 'help') {
                         await interaction.deferReply({ ephemeral: true });
@@ -395,7 +417,66 @@ export async function startDiscordBot() {
 
             } catch (err) {
                 console.error('Interaction error:', err);
-                try { if (!interaction.replied) await interaction.editReply('❌ Error'); } catch (e) { }
+            }
+        });
+
+        // --- 1. USER LEFT GUILD -> SUSPEND SERVERS ---
+        client.on(Events.GuildMemberRemove, async (member) => {
+            console.log(`[Bot] User left guild: ${member.user.tag} (${member.id})`);
+            try {
+                // Find Dashboard User
+                const user = await prisma.user.findUnique({ where: { discordId: member.id } });
+                if (!user) return; // Not a dashboard user
+
+                // Find active servers
+                const servers = await prisma.server.findMany({
+                    where: {
+                        ownerId: user.id,
+                        status: { not: 'suspended' },
+                        isSuspended: false
+                    }
+                });
+
+                if (servers.length === 0) return;
+
+                console.log(`[Bot] Suspending ${servers.length} servers for user ${user.username} (Left Discord)`);
+
+                // Suspend Loop
+                const { suspendPteroServer } = await import('./pterodactyl');
+                const { sendServerSuspendedWebhook } = await import('./webhookService');
+
+                for (const server of servers) {
+                    // Ptero Suspend
+                    if (server.pteroServerId) {
+                        try {
+                            await suspendPteroServer(server.pteroServerId);
+                        } catch (err) {
+                            console.error(`[Bot] Failed to suspend ptero server ${server.id}:`, err);
+                        }
+                    }
+
+                    // DB Update
+                    await prisma.server.update({
+                        where: { id: server.id },
+                        data: {
+                            isSuspended: true,
+                            suspendedAt: new Date(),
+                            suspendedBy: 'System (Discord Enforcement)',
+                            suspendReason: 'User left Discord server',
+                            status: 'suspended'
+                        }
+                    });
+
+                    // Log Webhook
+                    sendServerSuspendedWebhook({
+                        username: user.username,
+                        serverName: server.name,
+                        reason: 'User left Discord server'
+                    }).catch(console.error);
+                }
+
+            } catch (error) {
+                console.error('[Bot] GuildMemberRemove Error:', error);
             }
         });
 
@@ -405,6 +486,11 @@ export async function startDiscordBot() {
         console.error('❌ Failed to start Discord bot:', error);
     }
 }
+// ... (startDiscordBot ends above)
+
+// --- COMMAND HANDLER ADDITIONS (Inside client.on InteractionCreate) ---
+// Note: Inserting this logic inside the existing InteractionCreate listener via separate tool call for precision.           
+
 
 // STOP & STATUS (Same as before)
 export function stopDiscordBot() { if (client) { client.destroy(); client = null; } }

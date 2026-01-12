@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.trackClick = exports.deleteAd = exports.updateAd = exports.createAd = exports.getAllAds = exports.getActiveAds = void 0;
+exports.trackClick = exports.toggleAllAds = exports.deleteAd = exports.updateAd = exports.createAd = exports.getAllAds = exports.getActiveAds = void 0;
 const prisma_1 = require("../prisma");
 // Get active ads for a specific position or all active ads
 const getActiveAds = async (req, res) => {
@@ -44,7 +44,7 @@ exports.getAllAds = getAllAds;
 // Admin: Create a new ad
 const createAd = async (req, res) => {
     try {
-        const { title, imageUrl, redirectUrl, rawCode, isAFK, position, positionIndex, priority, type, endDate, ownerId } = req.body;
+        const { title, imageUrl, redirectUrl, rawCode, isAFK, position, positionIndex, priority, type, endDate, ownerId, rewardCoins } = req.body;
         // Validate required fields
         if (!title || !position || !type) {
             return res.status(400).json({ message: 'Title, position, and type are required fields' });
@@ -75,6 +75,7 @@ const createAd = async (req, res) => {
                 type,
                 endDate: endDate ? new Date(endDate) : null,
                 ownerId: ownerId || null,
+                rewardCoins: parseFloat(rewardCoins) || 0,
                 status: 'active'
             }
         });
@@ -93,6 +94,8 @@ const updateAd = async (req, res) => {
         const data = req.body;
         if (data.endDate)
             data.endDate = new Date(data.endDate);
+        if (data.rewardCoins !== undefined)
+            data.rewardCoins = parseFloat(data.rewardCoins);
         const ad = await prisma_1.prisma.ad.update({
             where: { id },
             data
@@ -116,19 +119,64 @@ const deleteAd = async (req, res) => {
     }
 };
 exports.deleteAd = deleteAd;
-// Track ad click
+// Admin: Toggle all ads globally (ON/OFF)
+const toggleAllAds = async (req, res) => {
+    try {
+        const { enabled } = req.body;
+        const newStatus = enabled ? 'active' : 'paused';
+        await prisma_1.prisma.ad.updateMany({
+            data: { status: newStatus }
+        });
+        res.json({ message: `All ads ${enabled ? 'enabled' : 'disabled'}`, status: newStatus });
+    }
+    catch (error) {
+        res.status(500).json({ message: 'Failed to toggle ads' });
+    }
+};
+exports.toggleAllAds = toggleAllAds;
+// Track ad click & Give Reward
 const trackClick = async (req, res) => {
     try {
         const { id } = req.params;
+        const user = req.user; // Available if authenticated
+        const ad = await prisma_1.prisma.ad.findUnique({ where: { id } });
+        if (!ad)
+            return res.status(404).json({ message: 'Ad not found' });
+        // Update stats
         await prisma_1.prisma.ad.update({
             where: { id },
             data: {
                 clicks: { increment: 1 }
             }
         });
-        res.sendStatus(204);
+        // Give Reward if applicable
+        let rewardGiven = false;
+        if (user && ad.rewardCoins > 0) {
+            // Check if user already clicked recently? (Optional: Prevent spam)
+            // For now, let's just give it. Rate limiting should be handled separately or add a "AdClick" model.
+            // Converting float to whatever user coins stores (Float usually).
+            await prisma_1.prisma.$transaction([
+                prisma_1.prisma.user.update({
+                    where: { id: user.id },
+                    data: { coins: { increment: ad.rewardCoins } }
+                }),
+                prisma_1.prisma.transaction.create({
+                    data: {
+                        userId: user.id,
+                        type: 'credit',
+                        amount: ad.rewardCoins,
+                        description: `Ad Click Reward: ${ad.title}`,
+                        balanceAfter: user.coins + ad.rewardCoins, // Approx
+                        metadata: { adId: ad.id }
+                    }
+                })
+            ]);
+            rewardGiven = true;
+        }
+        res.json({ success: true, reward: rewardGiven ? ad.rewardCoins : 0 });
     }
     catch (error) {
+        console.error('Click track error:', error);
         res.status(500).json({ message: 'Failed to track ad click' });
     }
 };

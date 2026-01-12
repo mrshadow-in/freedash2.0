@@ -59,6 +59,11 @@ export const createServer = async (req: AuthRequest, res: Response) => {
 
             if (!user || !plan) throw new Error('User or Plan not found');
 
+            // --- DISCORD ENFORCEMENT ---
+            if (!user.discordId && user.role !== 'admin') {
+                throw new Error('You must link your Discord account to create a server.');
+            }
+
             if (user.coins < plan.priceCoins) {
                 throw new Error('Insufficient coins');
             }
@@ -300,6 +305,15 @@ export const deleteServer = async (req: AuthRequest, res: Response) => {
 
         // Delete from database
         await prisma.server.delete({ where: { id } });
+
+        // Send Webhook (Async)
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        const { sendServerDeletedWebhook } = await import('../services/webhookService');
+        sendServerDeletedWebhook({
+            username: user?.username || 'Unknown',
+            serverName: server.name,
+            reason: userRole === 'admin' ? 'Admin Action' : 'User Action'
+        }).catch(console.error);
 
         res.json({ message: 'Server deleted successfully' });
     } catch (error) {

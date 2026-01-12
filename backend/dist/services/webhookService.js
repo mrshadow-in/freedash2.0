@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendServerCreatedWebhook = exports.sendDiscordWebhook = void 0;
+exports.sendServerSuspendedWebhook = exports.sendServerDeletedWebhook = exports.sendServerCreatedWebhook = exports.sendDiscordWebhook = void 0;
 const axios_1 = __importDefault(require("axios"));
 const settingsService_1 = require("./settingsService");
 const sendDiscordWebhook = async (embed) => {
@@ -48,3 +48,37 @@ const sendServerCreatedWebhook = async (serverData) => {
     await (0, exports.sendDiscordWebhook)(embed);
 };
 exports.sendServerCreatedWebhook = sendServerCreatedWebhook;
+const sendServerDeletedWebhook = async (serverData) => {
+    const settings = await (0, settingsService_1.getSettings)();
+    const panelName = settings?.panelName || 'Panel';
+    const embed = {
+        title: '🗑️ Server Deleted',
+        color: 0xff5252, // Red
+        fields: [
+            { name: '👤 User', value: serverData.username, inline: true },
+            { name: '🖥️ Server Name', value: serverData.serverName, inline: true },
+            { name: '❓ Reason', value: serverData.reason || 'User Action', inline: false }
+        ],
+        footer: { text: panelName },
+        timestamp: new Date().toISOString()
+    };
+    await (0, exports.sendDiscordWebhook)(embed);
+};
+exports.sendServerDeletedWebhook = sendServerDeletedWebhook;
+const sendServerSuspendedWebhook = async (serverData) => {
+    const settings = await (0, settingsService_1.getSettings)();
+    const panelName = settings?.panelName || 'Panel';
+    const embed = {
+        title: '⛔ Server Suspended',
+        color: 0xff9800, // Orange
+        fields: [
+            { name: '👤 User', value: serverData.username, inline: true },
+            { name: '🖥️ Server Name', value: serverData.serverName, inline: true },
+            { name: '⚠️ Reason', value: serverData.reason, inline: false }
+        ],
+        footer: { text: panelName },
+        timestamp: new Date().toISOString()
+    };
+    await (0, exports.sendDiscordWebhook)(embed);
+};
+exports.sendServerSuspendedWebhook = sendServerSuspendedWebhook;

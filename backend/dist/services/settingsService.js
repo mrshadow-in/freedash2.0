@@ -51,6 +51,9 @@ const getSettingsOrCreate = async () => {
                         coinsPerMinute: 1.0,
                         enabled: true,
                         maxCoinsPerDay: 100
+                    },
+                    security: {
+                        enablePanelAccess: true
                     }
                 }
             });

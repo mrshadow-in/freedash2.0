@@ -41,6 +41,17 @@ const createServerSchema = zod_1.z.object({
     name: zod_1.z.string().min(3).max(20),
     planId: zod_1.z.string()
 });
+// Helper to ensure EULA exists
+const ensureEula = async (pteroIdentifier) => {
+    try {
+        await (0, pterodactyl_1.writeFileContent)(pteroIdentifier, 'eula.txt', 'eula=true');
+        console.log(`[EULA] Ensured eula.txt for ${pteroIdentifier}`);
+    }
+    catch (error) {
+        // Silently fail if server is installing or not ready, it's fine
+        console.warn(`[EULA] Failed to ensure eula.txt for ${pteroIdentifier} (might be installing)`);
+    }
+};
 const getPlans = async (req, res) => {
     try {
         const plans = await prisma_1.prisma.plan.findMany();
@@ -60,6 +71,10 @@ const createServer = async (req, res) => {
             const plan = await tx.plan.findUnique({ where: { id: planId } });
             if (!user || !plan)
                 throw new Error('User or Plan not found');
+            // --- DISCORD ENFORCEMENT ---
+            if (!user.discordId && user.role !== 'admin') {
+                throw new Error('You must link your Discord account to create a server.');
+            }
             if (user.coins < plan.priceCoins) {
                 throw new Error('Insufficient coins');
             }
@@ -144,6 +159,13 @@ const createServer = async (req, res) => {
             // We can return data to be used outside
             return { server, user, plan, settings };
         }).then(async (result) => {
+            // === AUTO EULA ON CREATE ===
+            if (result.server && result.server.pteroIdentifier) {
+                // Clean up delay to allow server to be "ready" enough or just try? 
+                // Usually on create it might be Installing, so it might fail. 
+                // But we can try.
+                setTimeout(() => ensureEula(result.server.pteroIdentifier), 5000);
+            }
             // Send Discord webhook notification
             const { sendServerCreatedWebhook } = await Promise.resolve().then(() => __importStar(require('../services/webhookService')));
             sendServerCreatedWebhook({
@@ -259,6 +281,14 @@ const deleteServer = async (req, res) => {
         }
         // Delete from database
         await prisma_1.prisma.server.delete({ where: { id } });
+        // Send Webhook (Async)
+        const user = await prisma_1.prisma.user.findUnique({ where: { id: userId } });
+        const { sendServerDeletedWebhook } = await Promise.resolve().then(() => __importStar(require('../services/webhookService')));
+        sendServerDeletedWebhook({
+            username: user?.username || 'Unknown',
+            serverName: server.name,
+            reason: userRole === 'admin' ? 'Admin Action' : 'User Action'
+        }).catch(console.error);
         res.json({ message: 'Server deleted successfully' });
     }
     catch (error) {
@@ -291,6 +321,11 @@ const powerServer = async (req, res) => {
             return res.status(404).json({ message: 'Server not found' });
         if (!server.pteroIdentifier)
             return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
+        // === AUTO EULA ON START ===
+        // Only check on start or restart
+        if (signal === 'start' || signal === 'restart') {
+            await ensureEula(server.pteroIdentifier);
+        }
         await (0, pterodactyl_1.powerPteroServer)(server.pteroIdentifier, signal);
         res.json({ message: `Signal ${signal} sent` });
     }

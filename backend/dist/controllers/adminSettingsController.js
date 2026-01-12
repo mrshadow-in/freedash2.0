@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateBillingSettings = exports.updateSocialMedia = exports.updateUser = exports.updateUserRole = exports.createUserByAdmin = exports.updatePlan = exports.deletePlan = exports.createPlan = exports.updateRedeemCode = exports.deleteRedeemCode = exports.createRedeemCode = exports.getAllCodes = exports.deleteServerAdmin = exports.unsuspendServer = exports.suspendServer = exports.getAllServers = exports.deleteUser = exports.unbanUser = exports.banUser = exports.editUserCoins = exports.getAllUsers = exports.removeWebhook = exports.addWebhook = exports.testPterodactylConnection = exports.updatePterodactylSettings = exports.updateUpgradePricing = exports.updateAFKSettings = exports.sendTestEmail = exports.testSmtpConnection = exports.toggleBot = exports.getBotStatus = exports.regenerateBotKey = exports.updateBotSettings = exports.updateSmtpSettings = exports.updateThemeSettings = exports.updatePanelSettings = exports.getSettings = void 0;
+exports.updateSecuritySettings = exports.updateBillingSettings = exports.updateSocialMedia = exports.updateUser = exports.updateUserRole = exports.createUserByAdmin = exports.updatePlan = exports.deletePlan = exports.createPlan = exports.updateRedeemCode = exports.deleteRedeemCode = exports.createRedeemCode = exports.getAllCodes = exports.deleteServerAdmin = exports.unsuspendServer = exports.suspendServer = exports.getAllServers = exports.deleteUser = exports.unbanUser = exports.banUser = exports.editUserCoins = exports.getAllUsers = exports.removeWebhook = exports.addWebhook = exports.testPterodactylConnection = exports.updatePterodactylSettings = exports.updatePluginSettings = exports.updateUpgradePricing = exports.updateAFKSettings = exports.sendTestEmail = exports.testSmtpConnection = exports.toggleBot = exports.getBotStatus = exports.regenerateBotKey = exports.updateBotSettings = exports.updateSmtpSettings = exports.updateThemeSettings = exports.updatePanelSettings = exports.getSettings = void 0;
 const prisma_1 = require("../prisma");
 const pterodactyl_1 = require("../services/pterodactyl");
 const bcrypt_1 = __importDefault(require("bcrypt"));
@@ -319,6 +319,30 @@ const updateUpgradePricing = async (req, res) => {
     }
 };
 exports.updateUpgradePricing = updateUpgradePricing;
+// Update Plugin settings
+const updatePluginSettings = async (req, res) => {
+    try {
+        const { curseforge_api_key, polymart_api_key } = req.body;
+        const currentSettings = await (0, settingsService_1.getSettingsOrCreate)();
+        const currentPlugins = currentSettings.plugins || { curseforge_api_key: '', polymart_api_key: '' };
+        const newPlugins = {
+            ...currentPlugins,
+            curseforge_api_key: curseforge_api_key ?? currentPlugins.curseforge_api_key,
+            polymart_api_key: polymart_api_key ?? currentPlugins.polymart_api_key,
+        };
+        const settings = await prisma_1.prisma.settings.update({
+            where: { id: currentSettings.id },
+            data: { plugins: newPlugins }
+        });
+        await (0, settingsService_1.invalidateSettingsCache)();
+        res.json({ message: 'Plugin settings updated', settings });
+    }
+    catch (error) {
+        console.error('Plugin settings update error:', error);
+        res.status(500).json({ message: 'Failed to update plugin settings' });
+    }
+};
+exports.updatePluginSettings = updatePluginSettings;
 // Update Pterodactyl settings
 const updatePterodactylSettings = async (req, res) => {
     try {
@@ -985,7 +1009,7 @@ exports.updateSocialMedia = updateSocialMedia;
 // Update Billing Settings
 const updateBillingSettings = async (req, res) => {
     try {
-        const { enabled, interval, coinsPerGbHour, autoSuspend, autoResume } = req.body;
+        const { enabled, interval, coinsPerGbHour, coinsPerGbMinute, autoSuspend, autoResume } = req.body;
         const currentSettings = await (0, settingsService_1.getSettingsOrCreate)();
         const settings = await prisma_1.prisma.settings.update({
             where: { id: currentSettings.id },
@@ -993,7 +1017,8 @@ const updateBillingSettings = async (req, res) => {
                 billing: {
                     enabled: enabled ?? false,
                     interval: parseInt(interval) || 1,
-                    coinsPerGbHour: coinsPerGbHour,
+                    coinsPerGbHour: coinsPerGbHour, // Kept for legacy/fallback
+                    coinsPerGbMinute: coinsPerGbMinute, // New field
                     autoSuspend: autoSuspend ?? false,
                     autoResume: autoResume ?? false
                 }
@@ -1011,3 +1036,29 @@ const updateBillingSettings = async (req, res) => {
     }
 };
 exports.updateBillingSettings = updateBillingSettings;
+// Update Security settings
+const updateSecuritySettings = async (req, res) => {
+    try {
+        const { enablePanelAccess } = req.body;
+        const currentSettings = await (0, settingsService_1.getSettingsOrCreate)();
+        const data = {};
+        if (enablePanelAccess !== undefined) {
+            const currentSecurity = currentSettings.security || { enablePanelAccess: true };
+            data.security = {
+                ...currentSecurity,
+                enablePanelAccess: enablePanelAccess
+            };
+        }
+        const settings = await prisma_1.prisma.settings.update({
+            where: { id: currentSettings.id },
+            data
+        });
+        await (0, settingsService_1.invalidateSettingsCache)();
+        res.json({ message: 'Security settings updated', settings });
+    }
+    catch (error) {
+        console.error('Update security settings error:', error);
+        res.status(500).json({ message: 'Failed to update security settings' });
+    }
+};
+exports.updateSecuritySettings = updateSecuritySettings;

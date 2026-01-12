@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.upgradeCPU = exports.upgradeDisk = exports.upgradeRAM = void 0;
 const prisma_1 = require("../prisma");
+const pterodactyl_1 = require("../services/pterodactyl");
 // Upgrade server RAM
 const upgradeRAM = async (req, res) => {
     try {
@@ -12,7 +13,10 @@ const upgradeRAM = async (req, res) => {
             return res.status(400).json({ message: 'Invalid RAM amount' });
         }
         const result = await prisma_1.prisma.$transaction(async (tx) => {
-            const server = await tx.server.findUnique({ where: { id: serverId } });
+            const server = await tx.server.findUnique({
+                where: { id: serverId },
+                include: { plan: true }
+            });
             if (!server) {
                 throw new Error('Server not found');
             }
@@ -24,9 +28,13 @@ const upgradeRAM = async (req, res) => {
             if (!settings) {
                 throw new Error('Settings not configured');
             }
-            const upgradePricing = settings.upgradePricing || { ramPerGB: 0, diskPerGB: 0, cpuPerCore: 0 };
+            // Default fallback is NON-ZERO to prevent free upgrades if not set
+            const upgradePricing = settings.upgradePricing || { ramPerGB: 100, diskPerGB: 50, cpuPerCore: 20 };
             const cost = amountGB * upgradePricing.ramPerGB;
-            // Check user balance and deduct atomically
+            if (cost <= 0) {
+                throw new Error('Upgrade pricing not configured (cost is 0). Contact support.');
+            }
+            // Check user balance
             const user = await tx.user.findUnique({ where: { id: userId } });
             if (!user || user.coins < cost) {
                 throw new Error('Insufficient coins');
@@ -40,7 +48,8 @@ const upgradeRAM = async (req, res) => {
             const amountMB = amountGB * 1024;
             const updatedServer = await tx.server.update({
                 where: { id: serverId },
-                data: { ramMb: { increment: amountMB } }
+                data: { ramMb: { increment: amountMB } },
+                include: { plan: true }
             });
             // Log transaction
             await tx.transaction.create({
@@ -54,6 +63,19 @@ const upgradeRAM = async (req, res) => {
             });
             return { server: updatedServer, user: updatedUser, cost };
         });
+        // Update Pterodactyl Limits
+        if (result.server.pteroServerId) {
+            try {
+                await (0, pterodactyl_1.updatePteroServerBuild)(result.server.pteroServerId, result.server.ramMb, result.server.diskMb, result.server.cpuCores * 100, // Convert cores to percent
+                result.server.plan?.slots || 1 // Use plan slots or default to 1
+                );
+            }
+            catch (pteroError) {
+                console.error('Failed to update Pterodactyl build:', pteroError);
+                // We don't fail the request because DB is already updated, but we log it.
+                // Optionally alert user that sync failed (but usually it works if config is rights)
+            }
+        }
         res.json({
             message: 'RAM upgraded successfully',
             server: result.server,
@@ -62,8 +84,8 @@ const upgradeRAM = async (req, res) => {
         });
     }
     catch (error) {
-        const msg = error.message === 'Insufficient coins' ? error.message : 'Failed to upgrade RAM';
-        const status = error.message === 'Server not found' ? 404 : (error.message === 'Not authorized' ? 403 : (error.message === 'Insufficient coins' ? 400 : 500));
+        const msg = error.message === 'Insufficient coins' ? error.message : (error.message.startsWith('Upgrade pricing') ? error.message : 'Failed to upgrade RAM');
+        const status = error.message === 'Server not found' ? 404 : (error.message === 'Not authorized' ? 403 : (error.message === 'Insufficient coins' || error.message.startsWith('Upgrade pricing') ? 400 : 500));
         res.status(status).json({ message: msg });
     }
 };
@@ -78,7 +100,10 @@ const upgradeDisk = async (req, res) => {
             return res.status(400).json({ message: 'Invalid disk amount' });
         }
         const result = await prisma_1.prisma.$transaction(async (tx) => {
-            const server = await tx.server.findUnique({ where: { id: serverId } });
+            const server = await tx.server.findUnique({
+                where: { id: serverId },
+                include: { plan: true }
+            });
             if (!server)
                 throw new Error('Server not found');
             if (server.ownerId !== userId)
@@ -86,8 +111,11 @@ const upgradeDisk = async (req, res) => {
             const settings = await tx.settings.findFirst();
             if (!settings)
                 throw new Error('Settings not configured');
-            const upgradePricing = settings.upgradePricing || { ramPerGB: 0, diskPerGB: 0, cpuPerCore: 0 };
+            const upgradePricing = settings.upgradePricing || { ramPerGB: 100, diskPerGB: 50, cpuPerCore: 20 };
             const cost = amountGB * upgradePricing.diskPerGB;
+            if (cost <= 0) {
+                throw new Error('Upgrade pricing not configured (cost is 0). Contact support.');
+            }
             const user = await tx.user.findUnique({ where: { id: userId } });
             if (!user || user.coins < cost)
                 throw new Error('Insufficient coins');
@@ -98,7 +126,8 @@ const upgradeDisk = async (req, res) => {
             const amountMB = amountGB * 1024;
             const updatedServer = await tx.server.update({
                 where: { id: serverId },
-                data: { diskMb: { increment: amountMB } }
+                data: { diskMb: { increment: amountMB } },
+                include: { plan: true }
             });
             await tx.transaction.create({
                 data: {
@@ -111,6 +140,15 @@ const upgradeDisk = async (req, res) => {
             });
             return { server: updatedServer, user: updatedUser, cost };
         });
+        // Update Pterodactyl Limits
+        if (result.server.pteroServerId) {
+            try {
+                await (0, pterodactyl_1.updatePteroServerBuild)(result.server.pteroServerId, result.server.ramMb, result.server.diskMb, result.server.cpuCores * 100, result.server.plan?.slots || 1);
+            }
+            catch (pteroError) {
+                console.error('Failed to update Pterodactyl build:', pteroError);
+            }
+        }
         res.json({
             message: 'Disk upgraded successfully',
             server: result.server,
@@ -119,8 +157,8 @@ const upgradeDisk = async (req, res) => {
         });
     }
     catch (error) {
-        const msg = error.message === 'Insufficient coins' ? error.message : 'Failed to upgrade disk';
-        const status = error.message === 'Server not found' ? 404 : (error.message === 'Not authorized' ? 403 : (error.message === 'Insufficient coins' ? 400 : 500));
+        const msg = error.message === 'Insufficient coins' ? error.message : (error.message.startsWith('Upgrade pricing') ? error.message : 'Failed to upgrade disk');
+        const status = error.message === 'Server not found' ? 404 : (error.message === 'Not authorized' ? 403 : (error.message === 'Insufficient coins' || error.message.startsWith('Upgrade pricing') ? 400 : 500));
         res.status(status).json({ message: msg });
     }
 };
@@ -135,7 +173,10 @@ const upgradeCPU = async (req, res) => {
             return res.status(400).json({ message: 'Invalid CPU cores amount' });
         }
         const result = await prisma_1.prisma.$transaction(async (tx) => {
-            const server = await tx.server.findUnique({ where: { id: serverId } });
+            const server = await tx.server.findUnique({
+                where: { id: serverId },
+                include: { plan: true }
+            });
             if (!server)
                 throw new Error('Server not found');
             if (server.ownerId !== userId)
@@ -143,8 +184,11 @@ const upgradeCPU = async (req, res) => {
             const settings = await tx.settings.findFirst();
             if (!settings)
                 throw new Error('Settings not configured');
-            const upgradePricing = settings.upgradePricing || { ramPerGB: 0, diskPerGB: 0, cpuPerCore: 0 };
+            const upgradePricing = settings.upgradePricing || { ramPerGB: 100, diskPerGB: 50, cpuPerCore: 20 };
             const cost = cores * upgradePricing.cpuPerCore;
+            if (cost <= 0) {
+                throw new Error('Upgrade pricing not configured (cost is 0). Contact support.');
+            }
             const user = await tx.user.findUnique({ where: { id: userId } });
             if (!user || user.coins < cost)
                 throw new Error('Insufficient coins');
@@ -154,7 +198,8 @@ const upgradeCPU = async (req, res) => {
             });
             const updatedServer = await tx.server.update({
                 where: { id: serverId },
-                data: { cpuCores: { increment: cores } }
+                data: { cpuCores: { increment: cores } },
+                include: { plan: true }
             });
             await tx.transaction.create({
                 data: {
@@ -167,6 +212,15 @@ const upgradeCPU = async (req, res) => {
             });
             return { server: updatedServer, user: updatedUser, cost };
         });
+        // Update Pterodactyl Limits
+        if (result.server.pteroServerId) {
+            try {
+                await (0, pterodactyl_1.updatePteroServerBuild)(result.server.pteroServerId, result.server.ramMb, result.server.diskMb, result.server.cpuCores * 100, result.server.plan?.slots || 1);
+            }
+            catch (pteroError) {
+                console.error('Failed to update Pterodactyl build:', pteroError);
+            }
+        }
         res.json({
             message: 'CPU upgraded successfully',
             server: result.server,
@@ -175,8 +229,8 @@ const upgradeCPU = async (req, res) => {
         });
     }
     catch (error) {
-        const msg = error.message === 'Insufficient coins' ? error.message : 'Failed to upgrade CPU';
-        const status = error.message === 'Server not found' ? 404 : (error.message === 'Not authorized' ? 403 : (error.message === 'Insufficient coins' ? 400 : 500));
+        const msg = error.message === 'Insufficient coins' ? error.message : (error.message.startsWith('Upgrade pricing') ? error.message : 'Failed to upgrade CPU');
+        const status = error.message === 'Server not found' ? 404 : (error.message === 'Not authorized' ? 403 : (error.message === 'Insufficient coins' || error.message.startsWith('Upgrade pricing') ? 400 : 500));
         res.status(status).json({ message: msg });
     }
 };

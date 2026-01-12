@@ -66,3 +66,50 @@ export const sendServerCreatedWebhook = async (serverData: {
     await sendDiscordWebhook(embed);
 };
 
+export const sendServerDeletedWebhook = async (serverData: {
+    username: string;
+    serverName: string;
+    node?: string;
+    reason?: string;
+}) => {
+    const settings = await getSettings();
+    const panelName = settings?.panelName || 'Panel';
+
+    const embed: WebhookEmbed = {
+        title: '🗑️ Server Deleted',
+        color: 0xff5252, // Red
+        fields: [
+            { name: '👤 User', value: serverData.username, inline: true },
+            { name: '🖥️ Server Name', value: serverData.serverName, inline: true },
+            { name: '❓ Reason', value: serverData.reason || 'User Action', inline: false }
+        ],
+        footer: { text: panelName },
+        timestamp: new Date().toISOString()
+    };
+
+    await sendDiscordWebhook(embed);
+};
+
+export const sendServerSuspendedWebhook = async (serverData: {
+    username: string;
+    serverName: string;
+    reason: string;
+}) => {
+    const settings = await getSettings();
+    const panelName = settings?.panelName || 'Panel';
+
+    const embed: WebhookEmbed = {
+        title: '⛔ Server Suspended',
+        color: 0xff9800, // Orange
+        fields: [
+            { name: '👤 User', value: serverData.username, inline: true },
+            { name: '🖥️ Server Name', value: serverData.serverName, inline: true },
+            { name: '⚠️ Reason', value: serverData.reason, inline: false }
+        ],
+        footer: { text: panelName },
+        timestamp: new Date().toISOString()
+    };
+
+    await sendDiscordWebhook(embed);
+};
+

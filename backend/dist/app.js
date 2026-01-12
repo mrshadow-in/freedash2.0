@@ -79,6 +79,7 @@ app.use('/api/ads', adRoutes_1.default);
 const coinRouter = express_1.default.Router();
 coinRouter.use(auth_1.authenticate);
 coinRouter.post('/redeem', coinController_1.redeemCode);
+coinRouter.get('/history', coinController_1.getTransactionHistory);
 app.use('/api/coins', coinRouter);
 const taskRouter = express_1.default.Router();
 taskRouter.use(auth_1.authenticate);
@@ -113,7 +114,8 @@ app.get('/api/settings', async (req, res) => {
                 gradientStart: settings?.theme?.gradientStart || '#7c3aed',
                 gradientEnd: settings?.theme?.gradientEnd || '#3b82f6'
             },
-            socialMedia: settings?.socialMedia || {}
+            socialMedia: settings?.socialMedia || {},
+            security: settings?.security || { enablePanelAccess: true }
         });
     }
     catch (error) {
@@ -129,6 +131,9 @@ const start = async () => {
     (0, websocket_1.initWebSocketServer)(server);
     // Initialize Billing Job
     (0, billing_1.initBillingJob)();
+    // Auto-start Discord Bot
+    const { startDiscordBot } = await Promise.resolve().then(() => __importStar(require('./services/discordBot')));
+    await startDiscordBot();
     server.listen(env_1.ENV.PORT, () => {
         console.log(`Server running on port ${env_1.ENV.PORT}`);
     });
