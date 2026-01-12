@@ -106,6 +106,10 @@ async function registerCommands(token: string, clientId: string, guildId: string
         new SlashCommandBuilder().setName('flip').setDescription('Flip a coin. Heads(+3) or Tails(-1)?').addStringOption(o => o.setName('side').setDescription('Heads or Tails').setRequired(true).addChoices({ name: 'Heads', value: 'heads' }, { name: 'Tails', value: 'tails' })),
         new SlashCommandBuilder().setName('hunt').setDescription('Go on a daily hunt for coins'),
         new SlashCommandBuilder().setName('bet').setDescription('Bet coins (50/50 chance)').addIntegerOption(o => o.setName('amount').setDescription('Amount to bet').setRequired(true)),
+
+        // Help
+        new SlashCommandBuilder().setName('help').setDescription('How to link account & bot features'),
+        new SlashCommandBuilder().setName('game-help').setDescription('How to play minigames & rules'),
     ].map(cmd => cmd.toJSON());
 
     const rest = new REST({ version: '10' }).setToken(token);
@@ -209,10 +213,44 @@ export async function startDiscordBot() {
 
             try {
                 // --- EXISTING COMMANDS (/link, /daily, /task, /trivia) ---
-                if (['link', 'daily', 'task', 'task-reward', 'trivia'].includes(interaction.commandName)) {
-                    // (Keep existing logic here, omitted for brevity but should be included in full file)
-                    // For this rewrite, I am assuming the user accepts I replace the file. 
-                    // I will implement them briefly to ensure file is complete.
+                if (['link', 'daily', 'task', 'task-reward', 'trivia', 'help', 'game-help'].includes(interaction.commandName)) {
+
+                    if (interaction.commandName === 'help') {
+                        await interaction.deferReply({ ephemeral: true });
+                        const msg = `🤖 **Bot Assistance**\n\n` +
+                            `**🔗 How to Connect:**\n` +
+                            `1. Go to your **Dashboard > Account** page.\n` +
+                            `2. Run \`/link\` here to get your unique code.\n` +
+                            `3. Enter the code in the dashboard to sync balance.\n\n` +
+                            `**💸 Features:**\n` +
+                            `• **Daily**: \`/daily\` (50 coins)\n` +
+                            `• **Chat**: Random tasks trigger while chatting.\n` +
+                            `• **Voice**: Earn coins for being in VC (10 coins/10min).\n` +
+                            `• **Games**: Run \`/game-help\` for info.`;
+                        await interaction.editReply(msg);
+                        return;
+                    }
+
+                    if (interaction.commandName === 'game-help') {
+                        await interaction.deferReply({ ephemeral: true });
+                        const msg = `🎮 **Minigames Guide**\n\n` +
+                            `**🎲 Dice** (\`/dice\`)\n` +
+                            `Roll 1-6. If you roll a **6**, you win **+5 coins**.\n` +
+                            `*Cost: Free*\n\n` +
+                            `**🪙 Coin Flip** (\`/flip <heads/tails>\`)\n` +
+                            `Win: **+3 coins** | Lose: **-1 coin** penalty!\n\n` +
+                            `**🐾 Hunt** (\`/hunt\`)\n` +
+                            `Daily adventure. Find **2-20 coins** or nothing.\n\n` +
+                            `**🎰 Bet** (\`/bet <amount>\`)\n` +
+                            `50/50 chance. Double your bet or lose it all.\n` +
+                            `*Max Bet: 50 coins*\n\n` +
+                            `⚠️ **Rules:**\n` +
+                            `• Max Earnings: **50 coins/day** from games.\n` +
+                            `• Cooldown: **1 minute** between games.\n` +
+                            `• Only works in the **Games Channel**.`;
+                        await interaction.editReply(msg);
+                        return;
+                    }
 
                     if (interaction.commandName === 'link') {
                         await interaction.deferReply({ ephemeral: true });
