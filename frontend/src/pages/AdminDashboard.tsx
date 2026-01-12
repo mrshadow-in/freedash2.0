@@ -125,14 +125,14 @@ const AdminDashboard = () => {
             {/* Tabs */}
             <div className="relative z-10 bg-white/5 backdrop-blur-md border-b border-white/10">
                 <div className="container mx-auto px-6">
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                         {['settings', 'users', 'servers', 'wings', 'plans', 'codes', 'ads', 'customize', 'bot', 'social', 'plugins'].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
-                                className={`px-6 py-3 capitalize transition ${activeTab === tab
-                                    ? 'border-b-2 border-purple-500 text-white'
-                                    : 'text-gray-400 hover:text-white'
+                                className={`px-6 py-3 capitalize transition whitespace-nowrap flex-shrink-0 rounded-xl font-bold ${activeTab === tab
+                                    ? 'bg-purple-600 text-white shadow-lg'
+                                    : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
                                     }`}
                             >
                                 {tab}
@@ -3068,6 +3068,8 @@ function AdsTab() {
                     </button>
                 ))}
             </div>
+
+
 
             {loading ? (
                 <div className="flex flex-col items-center justify-center p-20 bg-white/5 rounded-3xl border border-white/10 border-dashed">

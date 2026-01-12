@@ -134,13 +134,17 @@ const Dashboard = () => {
             </div>
 
             {/* Sidebar Left Ad Zone - Fixed Floating - Shows ALL ads stacked */}
-            <div className="fixed left-4 top-1/2 -translate-y-1/2 z-20 hidden xl:block max-w-[200px] space-y-4">
-                <AdZone position="sidebar-left" rotate={false} className="" />
+            <div className="fixed left-4 top-1/2 -translate-y-1/2 z-20 hidden 2xl:block max-w-[200px] space-y-4 pointer-events-none">
+                <div className="pointer-events-auto">
+                    <AdZone position="sidebar-left" rotate={false} className="" />
+                </div>
             </div>
 
             {/* Sidebar Right Ad Zone - Fixed Floating - Shows ALL ads stacked */}
-            <div className="fixed right-4 top-1/2 -translate-y-1/2 z-20 hidden xl:block max-w-[200px] space-y-4">
-                <AdZone position="sidebar-right" rotate={false} className="" />
+            <div className="fixed right-4 top-1/2 -translate-y-1/2 z-20 hidden 2xl:block max-w-[200px] space-y-4 pointer-events-none">
+                <div className="pointer-events-auto">
+                    <AdZone position="sidebar-right" rotate={false} className="" />
+                </div>
             </div>
 
             {/* Navigation Header */}
@@ -154,7 +158,7 @@ const Dashboard = () => {
                     className="mb-10"
                 />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -254,9 +258,9 @@ const Dashboard = () => {
                 </div>
 
                 {/* Servers Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                     {isLoading ? (
-                        [1, 2, 3].map((i) => (
+                        [1, 2, 3, 4].map((i) => (
                             <div key={i} className="bg-white/5 border border-white/10 rounded-3xl h-[280px] animate-pulse shadow-lg" />
                         ))
                     ) : servers?.length === 0 ? (
