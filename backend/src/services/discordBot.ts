@@ -1,23 +1,11 @@
-import { Client, GatewayIntentBits, Events, SlashCommandBuilder, REST, Routes, Guild, EmbedBuilder } from 'discord.js';
+import { Client, GatewayIntentBits, Events, EmbedBuilder, SlashCommandBuilder, REST, Routes, Guild, GuildMember } from 'discord.js';
 import { prisma } from '../prisma';
 
 let client: Client | null = null;
+let inviteCache = new Map<string, Map<string, number>>(); // guildId -> (inviterId -> uses)
 const linkCodes = new Map<string, string>();
-let triviaActive = false;
-let currentTriviaAnswer: string | null = null;
-let inviteCache = new Map<string, Map<string, number>>(); // GuildId -> UserId -> Count
 
-// Helper to generate codes
-function generateRandomCode(length = 6): string {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No I, 1, O, 0 Q
-    let result = '';
-    for (let i = 0; i < length; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-}
-
-// Helpers
+// Generate random code
 const generateCode = (prefix: string = 'REWARD') => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let result = '';
@@ -36,91 +24,17 @@ export const verifyLinkCode = (code: string): string | null => {
     return null;
 };
 
-// Check Game Limits & Anti-Abuse
-async function checkGameLimits(discordId: string, cmd: string, channelId: string, settings: any): Promise<{ allowed: boolean, reason?: string }> {
-    const gamesChannelId = settings?.discordBot?.gamesChannelId;
-
-    // 1. Channel Restriction
-    if (gamesChannelId && channelId !== gamesChannelId) {
-        return { allowed: false, reason: `❌ wrong_channel` }; // Handle in UI
-    }
-
-    // 2. Fetch Stats
-    let stats = await prisma.discordGameStats.findUnique({ where: { discordId } });
-    if (!stats) {
-        stats = await prisma.discordGameStats.create({ data: { discordId } });
-    }
-
-    // 3. Daily Reset
-    const now = new Date();
-    if (new Date(stats.lastDailyReset).getDate() !== now.getDate()) {
-        await prisma.discordGameStats.update({
-            where: { discordId },
-            data: { dailyEarnings: 0, lastDailyReset: now }
-        });
-        stats.dailyEarnings = 0;
-    }
-
-    // 4. Daily Limit
-    const DAILY_Limit = 50; // Hardcoded for now, or fetch from settings
-    if (stats.dailyEarnings >= DAILY_Limit) {
-        return { allowed: false, reason: '🛑 Daily earning limit reached (50 coins)!' };
-    }
-
-    // 5. Cooldowns
-    const cooldowns = (stats.cooldowns as any) || {};
-    const lastTime = cooldowns[cmd] ? new Date(cooldowns[cmd]).getTime() : 0;
-    const cooldownMs = 60000; // 1 min default
-    if (now.getTime() - lastTime < cooldownMs) {
-        const wait = Math.ceil((cooldownMs - (now.getTime() - lastTime)) / 1000);
-        return { allowed: false, reason: `⏳ Cooldown! Wait ${wait}s.` };
-    }
-
-    return { allowed: true };
-}
-
-async function updateGameStats(discordId: string, cmd: string, earnings: number) {
-    const stats = await prisma.discordGameStats.findUnique({ where: { discordId } });
-    const cooldowns = (stats?.cooldowns as any) || {};
-    cooldowns[cmd] = new Date();
-
-    await prisma.discordGameStats.update({
-        where: { discordId },
-        data: {
-            cooldowns,
-            dailyEarnings: { increment: earnings > 0 ? earnings : 0 }
-        }
-    });
-}
-
-// Register Slash Commands
+// Register slash commands
 async function registerCommands(token: string, clientId: string, guildId: string) {
     const commands = [
         new SlashCommandBuilder().setName('invite-code').setDescription('Claim your invite reward code'),
         new SlashCommandBuilder().setName('boost-reward').setDescription('Claim your boost reward'),
         new SlashCommandBuilder().setName('my-invites').setDescription('Check your invite count'),
         new SlashCommandBuilder().setName('leaderboard').setDescription('View invite leaderboard'),
-
-        // Auth
         new SlashCommandBuilder().setName('link-account').setDescription('Link your Discord account to the panel'),
         new SlashCommandBuilder().setName('unlink-account').setDescription('Unlink your Discord account from the panel'),
-
-        // Earning Tasks
         new SlashCommandBuilder().setName('daily').setDescription('Claim your daily coin reward'),
-        new SlashCommandBuilder().setName('task').setDescription('Start a random chat task for coins'),
-        new SlashCommandBuilder().setName('task-reward').setDescription('Claim reward for your completed chat task'),
-        new SlashCommandBuilder().setName('trivia').setDescription('Start a trivia round (Admin Only)'),
-
-        // Minigames
-        new SlashCommandBuilder().setName('dice').setDescription('Roll a dice (1-6). Win on 6!'),
-        new SlashCommandBuilder().setName('flip').setDescription('Flip a coin. Heads(+3) or Tails(-1)?').addStringOption(o => o.setName('side').setDescription('Heads or Tails').setRequired(true).addChoices({ name: 'Heads', value: 'heads' }, { name: 'Tails', value: 'tails' })),
-        new SlashCommandBuilder().setName('hunt').setDescription('Go on a daily hunt for coins'),
-        new SlashCommandBuilder().setName('bet').setDescription('Bet coins (50/50 chance)').addIntegerOption(o => o.setName('amount').setDescription('Amount to bet').setRequired(true)),
-
-        // Help
         new SlashCommandBuilder().setName('help').setDescription('How to link account & bot features'),
-        new SlashCommandBuilder().setName('game-help').setDescription('How to play minigames & rules'),
-        new SlashCommandBuilder().setName('active-list').setDescription('List all linked dashboard users (Admin Only)'),
     ].map(cmd => cmd.toJSON());
 
     const rest = new REST({ version: '10' }).setToken(token);
@@ -134,23 +48,62 @@ async function registerCommands(token: string, clientId: string, guildId: string
     }
 }
 
-// Invite Tracking Helpers
+// Cache invites for a guild
 async function cacheInvites(guild: Guild) {
     try {
         const invites = await guild.invites.fetch();
-        const memberInvites = new Map<string, number>();
-        invites.forEach(inv => {
-            const count = (memberInvites.get(inv.inviterId!) || 0) + (inv.uses || 0);
-            memberInvites.set(inv.inviterId!, count);
+        const guildInvites = new Map<string, number>();
+
+        invites.forEach(invite => {
+            if (invite.inviter) {
+                const current = guildInvites.get(invite.inviter.id) || 0;
+                guildInvites.set(invite.inviter.id, current + (invite.uses || 0));
+            }
         });
-        inviteCache.set(guild.id, memberInvites);
-    } catch (err) {
-        console.error('Invite cache error:', err);
+
+        inviteCache.set(guild.id, guildInvites);
+        console.log(`📊 Cached ${invites.size} invites for ${guild.name}`);
+    } catch (error) {
+        console.error(`Failed to cache invites for ${guild.name}:`, error);
     }
 }
 
+// Get user's total invites
+async function getUserInvites(guild: Guild, userId: string): Promise<number> {
+    try {
+        const invites = await guild.invites.fetch();
+        let total = 0;
 
-// Start Bot
+        invites.forEach(invite => {
+            if (invite.inviter?.id === userId) {
+                total += invite.uses || 0;
+            }
+        });
+
+        return total;
+    } catch (error) {
+        console.error('Error fetching invites:', error);
+        return 0;
+    }
+}
+
+// Create reward code in database
+async function createRewardCode(coins: number, prefix: string): Promise<string> {
+    const code = generateCode(prefix);
+
+    await prisma.redeemCode.create({
+        data: {
+            code,
+            amount: coins,
+            maxUses: 1,
+            usedCount: 0
+        }
+    });
+
+    return code;
+}
+
+// Start Discord Bot
 export async function startDiscordBot() {
     try {
         const { getSettings } = await import('./settingsService');
@@ -168,456 +121,435 @@ export async function startDiscordBot() {
         }
 
         client = new Client({
-            intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildInvites, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildVoiceStates]
+            intents: [
+                GatewayIntentBits.Guilds,
+                GatewayIntentBits.GuildMembers,
+                GatewayIntentBits.GuildInvites,
+                GatewayIntentBits.GuildMessages,
+                GatewayIntentBits.MessageContent
+            ]
         });
 
+        // Ready event
         client.once(Events.ClientReady, async (c) => {
             console.log(`🤖 Discord bot logged in as ${c.user.tag}`);
-            try {
-                await cacheInvites(c.guilds.cache.get(discordBot.guildId)!);
+
+            const guild = c.guilds.cache.get(discordBot.guildId);
+            if (guild) {
+                await cacheInvites(guild);
                 await registerCommands(discordBot.token, c.user.id, discordBot.guildId);
-            } catch (error) { console.error('Failed to init guild cache:', error); }
+            }
         });
 
-        // Message Handling (Tasks, Bumps, Trivia)
-        client.on(Events.MessageCreate, async (message) => {
-            if (message.author.bot) {
-                // Disboard Bump Logic
-                if (message.author.id === '302050872383242240' && message.embeds.length > 0) {
-                    const desc = message.embeds[0].description || '';
-                    if (desc.includes('Bumped!')) {
-                        const match = desc.match(/<@!?(\d+)>/);
-                        if (match) {
-                            const userId = match[1];
-                            const user = await prisma.user.findUnique({ where: { discordId: userId } });
-                            if (user) {
-                                await prisma.user.update({
-                                    where: { id: user.id },
-                                    data: { coins: { increment: 50 } }
+        // Member join - track invites
+        client.on(Events.GuildMemberAdd, async (member) => {
+            try {
+                const { getSettings } = await import('./settingsService');
+                const settings = await getSettings();
+                const discordBot = (settings?.discordBot as any);
+
+                if (!discordBot?.guildId) return;
+
+                const oldInvites = inviteCache.get(member.guild.id) || new Map();
+                const newInvites = await member.guild.invites.fetch();
+
+                let inviter: string | null = null;
+
+                newInvites.forEach(invite => {
+                    if (invite.inviter) {
+                        const oldUses = oldInvites.get(invite.inviter.id) || 0;
+                        const currentInviterTotal = Array.from(newInvites.values())
+                            .filter(i => i.inviter?.id === invite.inviter!.id)
+                            .reduce((sum, i) => sum + (i.uses || 0), 0);
+
+                        if (currentInviterTotal > oldUses) {
+                            inviter = invite.inviter.id;
+                        }
+                    }
+                });
+
+                await cacheInvites(member.guild);
+
+                if (discordBot?.inviteChannelId && inviter) {
+                    try {
+                        const channel = member.guild.channels.cache.get(discordBot.inviteChannelId);
+                        if (channel?.isTextBased()) {
+                            const inviteCount = await getUserInvites(member.guild, inviter);
+
+                            const embed = new EmbedBuilder()
+                                .setColor(0x7c3aed)
+                                .setTitle('👋 New Member!')
+                                .setDescription(`${member.user.tag} joined the server!`)
+                                .addFields(
+                                    { name: 'Invited by', value: `<@${inviter}>`, inline: true },
+                                    { name: 'Total Invites', value: `${inviteCount}`, inline: true }
+                                )
+                                .setTimestamp();
+
+                            await (channel as any).send({ embeds: [embed] }).catch(() => {
+                                console.log('⚠️ Could not send to invite channel (missing permission)');
+                            });
+                        }
+                    } catch (e) {
+                        console.log('⚠️ Invite channel message failed');
+                    }
+                }
+            } catch (error) {
+                console.error('Error tracking invite:', error);
+            }
+        });
+
+        // Boost event
+        client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
+            try {
+                const { getSettings } = await import('./settingsService');
+                const settings = await getSettings();
+                const discordBot = (settings?.discordBot as any);
+
+                if (!discordBot?.guildId) return;
+
+                const wasBoosting = oldMember.premiumSince !== null;
+                const isBoosting = newMember.premiumSince !== null;
+
+                if (!wasBoosting && isBoosting) {
+                    console.log(`🚀 ${newMember.user.tag} started boosting!`);
+
+                    if (discordBot?.boostChannelId) {
+                        try {
+                            const channel = newMember.guild.channels.cache.get(discordBot.boostChannelId);
+                            if (channel?.isTextBased()) {
+                                const embed = new EmbedBuilder()
+                                    .setColor(0xf47fff)
+                                    .setTitle('🚀 New Server Boost!')
+                                    .setDescription(`${newMember.user.tag} just boosted the server!`)
+                                    .addFields(
+                                        { name: 'Claim Reward', value: 'Use `/boost-reward` to claim your coins!', inline: false }
+                                    )
+                                    .setTimestamp();
+
+                                await (channel as any).send({ embeds: [embed] }).catch(() => {
+                                    console.log('⚠️ Could not send to boost channel');
                                 });
-                                await message.channel.send(`🎉 <@${userId}> earned **50 coins** for bumping!`);
-                            } else {
-                                // const code = ...
-                                await message.channel.send(`🎉 <@${userId}> earned **50 coins**! Link account to claim.`);
                             }
+                        } catch (e) {
+                            console.log('⚠️ Boost channel message failed');
                         }
                     }
                 }
-                return;
-            }
-
-            // Trivia Logic
-            if (triviaActive && currentTriviaAnswer && message.content.toLowerCase().includes(currentTriviaAnswer.toLowerCase())) {
-                triviaActive = false;
-                currentTriviaAnswer = null;
-                const reward = 25;
-                const user = await prisma.user.findUnique({ where: { discordId: message.author.id } });
-                if (user) {
-                    await prisma.user.update({ where: { id: user.id }, data: { coins: { increment: reward } } });
-                    await message.reply(`🎉 Correct! Earned **${reward} coins**!`);
-                } else {
-                    await message.reply(`🎉 Correct! Link account to claim **${reward} coins**.`);
-                }
-                return;
-            }
-
-            // Chat Tasks Logic
-            const activeTask = await prisma.discordChatTask.findUnique({ where: { discordId: message.author.id } });
-            if (activeTask && activeTask.currentMessages < activeTask.targetMessages) {
-                await prisma.discordChatTask.update({ where: { id: activeTask.id }, data: { currentMessages: { increment: 1 } } });
+            } catch (error) {
+                console.error('Error tracking boost:', error);
             }
         });
 
-        // Voice Farming
-        client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
-            /* Logic for voice farming - kept simple/placeholder if not requested to change */
-            // ... (keeping existing voice logic assumes it's elsewhere or handled by another PR, but for now we follow the file provided)
-            // The file provided had empty logic for this, so keeping it empty/commented as provided.
-        });
-
-        // Interactions
+        // Slash commands
         client.on(Events.InteractionCreate, async (interaction) => {
             if (!interaction.isChatInputCommand()) return;
 
             try {
                 console.log(`[Bot] Received command: ${interaction.commandName} from ${interaction.user.tag}`);
 
-                switch (interaction.commandName) {
-                    // --- ADMIN ---
-                    case 'active-list':
-                        if (!(interaction.member as any)?.permissions.has('Administrator')) {
-                            await interaction.reply({ content: '❌ Admin Only.', ephemeral: true });
+                // HELP
+                if (interaction.commandName === 'help') {
+                    await interaction.deferReply({ ephemeral: true });
+                    const helpMsg = `🤖 **Bot Assistance**\n\n` +
+                        `**🔗 How to Connect:**\n` +
+                        `1. Go to your **Dashboard > Account** page.\n` +
+                        `2. Run \`/link-account\` here to get your unique code.\n` +
+                        `3. Enter the code in the dashboard to sync balance.\n\n` +
+                        `**💸 Features:**\n` +
+                        `• **Daily**: \`/daily\` (50 coins)\n` +
+                        `• **Invites**: Earn rewards by inviting members!\n` +
+                        `• **Boost**: Server boosters get special rewards!`;
+                    await interaction.editReply(helpMsg);
+                    return;
+                }
+
+                // LINK ACCOUNT
+                if (interaction.commandName === 'link-account') {
+                    await interaction.deferReply({ ephemeral: true });
+                    const code = generateCode('LINK');
+                    linkCodes.set(code, interaction.user.id);
+                    setTimeout(() => linkCodes.delete(code), 300000);
+
+                    const linkEmbed = new EmbedBuilder()
+                        .setTitle('🔗 Link Your Account')
+                        .setColor(0x7289DA)
+                        .setDescription('Follow these steps to connect your Discord account to the panel:')
+                        .addFields(
+                            { name: 'Step 1: Copy Code', value: `\`\`\`${code}\`\`\``, inline: false },
+                            { name: 'Step 2: Go to Dashboard', value: 'Navigate to **Settings > Account Connections** on the website.', inline: false },
+                            { name: 'Step 3: Enter Code', value: 'Paste the code above into the "Link Discord" box and click Link.', inline: false }
+                        )
+                        .setFooter({ text: 'Code expires in 5 minutes' });
+                    await interaction.editReply({ embeds: [linkEmbed] });
+                    return;
+                }
+
+                // UNLINK ACCOUNT
+                if (interaction.commandName === 'unlink-account') {
+                    await interaction.deferReply({ ephemeral: true });
+                    const user = await prisma.user.findUnique({ where: { discordId: interaction.user.id } });
+                    if (!user) {
+                        await interaction.editReply('❌ No account found linked to this Discord ID.');
+                    } else {
+                        await prisma.user.update({ where: { id: user.id }, data: { discordId: null } });
+                        await interaction.editReply('✅ **Unlink Successful!**');
+                    }
+                    return;
+                }
+
+                // DAILY
+                if (interaction.commandName === 'daily') {
+                    await interaction.deferReply();
+                    const user = await prisma.user.findUnique({ where: { discordId: interaction.user.id } });
+                    if (!user) {
+                        await interaction.editReply('❌ Link account first.');
+                    } else {
+                        await prisma.user.update({ where: { id: user.id }, data: { coins: { increment: 50 } } });
+                        await interaction.editReply('💰 Daily claimed: **50 coins**');
+                    }
+                    return;
+                }
+
+                // MY INVITES
+                if (interaction.commandName === 'my-invites') {
+                    await interaction.deferReply({ ephemeral: true });
+
+                    const guild = interaction.guild;
+                    if (!guild) {
+                        await interaction.editReply('❌ This command must be used in a server.');
+                        return;
+                    }
+
+                    const inviteCount = await getUserInvites(guild, interaction.user.id);
+
+                    const embed = new EmbedBuilder()
+                        .setColor(0x7c3aed)
+                        .setTitle('📊 Your Invites')
+                        .setDescription(`You have **${inviteCount}** total invites!`)
+                        .setTimestamp();
+
+                    await interaction.editReply({ embeds: [embed] });
+                    return;
+                }
+
+                // LEADERBOARD
+                if (interaction.commandName === 'leaderboard') {
+                    await interaction.deferReply();
+
+                    const guild = interaction.guild;
+                    if (!guild) {
+                        await interaction.editReply('❌ This command must be used in a server.');
+                        return;
+                    }
+
+                    const invites = await guild.invites.fetch();
+                    const inviteMap = new Map<string, number>();
+
+                    invites.forEach(invite => {
+                        if (invite.inviter) {
+                            const current = inviteMap.get(invite.inviter.id) || 0;
+                            inviteMap.set(invite.inviter.id, current + (invite.uses || 0));
+                        }
+                    });
+
+                    const sorted = Array.from(inviteMap.entries())
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 10);
+
+                    let description = '';
+                    for (let i = 0; i < sorted.length; i++) {
+                        const [userId, count] = sorted[i];
+                        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
+                        description += `${medal} <@${userId}> - **${count}** invites\n`;
+                    }
+
+                    const embed = new EmbedBuilder()
+                        .setColor(0xffd700)
+                        .setTitle('🏆 Invite Leaderboard')
+                        .setDescription(description || 'No invites yet!')
+                        .setTimestamp();
+
+                    await interaction.editReply({ embeds: [embed] });
+                    return;
+                }
+
+                // INVITE-CODE
+                if (interaction.commandName === 'invite-code') {
+                    await interaction.deferReply({ ephemeral: true });
+
+                    try {
+                        const guild = interaction.guild;
+                        if (!guild) {
+                            await interaction.editReply('❌ This command must be used in a server.');
                             return;
                         }
-                        await interaction.deferReply({ ephemeral: true });
-                        try {
-                            const users = await prisma.user.findMany({
-                                where: { discordId: { not: null } },
-                                select: { username: true, discordId: true, email: true }
-                            });
-                            const embed = new EmbedBuilder()
-                                .setTitle(`📋 Linked Users (${users.length})`)
-                                .setColor(0x00FF00)
-                                .setDescription(users.map(u => `• **${u.username}** - <@${u.discordId}>`).join('\n').slice(0, 4000) || 'No active users linked.');
-                            await interaction.editReply({ embeds: [embed] });
-                        } catch (e) { console.error(e); await interaction.editReply('❌ Database error.'); }
-                        break;
 
-                    // --- HELP ---
-                    case 'help':
-                        await interaction.deferReply({ ephemeral: true });
-                        const helpMsg = `🤖 **Bot Assistance**\n\n` +
-                            `**🔗 How to Connect:**\n` +
-                            `1. Go to your **Dashboard > Account** page.\n` +
-                            `2. Run \`/link-account\` here to get your unique code.\n` +
-                            `3. Enter the code in the dashboard to sync balance.\n\n` +
-                            `**💸 Features:**\n` +
-                            `• **Daily**: \`/daily\` (50 coins)\n` +
-                            `• **Chat**: Random tasks trigger while chatting.\n` +
-                            `• **Voice**: Earn coins for being in VC (10 coins/10min).\n` +
-                            `• **Games**: Run \`/game-help\` for info.`;
-                        await interaction.editReply(helpMsg);
-                        break;
+                        const inviteCount = await getUserInvites(guild, interaction.user.id);
 
-                    case 'game-help':
-                        await interaction.deferReply({ ephemeral: true });
-                        const gameMsg = `🎮 **Minigames Guide**\n\n` +
-                            `**🎲 Dice** (\`/dice\`)\n` +
-                            `Roll 1-6. If you roll a **6**, you win **+5 coins**.\n` +
-                            `*Cost: Free*\n\n` +
-                            `**🪙 Coin Flip** (\`/flip <heads/tails>\`)\n` +
-                            `Win: **+3 coins** | Lose: **-1 coin** penalty!\n\n` +
-                            `**🐾 Hunt** (\`/hunt\`)\n` +
-                            `Daily adventure. Find **2-20 coins** or nothing.\n\n` +
-                            `**🎰 Bet** (\`/bet <amount>\`)\n` +
-                            `50/50 chance. Double your bet or lose it all.\n` +
-                            `*Max Bet: 50 coins*`;
-                        await interaction.editReply(gameMsg);
-                        break;
+                        const { getSettings } = await import('./settingsService');
+                        const settings = await getSettings();
+                        const rewards = (settings?.inviteRewards as any) || {};
 
-                    // --- ACCOUNT ---
-                    case 'link-account':
-                        await interaction.deferReply({ ephemeral: true });
-                        const code = generateCode('LINK');
-                        linkCodes.set(code, interaction.user.id);
-                        setTimeout(() => linkCodes.delete(code), 300000); // 5 mins
-
-                        const linkEmbed = new EmbedBuilder()
-                            .setTitle('🔗 Link Your Account')
-                            .setColor(0x7289DA)
-                            .setDescription('Follow these steps to connect your Discord account to the panel:')
-                            .addFields(
-                                { name: 'Step 1: Copy Code', value: `\`\`\`${code}\`\`\``, inline: false },
-                                { name: 'Step 2: Go to Dashboard', value: 'Navigate to **Settings > Account Connections** on the website.', inline: false },
-                                { name: 'Step 3: Enter Code', value: 'Paste the code above into the "Link Discord" box and click Link.', inline: false }
-                            )
-                            .setFooter({ text: 'Code expires in 5 minutes' });
-                        await interaction.editReply({ embeds: [linkEmbed] });
-                        break;
-
-                    case 'unlink-account':
-                        await interaction.deferReply({ ephemeral: true });
-                        const uUser = await prisma.user.findUnique({ where: { discordId: interaction.user.id } });
-                        if (!uUser) {
-                            await interaction.editReply('❌ No account found linked to this Discord ID.');
-                        } else {
-                            await prisma.user.update({ where: { id: uUser.id }, data: { discordId: null } });
-                            await interaction.editReply('✅ **Unlink Successful!**');
+                        if (Object.keys(rewards).length === 0) {
+                            await interaction.editReply('❌ No invite rewards are configured. Ask admin to set them up.');
+                            return;
                         }
-                        break;
 
-                    case 'my-invites':
-                        await interaction.deferReply({ ephemeral: true });
-                        const invData = inviteCache.get(interaction.guildId!) || new Map();
-                        const count = invData.get(interaction.user.id) || 0;
-                        await interaction.editReply(`📩 **Invite Stats**\nYou have **${count}** tracked invites in this server.`);
-                        break;
+                        // Convert to array [{invites: 5, coins: 100}, ...]
+                        const rewardArray = Object.entries(rewards).map(([invites, coins]) => ({
+                            invites: parseInt(invites),
+                            coins: Number(coins)
+                        })).filter(r => !isNaN(r.invites) && !isNaN(r.coins) && r.invites > 0 && r.coins > 0);
 
-                    case 'leaderboard':
-                        await interaction.deferReply();
-                        try {
-                            const lbData = inviteCache.get(interaction.guildId!) || new Map();
-                            const sorted = [...lbData.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
-
-                            if (sorted.length === 0) {
-                                await interaction.editReply('📉 Leaderboard is empty.');
-                            } else {
-                                const lines = sorted.map((entry, i) => `**#${i + 1}** <@${entry[0]}> - **${entry[1]} invites**`);
-                                const lbEmbed = new EmbedBuilder()
-                                    .setTitle('🏆 Top 10 Inviters')
-                                    .setColor(0xFFD700)
-                                    .setDescription(lines.join('\n'));
-                                await interaction.editReply({ embeds: [lbEmbed] });
-                            }
-                        } catch (e) {
-                            console.error('[Bot] Leaderboard Error:', e);
-                            await interaction.editReply('❌ Failed to load leaderboard.');
+                        if (rewardArray.length === 0) {
+                            await interaction.editReply('❌ No valid invite rewards configured.');
+                            return;
                         }
-                        break;
 
-                    // --- EARNINGS ---
-                    case 'daily':
-                        await interaction.deferReply();
-                        const dUser = await prisma.user.findUnique({ where: { discordId: interaction.user.id } });
-                        if (!dUser) {
-                            await interaction.editReply('❌ Link account first.');
-                        } else {
-                            // Can add cooldown check here if needed in future
-                            await prisma.user.update({ where: { id: dUser.id }, data: { coins: { increment: 50 } } });
-                            await interaction.editReply('💰 Daily claimed: **50 coins**');
-                        }
-                        break;
+                        // Find eligible reward (highest tier not yet claimed)
+                        const sortedRewards = rewardArray.sort((a, b) => b.invites - a.invites);
+                        let eligibleReward = null;
 
-                    case 'invite-code': // Reward Claimer (SPENDABLE INVITES LOGIC)
-                        await interaction.deferReply({ ephemeral: true });
-
-                        try {
-                            const { getSettings } = await import('./settingsService');
-                            const settings = await getSettings();
-
-                            // User check
-                            const user = await prisma.user.findUnique({ where: { discordId: interaction.user.id } });
-                            if (!user) {
-                                await interaction.editReply('❌ Link your dashboard account first (`/link-account`).');
-                                break;
-                            }
-
-                            // Get Game Stats for "Consumed" Invites
-                            let stats = await prisma.discordGameStats.findUnique({ where: { discordId: interaction.user.id } });
-                            if (!stats) stats = await prisma.discordGameStats.create({ data: { discordId: interaction.user.id } });
-
-                            const consumed = stats.invitesConsumed || 0;
-
-                            // Get Total Invites from Discord Cache
-                            const invData = inviteCache.get(interaction.guildId!) || new Map();
-                            const totalInvites = invData.get(interaction.user.id) || 0;
-                            const availableInvites = Math.max(0, totalInvites - consumed);
-
-                            if (availableInvites === 0) {
-                                await interaction.editReply(`ℹ️ **No Available Invites**\nTotal: ${totalInvites} | Consumed: ${consumed}\nInvite more people to earn rewards!`);
-                            } else {
-                                // Check Milestones from Settings
-                                const rewards = (settings?.inviteRewards as any) || {};
-
-                                // Validate rewards configuration
-                                if (Object.keys(rewards).length === 0) {
-                                    await interaction.editReply('⚠️ **No Rewards Configured**\nAsk the admin to set up invite rewards in the Admin Panel.');
-                                    break;
-                                }
-
-                                let bestTierCost = 0;
-                                let bestTierReward = 0;
-
-                                // Find the HIGHEST affordable tier
-                                for (const [reqStr, amount] of Object.entries(rewards)) {
-                                    const cost = parseInt(reqStr);
-                                    const reward = Number(amount);
-
-                                    // Validate tier
-                                    if (isNaN(cost) || isNaN(reward) || cost <= 0 || reward <= 0) {
-                                        console.warn(`[Bot] Invalid invite reward tier: ${reqStr} -> ${amount}`);
-                                        continue;
-                                    }
-
-                                    if (availableInvites >= cost && cost > bestTierCost) {
-                                        bestTierCost = cost;
-                                        bestTierReward = reward;
-                                    }
-                                }
-
-                                // Ensure we have a valid reward
-                                if (bestTierCost > 0 && bestTierReward > 0 && !isNaN(bestTierReward)) {
-                                    // CLAIM REWARD
-                                    const codeStr = `INV-${bestTierCost}-${generateRandomCode()}`;
-
-                                    // 1. Create RedeemCode
-                                    await prisma.redeemCode.create({
-                                        data: {
-                                            code: codeStr,
-                                            amount: bestTierReward,
-                                            maxUses: 1,
-                                            usedCount: 0
+                        for (const reward of sortedRewards) {
+                            if (inviteCount >= reward.invites) {
+                                const existingClaim = await prisma.inviteClaim.findUnique({
+                                    where: {
+                                        discordUserId_invitesRequired: {
+                                            discordUserId: interaction.user.id,
+                                            invitesRequired: reward.invites
                                         }
-                                    });
-
-                                    // 2. RESET Logic: Consumed becomes Total
-                                    await prisma.discordGameStats.update({
-                                        where: { id: stats.id },
-                                        data: { invitesConsumed: totalInvites }
-                                    });
-
-                                    await interaction.editReply(`🎉 **Reward Unlocked!**\n\n**Tier Reached**: ${bestTierCost} Invites\n**Reward**: ${bestTierReward} Coins\n**Code**: \`${codeStr}\`\n\n⚠️ **Invites Reset**: Your available invites have been reset to 0.`);
-                                } else {
-                                    // Has invites but not enough for any tier
-                                    let nextTier = 999999;
-                                    for (const r of Object.keys(rewards)) {
-                                        const rv = parseInt(r);
-                                        if (rv > availableInvites && rv < nextTier) nextTier = rv;
-                                    }
-                                    let msg = `ℹ️ **Progress**\nYou have **${availableInvites} available invites**.\n`;
-                                    if (nextTier < 999999) msg += `Next reward at **${nextTier}**.`;
-
-                                    await interaction.editReply(msg);
-                                }
-                            }
-                        } catch (err) {
-                            console.error('Invite-code error:', err);
-                            await interaction.editReply('❌ An error occurred while checking rewards.');
-                        }
-                        break;
-
-                    case 'boost-reward':
-                        await interaction.deferReply({ ephemeral: true });
-                        const bMember = await interaction.guild?.members.fetch(interaction.user.id);
-                        if (!bMember?.premiumSince) {
-                            await interaction.editReply('❌ You are not boosting this server!');
-                            break; // Changed return to break for cleaner switch
-                        }
-
-                        const bUser = await prisma.user.findUnique({ where: { discordId: interaction.user.id } });
-                        if (!bUser) {
-                            await interaction.editReply('❌ Link your dashboard account first.');
-                            break;
-                        }
-
-                        let bStats = await prisma.discordGameStats.findUnique({ where: { discordId: interaction.user.id } });
-                        if (!bStats) bStats = await prisma.discordGameStats.create({ data: { discordId: interaction.user.id } });
-
-                        const bCdMap = (bStats.cooldowns as any) || {};
-                        const bLast = bCdMap['boost-reward'] ? new Date(bCdMap['boost-reward']).getTime() : 0;
-                        const bNow = Date.now();
-                        const bThirtyDays = 30 * 24 * 60 * 60 * 1000;
-
-                        if (bNow - bLast < bThirtyDays) {
-                            const days = Math.ceil((bThirtyDays - (bNow - bLast)) / (1000 * 60 * 60 * 24));
-                            await interaction.editReply(`⏳ Already claimed. Come back in **${days} days**.`);
-                        } else {
-                            try {
-                                const reward = 500; // Configurable ideally
-                                const codeStr = `BOOST-${generateRandomCode()}`;
-
-                                await prisma.redeemCode.create({
-                                    data: {
-                                        code: codeStr,
-                                        amount: reward,
-                                        maxUses: 1,
-                                        usedCount: 0
                                     }
                                 });
 
-                                bCdMap['boost-reward'] = new Date();
-                                await prisma.discordGameStats.update({ where: { id: bStats.id }, data: { cooldowns: bCdMap } });
-                                await interaction.editReply(`💎 **Thank You for Boosting!**\nReward Code: \`${codeStr}\`\nRedeem for **${reward} coins**.`);
-                            } catch (err) {
-                                console.error('Boost reward error:', err);
-                                await interaction.editReply('❌ Error generating boost reward.');
+                                if (!existingClaim) {
+                                    eligibleReward = reward;
+                                    break;
+                                }
                             }
                         }
-                        break;
 
-                    // --- GAMES ---
-                    case 'dice':
-                    case 'flip':
-                    case 'hunt':
-                    case 'bet':
-                        await interaction.deferReply(); // Defer FIRST
+                        if (!eligibleReward) {
+                            // Show progress
+                            const nextReward = rewardArray
+                                .filter(r => r.invites > inviteCount)
+                                .sort((a, b) => a.invites - b.invites)[0];
 
-                        // 1. Check User
-                        const gUser = await prisma.user.findUnique({ where: { discordId: interaction.user.id } });
-                        if (!gUser) {
-                            await interaction.editReply('❌ Link your account (`/link-account`) to play.');
-                            break;
+                            if (nextReward) {
+                                await interaction.editReply(
+                                    `📊 You have **${inviteCount}** invites.\n` +
+                                    `🎯 Next reward at **${nextReward.invites}** invites (${nextReward.coins} coins)\n` +
+                                    `⏳ You need **${nextReward.invites - inviteCount}** more invites!`
+                                );
+                            } else {
+                                await interaction.editReply(`✅ You've claimed all available rewards! You have **${inviteCount}** invites.`);
+                            }
+                            return;
                         }
 
-                        // 2. Check Limits
-                        const { getSettings } = await import('./settingsService');
-                        const gSettings = await getSettings();
-                        const gCheck = await checkGameLimits(interaction.user.id, interaction.commandName, interaction.channelId, gSettings);
+                        // Create code and claim
+                        const code = await createRewardCode(eligibleReward.coins, 'INV');
 
-                        if (!gCheck.allowed) {
-                            const gChan = gSettings?.discordBot?.gamesChannelId;
-                            if (gCheck.reason === '❌ wrong_channel') {
-                                await interaction.editReply(`❌ Play in: <#${gChan}>`);
-                            } else {
-                                await interaction.editReply(gCheck.reason || '❌ Not allowed');
+                        await prisma.inviteClaim.create({
+                            data: {
+                                discordUserId: interaction.user.id,
+                                invitesRequired: eligibleReward.invites,
+                                code
                             }
-                            break;
-                        }
+                        });
 
-                        const gConfig = (gSettings?.games as any) || {};
+                        const embed = new EmbedBuilder()
+                            .setColor(0x00ff00)
+                            .setTitle('🎉 Invite Reward Claimed!')
+                            .setDescription(`You've earned a reward for **${eligibleReward.invites}** invites!`)
+                            .addFields(
+                                { name: '🎁 Your Code', value: `\`${code}\``, inline: false },
+                                { name: '💰 Coins', value: `${eligibleReward.coins}`, inline: true },
+                                { name: '📊 Total Invites', value: `${inviteCount}`, inline: true }
+                            )
+                            .setFooter({ text: 'Redeem this code on the dashboard!' })
+                            .setTimestamp();
 
-                        // 3. Game Logic
-                        if (interaction.commandName === 'dice') {
-                            const win = (gConfig.dice?.win || 5);
-                            const roll = Math.floor(Math.random() * 6) + 1;
-                            if (roll === 6) {
-                                await prisma.user.update({ where: { id: gUser.id }, data: { coins: { increment: win } } });
-                                await updateGameStats(interaction.user.id, 'dice', win);
-                                await interaction.editReply(`🎲 Rolled a **6**! Won **${win} coins**!`);
-                            } else {
-                                await updateGameStats(interaction.user.id, 'dice', 0);
-                                await interaction.editReply(`🎲 Rolled a **${roll}**. (Need 6)`);
-                            }
+                        await interaction.editReply({ embeds: [embed] });
 
-                        } else if (interaction.commandName === 'flip') {
-                            const win = (gConfig.flip?.win || 3);
-                            const loss = (gConfig.flip?.loss || 1);
-                            const choice = interaction.options.getString('side');
-                            const outcome = Math.random() < 0.5 ? 'heads' : 'tails';
-                            const isWin = choice?.toLowerCase() === outcome;
-
-                            if (isWin) {
-                                await prisma.user.update({ where: { id: gUser.id }, data: { coins: { increment: win } } });
-                                await updateGameStats(interaction.user.id, 'flip', win);
-                                await interaction.editReply(`🪙 It was **${outcome}**! Won **${win} coins**!`);
-                            } else {
-                                await prisma.user.update({ where: { id: gUser.id }, data: { coins: { decrement: loss } } });
-                                await updateGameStats(interaction.user.id, 'flip', 0);
-                                await interaction.editReply(`🪙 It was **${outcome}**. Lost **${loss} coins**!`);
-                            }
-
-                        } else if (interaction.commandName === 'hunt') {
-                            const rand = Math.random();
-                            const rare = (gConfig.hunt?.max || 20);
-                            const common = (gConfig.hunt?.min || 2);
-                            let earn = 0;
-                            let msg = '';
-
-                            if (rand < 0.1) { earn = rare; msg = `🌟 **LEGENDARY!** Found **${earn} coins**!`; }
-                            else if (rand < 0.5) { earn = common; msg = `🐾 Found **${earn} coins**.`; }
-                            else { msg = '🍃 Found nothing...'; }
-
-                            if (earn > 0) {
-                                await prisma.user.update({ where: { id: gUser.id }, data: { coins: { increment: earn } } });
-                            }
-                            await updateGameStats(interaction.user.id, 'hunt', earn);
-                            await interaction.editReply(msg);
-
-                        } else if (interaction.commandName === 'bet') {
-                            const max = (gConfig.bet?.max || 50);
-                            const amount = interaction.options.getInteger('amount') || 0;
-
-                            if (amount <= 0) { await interaction.editReply('❌ Bet positive amount.'); break; }
-                            if (gUser.coins < amount) { await interaction.editReply(`❌ Too poor. Balance: ${gUser.coins}`); break; }
-                            if (amount > max) { await interaction.editReply(`❌ Max bet is ${max}.`); break; }
-
-                            const isWin = Math.random() < 0.5;
-                            if (isWin) {
-                                await prisma.user.update({ where: { id: gUser.id }, data: { coins: { increment: amount } } });
-                                await updateGameStats(interaction.user.id, 'bet', amount);
-                                await interaction.editReply(`🎰 **WINNER!** Won **${amount} coins**!`);
-                            } else {
-                                await prisma.user.update({ where: { id: gUser.id }, data: { coins: { decrement: amount } } });
-                                await updateGameStats(interaction.user.id, 'bet', 0);
-                                await interaction.editReply(`📉 **LOST.** Lost **${amount} coins**.`);
-                            }
-                        }
-                        break;
-
-                    default:
-                        // No handler found
-                        break;
+                    } catch (error) {
+                        console.error('Error in invite-code command:', error);
+                        await interaction.editReply('❌ An error occurred. Please try again later.');
+                    }
+                    return;
                 }
+
+                // BOOST-REWARD
+                if (interaction.commandName === 'boost-reward') {
+                    await interaction.deferReply({ ephemeral: true });
+
+                    try {
+                        const member = interaction.member as GuildMember;
+
+                        if (!member.premiumSince) {
+                            await interaction.editReply('❌ You need to be a server booster to claim this reward!');
+                            return;
+                        }
+
+                        const { getSettings } = await import('./settingsService');
+                        const settings = await getSettings();
+                        const boostRewards = (settings?.boostRewards as any) || {};
+
+                        // Get first boost reward (1 boost = reward)
+                        const boostReward = boostRewards['1'] || 500; // Default 500 if not configured
+                        const coins = Number(boostReward);
+
+                        if (isNaN(coins) || coins <= 0) {
+                            await interaction.editReply('❌ No boost reward configured.');
+                            return;
+                        }
+
+                        // Check if already claimed (using -1 to indicate boost)
+                        const existingClaim = await prisma.inviteClaim.findUnique({
+                            where: {
+                                discordUserId_invitesRequired: {
+                                    discordUserId: interaction.user.id,
+                                    invitesRequired: -1
+                                }
+                            }
+                        });
+
+                        if (existingClaim) {
+                            await interaction.editReply('✅ You have already claimed your boost reward!');
+                            return;
+                        }
+
+                        // Create code and save claim
+                        const code = await createRewardCode(coins, 'BOOST');
+
+                        await prisma.inviteClaim.create({
+                            data: {
+                                discordUserId: interaction.user.id,
+                                invitesRequired: -1,
+                                code
+                            }
+                        });
+
+                        const embed = new EmbedBuilder()
+                            .setColor(0xf47fff)
+                            .setTitle('🚀 Boost Reward Claimed!')
+                            .setDescription('Thank you for boosting the server!')
+                            .addFields(
+                                { name: '🎁 Your Code', value: `\`${code}\``, inline: false },
+                                { name: '💰 Coins', value: `${coins}`, inline: true }
+                            )
+                            .setFooter({ text: 'Redeem this code on the dashboard!' })
+                            .setTimestamp();
+
+                        await interaction.editReply({ embeds: [embed] });
+
+                    } catch (error) {
+                        console.error('Error in boost-reward command:', error);
+                        await interaction.editReply('❌ An error occurred. Please try again later.');
+                    }
+                    return;
+                }
+
             } catch (err) {
                 console.error('FATAL Interaction Error:', err);
                 try {
@@ -630,70 +562,7 @@ export async function startDiscordBot() {
             }
         });
 
-        // --- 1. USER LEFT GUILD -> SUSPEND SERVERS ---
-        client.on(Events.GuildMemberRemove, async (member) => {
-            console.log(`[Bot] User left guild: ${member.user.tag} (${member.id})`);
-            try {
-                // Find Dashboard User
-                const user = await prisma.user.findUnique({ where: { discordId: member.id } });
-                if (!user) return; // Not a dashboard user
-
-                // Find active servers
-                const servers = await prisma.server.findMany({
-                    where: {
-                        ownerId: user.id,
-                        status: { not: 'suspended' },
-                        isSuspended: false
-                    }
-                });
-
-                if (servers.length === 0) return;
-
-                console.log(`[Bot] Suspending ${servers.length} servers for user ${user.username} (Left Discord)`);
-
-                // Suspend Loop
-                const { suspendPteroServer } = await import('./pterodactyl');
-                const { sendServerSuspendedWebhook } = await import('./webhookService');
-
-                for (const server of servers) {
-                    // Ptero Suspend
-                    if (server.pteroServerId) {
-                        try {
-                            await suspendPteroServer(server.pteroServerId);
-                        } catch (err) {
-                            console.error(`[Bot] Failed to suspend ptero server ${server.id}:`, err);
-                        }
-                    }
-
-                    // DB Update
-                    await prisma.server.update({
-                        where: { id: server.id },
-                        data: {
-                            isSuspended: true,
-                            suspendedAt: new Date(),
-                            suspendedBy: 'System (Discord Enforcement)',
-                            suspendReason: 'User left Discord server',
-                            status: 'suspended'
-                        }
-                    });
-
-                    // Log Webhook
-                    sendServerSuspendedWebhook({
-                        username: user.username,
-                        serverName: server.name,
-                        reason: 'User left Discord server'
-                    }).catch(console.error);
-
-                    // Send Real-time Notification
-                    const { sendUserNotification } = await import('./websocket');
-                    sendUserNotification(user.id, 'Server Suspended', `Server "${server.name}" suspended because you left our Discord server.`, 'error');
-                }
-
-            } catch (error) {
-                console.error('[Bot] GuildMemberRemove Error:', error);
-            }
-        });
-
+        // Login
         await client.login(discordBot.token);
 
     } catch (error) {
@@ -701,6 +570,19 @@ export async function startDiscordBot() {
     }
 }
 
-// STOP & STATUS
-export function stopDiscordBot() { if (client) { client.destroy(); client = null; } }
-export function getBotStatus() { return { running: client !== null && client.isReady(), user: client?.user?.tag || null }; }
+// Stop Discord Bot
+export function stopDiscordBot() {
+    if (client) {
+        client.destroy();
+        client = null;
+        console.log('🛑 Discord bot stopped');
+    }
+}
+
+// Get bot status
+export function getBotStatus() {
+    return {
+        running: client !== null && client.isReady(),
+        user: client?.user?.tag || null
+    };
+}
