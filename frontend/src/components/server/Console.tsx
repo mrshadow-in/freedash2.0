@@ -101,13 +101,16 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
         if (terminalRef.current && !xtermRef.current) {
             const term = new Terminal({
                 cursorBlink: true,
-                convertEol: true, // Fix for line endings
+                convertEol: true,
+                disableStdin: true, // Read-only console
+                scrollback: 5000, // Increase buffer
                 theme: {
                     background: '#0d1117',
                     foreground: '#c9d1d9',
                 },
                 fontFamily: 'Menlo, Monaco, "Courier New", monospace',
                 fontSize: 14,
+                allowProposedApi: true
             });
             const fitAddon = new FitAddon();
             term.loadAddon(fitAddon);
