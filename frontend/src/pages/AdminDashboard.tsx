@@ -126,7 +126,7 @@ const AdminDashboard = () => {
             <div className="relative z-10 bg-white/5 backdrop-blur-md border-b border-white/10">
                 <div className="container mx-auto px-6">
                     <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                        {['settings', 'users', 'servers', 'wings', 'plans', 'codes', 'ads', 'customize', 'bot', 'social', 'plugins'].map((tab) => (
+                        {['settings', 'users', 'servers', 'wings', 'plans', 'codes', 'ads', 'customize', 'bot', 'games', 'social', 'plugins'].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
@@ -163,6 +163,7 @@ const AdminDashboard = () => {
 
                     {activeTab === 'social' && <SocialTab settings={settings} fetchSettings={fetchSettings} />}
                     {activeTab === 'plugins' && <PluginsManagementTab settings={settings} fetchSettings={fetchSettings} />}
+                    {activeTab === 'games' && <GamesTab settings={settings} fetchSettings={fetchSettings} />}
 
                 </motion.div>
             </div>
@@ -3338,6 +3339,140 @@ function PluginsManagementTab({ settings, fetchSettings }: any) {
                         Save API Keys
                     </button>
                 </div>
+            </div>
+        </div>
+    );
+}
+
+// Games Tab
+function GamesTab({ settings, fetchSettings }: any) {
+    const [config, setConfig] = useState<any>({
+        dice: { win: 5 },
+        flip: { win: 3, loss: 1 },
+        hunt: { min: 2, max: 20 },
+        bet: { max: 50 },
+        cooldown: 60,
+        dailyLimit: 50
+    });
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (settings?.games) {
+            setConfig({
+                dice: { win: settings.games.dice?.win || 5 },
+                flip: { win: settings.games.flip?.win || 3, loss: settings.games.flip?.loss || 1 },
+                hunt: { min: settings.games.hunt?.min || 2, max: settings.games.hunt?.max || 20 },
+                bet: { max: settings.games.bet?.max || 50 },
+                cooldown: settings.games.cooldown || 60,
+                dailyLimit: settings.games.dailyLimit || 50
+            });
+        }
+    }, [settings]);
+
+    const saveSettings = async () => {
+        setLoading(true);
+        try {
+            await api.put('/admin/settings/games', { games: config });
+            toast.success('Game settings updated!');
+            fetchSettings();
+        } catch (error) {
+            toast.error('Failed to update game settings');
+        }
+        setLoading(false);
+    };
+
+    return (
+        <div className="space-y-6">
+            <h3 className="text-xl font-bold">Game Economics</h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Dice */}
+                <div className="bg-white/5 p-6 rounded-xl border border-white/10">
+                    <h4 className="font-bold mb-4 flex items-center gap-2">🎲 Dice</h4>
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-2">Win Amount (Roll 6)</label>
+                        <input
+                            type="number"
+                            value={config.dice.win}
+                            onChange={(e) => setConfig({ ...config, dice: { ...config.dice, win: parseInt(e.target.value) || 0 } })}
+                            className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white"
+                        />
+                    </div>
+                </div>
+
+                {/* Coinflip */}
+                <div className="bg-white/5 p-6 rounded-xl border border-white/10">
+                    <h4 className="font-bold mb-4 flex items-center gap-2">🪙 Coin Flip</h4>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-2">Win Amount</label>
+                            <input
+                                type="number"
+                                value={config.flip.win}
+                                onChange={(e) => setConfig({ ...config, flip: { ...config.flip, win: parseInt(e.target.value) || 0 } })}
+                                className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-2">Loss Penalty</label>
+                            <input
+                                type="number"
+                                value={config.flip.loss}
+                                onChange={(e) => setConfig({ ...config, flip: { ...config.flip, loss: parseInt(e.target.value) || 0 } })}
+                                className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Hunt */}
+                <div className="bg-white/5 p-6 rounded-xl border border-white/10">
+                    <h4 className="font-bold mb-4 flex items-center gap-2">🐾 Hunt</h4>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-2">Min Amount (Common)</label>
+                            <input
+                                type="number"
+                                value={config.hunt.min}
+                                onChange={(e) => setConfig({ ...config, hunt: { ...config.hunt, min: parseInt(e.target.value) || 0 } })}
+                                className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-2">Max Amount (Rare)</label>
+                            <input
+                                type="number"
+                                value={config.hunt.max}
+                                onChange={(e) => setConfig({ ...config, hunt: { ...config.hunt, max: parseInt(e.target.value) || 0 } })}
+                                className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Bet */}
+                <div className="bg-white/5 p-6 rounded-xl border border-white/10">
+                    <h4 className="font-bold mb-4 flex items-center gap-2">🎰 Bet</h4>
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-2">Max Bet Amount</label>
+                        <input
+                            type="number"
+                            value={config.bet.max}
+                            onChange={(e) => setConfig({ ...config, bet: { ...config.bet, max: parseInt(e.target.value) || 0 } })}
+                            className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex justify-end pt-6 border-t border-white/10">
+                <button
+                    onClick={saveSettings}
+                    disabled={loading}
+                    className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg hover:opacity-90 transition disabled:opacity-50"
+                >
+                    {loading ? 'Saving...' : 'Save Settings'}
+                </button>
             </div>
         </div>
     );

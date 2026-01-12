@@ -326,7 +326,11 @@ export async function startDiscordBot() {
                 }
 
                 // --- MINIGAMES ---
-                const gamesChannelId = settings?.discordBot?.gamesChannelId;
+                // Refresh settings for game config
+                const { getSettings } = await import('./settingsService');
+                const currentSettings = await getSettings();
+                const gamesChannelId = currentSettings?.discordBot?.gamesChannelId;
+                const gameConfig = (currentSettings?.games as any) || {};
 
                 // Common Game Check
                 if (['dice', 'flip', 'hunt', 'bet'].includes(interaction.commandName)) {
@@ -337,7 +341,7 @@ export async function startDiscordBot() {
                         return interaction.editReply('❌ You must link your account (`/link`) to play games.');
                     }
 
-                    const check = await checkGameLimits(interaction.user.id, interaction.commandName, interaction.channelId, settings);
+                    const check = await checkGameLimits(interaction.user.id, interaction.commandName, interaction.channelId, currentSettings);
                     if (!check.allowed) {
                         if (check.reason === '❌ wrong_channel') {
                             return interaction.editReply(`❌ proper channel: <#${gamesChannelId}>`);
@@ -348,16 +352,15 @@ export async function startDiscordBot() {
 
                 // 🎲 /dice
                 if (interaction.commandName === 'dice') {
+                    const winAmount = gameConfig.dice?.win || 5;
                     const roll = Math.floor(Math.random() * 6) + 1;
-                    if (roll === 6) {
-                        await prisma.user.update({ where: { id: interaction.user.id }, data: { coins: { increment: 5 } } }); // No deduction on user, internal ID used
-                        // (Wait, I need the User model ID (UUID) for Prisma, not Discord ID)
-                        // Handled above: "user" variable fetched.
-                        const user = await prisma.user.findUnique({ where: { discordId: interaction.user.id } });
-                        if (user) await prisma.user.update({ where: { id: user.id }, data: { coins: { increment: 5 } } });
 
-                        await updateGameStats(interaction.user.id, 'dice', 5);
-                        await interaction.editReply(`🎲 You rolled a **6**! 🎉 You won **5 coins**!`);
+                    if (roll === 6) {
+                        const user = await prisma.user.findUnique({ where: { discordId: interaction.user.id } });
+                        if (user) await prisma.user.update({ where: { id: user.id }, data: { coins: { increment: winAmount } } });
+
+                        await updateGameStats(interaction.user.id, 'dice', winAmount);
+                        await interaction.editReply(`🎲 You rolled a **6**! 🎉 You won **${winAmount} coins**!`);
                     } else {
                         await updateGameStats(interaction.user.id, 'dice', 0);
                         await interaction.editReply(`🎲 You rolled a **${roll}**. (Need 6 to win)`);
@@ -366,27 +369,25 @@ export async function startDiscordBot() {
 
                 // 🪙 /flip
                 else if (interaction.commandName === 'flip') {
+                    const winAmount = gameConfig.flip?.win || 3;
+                    const lossAmount = gameConfig.flip?.loss || 1;
                     const choice = interaction.options.getString('side');
                     const outcome = Math.random() < 0.5 ? 'heads' : 'tails';
                     const win = choice?.toLowerCase() === outcome;
 
                     const user = await prisma.user.findUnique({ where: { discordId: interaction.user.id } });
-                    if (!user) return; // Should be handled by check
+                    if (!user) return;
 
                     if (win) {
-                        await prisma.user.update({ where: { id: user.id }, data: { coins: { increment: 3 } } });
-                        await updateGameStats(interaction.user.id, 'flip', 3);
-                        await interaction.editReply(`🪙 It was **${outcome}**! You won **3 coins**!`);
+                        await prisma.user.update({ where: { id: user.id }, data: { coins: { increment: winAmount } } });
+                        await updateGameStats(interaction.user.id, 'flip', winAmount);
+                        await interaction.editReply(`🪙 It was **${outcome}**! You won **${winAmount} coins**!`);
                     } else {
-                        // Penalty -1
-                        await prisma.user.update({ where: { id: user.id }, data: { coins: { decrement: 1 } } });
-                        // Ensure no negative? Prisma might error if unsigned, but Float is signed.
-                        // Logic: "No negative balance" -> Check first?
+                        await prisma.user.update({ where: { id: user.id }, data: { coins: { decrement: lossAmount } } });
                         if (user.coins <= 0) {
-                            // Don't deduct if 0
                             await interaction.editReply(`🪙 It was **${outcome}**. You lost! (No coins to deduct)`);
                         } else {
-                            await interaction.editReply(`🪙 It was **${outcome}**. You lost **1 coin**! 💸`);
+                            await interaction.editReply(`🪙 It was **${outcome}**. You lost **${lossAmount} coins**! 💸`);
                         }
                         await updateGameStats(interaction.user.id, 'flip', 0);
                     }
@@ -401,12 +402,15 @@ export async function startDiscordBot() {
                     let msg = '';
                     let earn = 0;
 
+                    const rareAmount = gameConfig.hunt?.max || 20;
+                    const commonAmount = gameConfig.hunt?.min || 2;
+
                     if (rand < 0.1) { // 10% Rare
-                        earn = 20;
-                        msg = '🌟 **LEGENDARY FIND!** You found a treasure chest with **20 coins**!';
+                        earn = rareAmount;
+                        msg = `🌟 **LEGENDARY FIND!** You found a treasure chest with **${earn} coins**!`;
                     } else if (rand < 0.5) { // 40% Common
-                        earn = 2;
-                        msg = '🐾 You went hunting and found **2 coins**.';
+                        earn = commonAmount;
+                        msg = `🐾 You went hunting and found **${earn} coins**.`;
                     } else { // 50% Nothing
                         msg = '🍃 You went hunting but found nothing...';
                     }
@@ -422,25 +426,24 @@ export async function startDiscordBot() {
 
                 // 💰 /bet
                 else if (interaction.commandName === 'bet') {
+                    const maxBet = gameConfig.bet?.max || 50;
                     const amount = interaction.options.getInteger('amount') || 0;
                     const user = await prisma.user.findUnique({ where: { discordId: interaction.user.id } });
                     if (!user) return;
 
                     if (amount <= 0) return interaction.editReply('❌ Bet must be positive.');
                     if (user.coins < amount) return interaction.editReply(`❌ Insufficient coins. You have ${user.coins}.`);
-                    if (amount > 50) return interaction.editReply('❌ Max bet is 50 coins.'); // Safety
+                    if (amount > maxBet) return interaction.editReply(`❌ Max bet is ${maxBet} coins.`);
 
                     const win = Math.random() < 0.5;
 
                     if (win) {
-                        // Win amount (e.g. 1x payout = receive original + amount)
-                        // Usually "bet 10" -> "win 20" (net +10)
                         await prisma.user.update({ where: { id: user.id }, data: { coins: { increment: amount } } });
                         await updateGameStats(interaction.user.id, 'bet', amount);
                         await interaction.editReply(`🎰 **WINNER!** You won **${amount} coins**! (New Bal: ${user.coins + amount})`);
                     } else {
                         await prisma.user.update({ where: { id: user.id }, data: { coins: { decrement: amount } } });
-                        await updateGameStats(interaction.user.id, 'bet', 0); // No earnings
+                        await updateGameStats(interaction.user.id, 'bet', 0);
                         await interaction.editReply(`📉 **LOST.** You lost **${amount} coins**. (New Bal: ${user.coins - amount})`);
                     }
                 }

@@ -148,6 +148,7 @@ model Settings {
   billing              Json?
   plugins              Json? // Stores { curseforge_api_key, polymart_api_key }
   security             Json? // Stores { enablePanelAccess: boolean }
+  games                Json? // Stores game config (rates, limits)
   
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt

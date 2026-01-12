@@ -25,7 +25,9 @@ router.put('/settings/social-media', adminController.updateSocialMedia);
 router.put('/settings/plugins', adminController.updatePluginSettings);
 router.put('/settings/security', adminController.updateSecuritySettings);
 
+
 router.put('/settings/bot', adminController.updateBotSettings);
+router.put('/settings/games', adminController.updateGameSettings);
 router.post('/settings/bot/key', adminController.regenerateBotKey);
 router.get('/settings/bot/status', adminController.getBotStatus);
 router.post('/settings/bot/toggle', adminController.toggleBot);
