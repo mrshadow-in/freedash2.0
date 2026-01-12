@@ -158,6 +158,26 @@ export const updateBotSettings = async (req: Request, res: Response) => {
     }
 };
 
+// Update Game settings
+export const updateGameSettings = async (req: Request, res: Response) => {
+    try {
+        const { games } = req.body;
+        const currentSettings = await getSettingsOrCreate();
+
+        const settings = await prisma.settings.update({
+            where: { id: currentSettings.id },
+            data: {
+                games: games || currentSettings.games || {}
+            }
+        });
+
+        await invalidateSettingsCache();
+        res.json({ message: 'Game settings updated', settings });
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to update game settings' });
+    }
+};
+
 export const regenerateBotKey = async (req: Request, res: Response) => {
     try {
         const currentSettings = await getSettingsOrCreate();
