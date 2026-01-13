@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import { toast } from 'react-hot-toast';
-import { Dices, Coins, Gift, RefreshCw, Trophy, AlertTriangle } from 'lucide-react';
+import { Dices, Coins, Gift, Trophy } from 'lucide-react';
 
 const GamesPage = () => {
     const queryClient = useQueryClient();

@@ -7,6 +7,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import ManageServer from './pages/ManageServer';
 import AFKPage from './pages/AFKPage';
 import Account from './pages/Account';
+import GamesPage from './pages/GamesPage';
 import NotFound from './pages/NotFound';
 import PrivateRoute from './components/PrivateRoute';
 import AdminRoute from './components/AdminRoute';
@@ -40,7 +41,9 @@ function App() {
         <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
         <Route path="/dashboard" element={<Navigate to="/" replace />} />
         <Route path="/server/:id" element={<PrivateRoute><ManageServer /></PrivateRoute>} />
+        <Route path="/server/:id" element={<PrivateRoute><ManageServer /></PrivateRoute>} />
         <Route path="/account" element={<PrivateRoute><Account /></PrivateRoute>} />
+        <Route path="/games" element={<PrivateRoute><GamesPage /></PrivateRoute>} />
         <Route path="/afk" element={<PrivateRoute><AFKPage /></PrivateRoute>} />
         <Route path="/auth/discord/success" element={<DiscordSuccess />} />
         <Route path="*" element={<NotFound />} />

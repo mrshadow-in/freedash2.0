@@ -19,6 +19,7 @@ import passport from 'passport';
 import botRoutes from './routes/botRoutes';
 import adRoutes from './routes/adRoutes';
 import notificationRoutes from './routes/notificationRoutes';
+import gameRoutes from './routes/gameRoutes';
 
 
 const app = express();
@@ -44,6 +45,7 @@ app.use('/api/upgrades', upgradeRoutes);
 app.use('/api/bot', botRoutes);
 app.use('/api/ads', adRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/games', gameRoutes);
 
 // Coins & Tasks
 const coinRouter = express.Router();

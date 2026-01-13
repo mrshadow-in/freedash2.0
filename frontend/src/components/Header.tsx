@@ -102,6 +102,11 @@ const Header = () => {
                             <span className="font-bold text-sm">AFK Zone</span>
                         </Link>
 
+                        <Link to="/games" className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 text-gray-400 hover:text-white transition group">
+                            <span className="text-xl group-hover:animate-bounce">🎮</span>
+                            <span className="font-bold text-sm">Games</span>
+                        </Link>
+
                         <NotificationCenter />
 
                         <button
