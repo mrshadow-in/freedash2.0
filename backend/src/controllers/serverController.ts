@@ -169,6 +169,9 @@ export const createServer = async (req: AuthRequest, res: Response) => {
 
             // We can return data to be used outside
             return { server, user, plan, settings };
+        }, {
+            maxWait: 5000, // default: 2000
+            timeout: 30000 // default: 5000
         }).then(async (result: any) => {
 
             // === AUTO EULA ON CREATE ===
