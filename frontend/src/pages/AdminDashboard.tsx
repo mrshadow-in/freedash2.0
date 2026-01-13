@@ -203,8 +203,6 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
         smtpUsername: '',
         smtpPassword: '',
         smtpFromEmail: '',
-        smtpPassword: '',
-        smtpFromEmail: '',
         smtpFromName: 'Panel',
         appUrl: '', // Dashboard Link
         afkRotationInterval: 30,
@@ -245,7 +243,6 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                 smtpSecure: settings.smtp?.secure || false,
                 smtpUsername: settings.smtp?.username || '',
                 smtpPassword: settings.smtp?.password || '',
-                smtpFromEmail: settings.smtp?.fromEmail || '',
                 smtpFromEmail: settings.smtp?.fromEmail || '',
                 smtpFromName: settings.smtp?.fromName || 'Panel',
                 appUrl: settings.smtp?.appUrl || '',
@@ -303,9 +300,7 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                     port: formData.smtpPort,
                     secure: formData.smtpSecure,
                     username: formData.smtpUsername,
-                    password: formData.smtpPassword,
-                    fromEmail: formData.smtpFromEmail,
-                    username: formData.smtpUsername,
+
                     password: formData.smtpPassword,
                     fromEmail: formData.smtpFromEmail,
                     fromName: formData.smtpFromName,
