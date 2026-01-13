@@ -46,7 +46,7 @@ const env_1 = require("../config/env");
 passport_1.default.use(new passport_discord_1.Strategy({
     clientID: env_1.ENV.DISCORD_CLIENT_ID || '',
     clientSecret: env_1.ENV.DISCORD_CLIENT_SECRET || '',
-    callbackURL: env_1.ENV.DISCORD_CALLBACK_URL || 'http://localhost:3000/auth/discord/callback',
+    callbackURL: env_1.ENV.DISCORD_CALLBACK_URL || '',
     scope: ['identify', 'email']
 }, async (accessToken, refreshToken, profile, done) => {
     try {
@@ -103,8 +103,9 @@ const discordCallback = (req, res, next) => {
             return res.redirect(`${env_1.ENV.FRONTEND_URL}/login?error=discord_auth_failed`);
         }
         // Generate JWT tokens
-        const accessToken = jsonwebtoken_1.default.sign({ id: user.id, role: user.role }, env_1.ENV.JWT_SECRET, { expiresIn: '15m' });
-        const refreshToken = jsonwebtoken_1.default.sign({ id: user.id }, env_1.ENV.JWT_REFRESH_SECRET, { expiresIn: '7d' });
+        // Generate JWT tokens
+        const accessToken = jsonwebtoken_1.default.sign({ userId: user.id, role: user.role }, env_1.ENV.JWT_SECRET, { expiresIn: '365d' });
+        const refreshToken = jsonwebtoken_1.default.sign({ userId: user.id }, env_1.ENV.JWT_REFRESH_SECRET, { expiresIn: '365d' });
         // Redirect to frontend with tokens
         res.redirect(`${env_1.ENV.FRONTEND_URL}/auth/discord/success?token=${accessToken}&refresh=${refreshToken}`);
     })(req, res, next);

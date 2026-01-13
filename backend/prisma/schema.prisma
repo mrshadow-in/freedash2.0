@@ -252,6 +252,8 @@ model Ad {
   imageUrl      String?
   redirectUrl   String?
   rawCode       String?   // New: for paste-in ad network codes
+  pageTargets   Json?     // Stores array: ["dashboard", "server", "afk"]
+  scriptLocation String?  // "head" or "body"
   isAFK         Boolean   @default(false) // New: specifically for AFK page ads
   position      String    // e.g., "top", "header-after", "server-list-before", "afk-top", etc.
   positionIndex Int       @default(0)

@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateSecuritySettings = exports.updateBillingSettings = exports.updateSocialMedia = exports.updateUser = exports.updateUserRole = exports.createUserByAdmin = exports.updatePlan = exports.deletePlan = exports.createPlan = exports.updateRedeemCode = exports.deleteRedeemCode = exports.createRedeemCode = exports.getAllCodes = exports.deleteServerAdmin = exports.unsuspendServer = exports.suspendServer = exports.getAllServers = exports.deleteUser = exports.unbanUser = exports.banUser = exports.editUserCoins = exports.getAllUsers = exports.removeWebhook = exports.addWebhook = exports.testPterodactylConnection = exports.updatePterodactylSettings = exports.updatePluginSettings = exports.updateUpgradePricing = exports.updateAFKSettings = exports.sendTestEmail = exports.testSmtpConnection = exports.toggleBot = exports.getBotStatus = exports.regenerateBotKey = exports.updateBotSettings = exports.updateSmtpSettings = exports.updateThemeSettings = exports.updatePanelSettings = exports.getSettings = void 0;
+exports.updateGlobalAdScript = exports.updateSecuritySettings = exports.updateBillingSettings = exports.updateSocialMedia = exports.updateUser = exports.updateUserRole = exports.createUserByAdmin = exports.updatePlan = exports.deletePlan = exports.createPlan = exports.updateRedeemCode = exports.deleteRedeemCode = exports.createRedeemCode = exports.getAllCodes = exports.deleteServerAdmin = exports.unsuspendServer = exports.suspendServer = exports.getAllServers = exports.deleteUser = exports.unbanUser = exports.banUser = exports.editUserCoins = exports.unlinkDiscord = exports.getAllUsers = exports.removeWebhook = exports.addWebhook = exports.testPterodactylConnection = exports.updatePterodactylSettings = exports.updatePluginSettings = exports.updateUpgradePricing = exports.updateAFKSettings = exports.sendTestEmail = exports.testSmtpConnection = exports.toggleBot = exports.getBotStatus = exports.regenerateBotKey = exports.updateGameSettings = exports.updateBotSettings = exports.updateSmtpSettings = exports.updateThemeSettings = exports.updatePanelSettings = exports.getSettings = void 0;
 const prisma_1 = require("../prisma");
 const pterodactyl_1 = require("../services/pterodactyl");
 const bcrypt_1 = __importDefault(require("bcrypt"));
@@ -120,19 +120,20 @@ exports.updateThemeSettings = updateThemeSettings;
 // Update SMTP settings
 const updateSmtpSettings = async (req, res) => {
     try {
-        const { host, port, secure, username, password, fromEmail, fromName } = req.body;
+        const { host, port, secure, username, password, fromEmail, fromName, appUrl } = req.body;
         const currentSettings = await (0, settingsService_1.getSettingsOrCreate)();
         const settings = await prisma_1.prisma.settings.update({
             where: { id: currentSettings.id },
             data: {
                 smtp: {
                     host,
-                    port,
-                    secure,
+                    port: Number(port),
+                    secure: Boolean(secure),
                     username,
                     password,
                     fromEmail,
-                    fromName
+                    fromName,
+                    appUrl // Store the Dashboard Link
                 }
             }
         });
@@ -187,6 +188,25 @@ const updateBotSettings = async (req, res) => {
     }
 };
 exports.updateBotSettings = updateBotSettings;
+// Update Game settings
+const updateGameSettings = async (req, res) => {
+    try {
+        const { games } = req.body;
+        const currentSettings = await (0, settingsService_1.getSettingsOrCreate)();
+        const settings = await prisma_1.prisma.settings.update({
+            where: { id: currentSettings.id },
+            data: {
+                games: games || currentSettings.games || {}
+            }
+        });
+        await (0, settingsService_1.invalidateSettingsCache)();
+        res.json({ message: 'Game settings updated', settings });
+    }
+    catch (error) {
+        res.status(500).json({ message: 'Failed to update game settings' });
+    }
+};
+exports.updateGameSettings = updateGameSettings;
 const regenerateBotKey = async (req, res) => {
     try {
         const currentSettings = await (0, settingsService_1.getSettingsOrCreate)();
@@ -241,8 +261,20 @@ exports.toggleBot = toggleBot;
 // Test SMTP connection
 const testSmtpConnection = async (req, res) => {
     try {
+        // If credentials are provided in body, use them. Otherwise load from DB.
+        const { host, port, secure, username, password } = req.body;
+        let config = null;
+        if (host && port) {
+            config = {
+                host,
+                port: Number(port),
+                secure: Boolean(secure),
+                username,
+                password
+            };
+        }
         const { testSmtpConnection: testConnection } = await Promise.resolve().then(() => __importStar(require('../services/emailService')));
-        const result = await testConnection();
+        const result = await testConnection(config);
         res.json(result);
     }
     catch (error) {
@@ -506,6 +538,21 @@ const getAllUsers = async (req, res) => {
     }
 };
 exports.getAllUsers = getAllUsers;
+// Unlink Discord
+const unlinkDiscord = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        await prisma_1.prisma.user.update({
+            where: { id: userId },
+            data: { discordId: null }
+        });
+        res.json({ message: 'Discord unlinked successfully' });
+    }
+    catch (error) {
+        res.status(500).json({ message: 'Failed to unlink Discord' });
+    }
+};
+exports.unlinkDiscord = unlinkDiscord;
 // Edit user coins
 const editUserCoins = async (req, res) => {
     try {
@@ -871,7 +918,6 @@ const createUserByAdmin = async (req, res) => {
         try {
             const pteroUser = await (0, pterodactyl_1.createPteroUser)(email, username, password);
             pteroUserId = pteroUser.id;
-            console.log(`✅ Pterodactyl user created for ${email} with ID: ${pteroUserId}`);
         }
         catch (pteroError) {
             console.error('⚠️  Failed to create Pterodactyl user:', pteroError.message);
@@ -1062,3 +1108,22 @@ const updateSecuritySettings = async (req, res) => {
     }
 };
 exports.updateSecuritySettings = updateSecuritySettings;
+// Update Global Ad Script
+const updateGlobalAdScript = async (req, res) => {
+    try {
+        const { globalAdScript } = req.body;
+        const currentSettings = await (0, settingsService_1.getSettingsOrCreate)();
+        const settings = await prisma_1.prisma.settings.update({
+            where: { id: currentSettings.id },
+            data: {
+                globalAdScript: globalAdScript ?? undefined
+            }
+        });
+        await (0, settingsService_1.invalidateSettingsCache)();
+        res.json({ message: 'Global ad script updated', settings });
+    }
+    catch (error) {
+        res.status(500).json({ message: 'Failed to update ad script' });
+    }
+};
+exports.updateGlobalAdScript = updateGlobalAdScript;

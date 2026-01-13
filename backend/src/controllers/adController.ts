@@ -4,12 +4,13 @@ import { prisma } from '../prisma';
 // Get active ads for a specific position or all active ads
 export const getActiveAds = async (req: Request, res: Response) => {
     try {
-        const { position, isAFK } = req.query;
+        const { position, isAFK, type } = req.query;
 
         const ads = await prisma.ad.findMany({
             where: {
                 status: 'active',
                 position: position ? (position as string) : undefined,
+                type: type ? (type as string) : undefined,
                 isAFK: isAFK !== undefined ? isAFK === 'true' : undefined,
                 OR: [
                     { endDate: null },
@@ -43,11 +44,16 @@ export const getAllAds = async (req: Request, res: Response) => {
 // Admin: Create a new ad
 export const createAd = async (req: Request, res: Response) => {
     try {
-        const { title, imageUrl, redirectUrl, rawCode, isAFK, position, positionIndex, priority, type, endDate, ownerId, rewardCoins } = req.body;
+        const { title, imageUrl, redirectUrl, rawCode, isAFK, position, positionIndex, priority, type, endDate, ownerId, rewardCoins, pageTargets, scriptLocation } = req.body;
 
         // Validate required fields
-        if (!title || !position || !type) {
-            return res.status(400).json({ message: 'Title, position, and type are required fields' });
+        if (!title || !type) {
+            return res.status(400).json({ message: 'Title and type are required fields' });
+        }
+
+        // For non-script ads, position is required
+        if (type !== 'script' && !position) {
+            return res.status(400).json({ message: 'Position is required for visual ads' });
         }
 
         // At least one of imageUrl or rawCode must be provided
@@ -57,7 +63,7 @@ export const createAd = async (req: Request, res: Response) => {
 
         // Automatically determine positionIndex if not provided
         let finalPositionIndex = positionIndex;
-        if (finalPositionIndex === undefined || finalPositionIndex === null) {
+        if ((finalPositionIndex === undefined || finalPositionIndex === null) && position) {
             const maxIndexAd = await prisma.ad.findFirst({
                 where: { position },
                 orderBy: { positionIndex: 'desc' }
@@ -72,14 +78,16 @@ export const createAd = async (req: Request, res: Response) => {
                 redirectUrl: redirectUrl || null,
                 rawCode: rawCode || null,
                 isAFK: isAFK || false,
-                position,
-                positionIndex: finalPositionIndex,
+                position: position || 'script_zone', // Default for scripts
+                positionIndex: finalPositionIndex || 0,
                 priority: priority || 1,
                 type,
                 endDate: endDate ? new Date(endDate) : null,
                 ownerId: ownerId || null,
                 rewardCoins: parseFloat(rewardCoins) || 0,
-                status: 'active'
+                status: 'active',
+                pageTargets: pageTargets || [],
+                scriptLocation: scriptLocation || 'body'
             }
         });
 

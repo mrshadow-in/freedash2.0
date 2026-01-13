@@ -16,6 +16,7 @@ import DiscordSuccess from './pages/DiscordSuccess';
 import NotificationListener from './components/NotificationListener';
 import SystemIntegrityCheck from './components/SystemIntegrityCheck';
 import GlobalAdScript from './components/GlobalAdScript';
+import ScriptAdInjector from './components/ScriptAdInjector';
 
 
 function App() {
@@ -45,6 +46,7 @@ function App() {
       </Routes>
       <SystemIntegrityCheck />
       <GlobalAdScript />
+      <ScriptAdInjector />
     </Router>
   );
 }

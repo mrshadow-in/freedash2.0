@@ -2828,6 +2828,56 @@ function AdsTab({ settings, fetchSettings }: any) {
     });
     const [creating, setCreating] = useState(false);
 
+    // Script Ads State
+    const [showScriptAdModal, setShowScriptAdModal] = useState(false);
+    const [scriptAdForm, setScriptAdForm] = useState({
+        title: '',
+        rawCode: '',
+        pageTargets: { dashboard: false, server: false, afk: false },
+        scriptLocation: 'body',
+        priority: 1,
+        status: 'active'
+    });
+
+    const createScriptAd = async () => {
+        if (!scriptAdForm.title || !scriptAdForm.rawCode) {
+            return toast.error('Title and Code are required');
+        }
+
+        // Convert pageTargets object to array
+        const targets = Object.keys(scriptAdForm.pageTargets).filter(k => scriptAdForm.pageTargets[k as keyof typeof scriptAdForm.pageTargets]);
+
+        if (targets.length === 0) {
+            return toast.error('Select at least one target page');
+        }
+
+        try {
+            await api.post('/ads/admin/create', {
+                title: scriptAdForm.title,
+                type: 'script',
+                rawCode: scriptAdForm.rawCode,
+                pageTargets: targets,
+                scriptLocation: scriptAdForm.scriptLocation,
+                priority: scriptAdForm.priority,
+                status: scriptAdForm.status,
+                position: 'script_zone' // Internal implementation detail
+            });
+            toast.success('Script Ad Created!');
+            setShowScriptAdModal(false);
+            setScriptAdForm({
+                title: '',
+                rawCode: '',
+                pageTargets: { dashboard: false, server: false, afk: false },
+                scriptLocation: 'body',
+                priority: 1,
+                status: 'active'
+            });
+            fetchAds();
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Failed to create script ad');
+        }
+    };
+
     const fetchAds = async () => {
         setLoading(true);
         try {
@@ -2992,6 +3042,12 @@ function AdsTab({ settings, fetchSettings }: any) {
                     >
                         <span>{isDebugMode ? '👁️' : '🙈'}</span>
                         {isDebugMode ? 'Hide Positions' : 'Show Positions'}
+                    </button>
+                    <button
+                        onClick={() => setShowScriptAdModal(true)}
+                        className="px-4 py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-purple-500/20 hover:opacity-90 transition"
+                    >
+                        ➕ Add Script Ad
                     </button>
                     <button
                         onClick={async () => {
@@ -3371,6 +3427,129 @@ function AdsTab({ settings, fetchSettings }: any) {
                             >
                                 Save Scripts
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Script Ad Modal (New) */}
+            {showScriptAdModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowScriptAdModal(false)} />
+                    <div className="relative w-full max-w-2xl bg-gray-900 border border-white/10 rounded-3xl p-8 shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar">
+                        <h3 className="text-2xl font-bold mb-6">➕ Add Script Ad</h3>
+
+                        <div className="space-y-6">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-1">Ad Name (Internal)</label>
+                                <input
+                                    type="text"
+                                    value={scriptAdForm.title}
+                                    onChange={e => setScriptAdForm({ ...scriptAdForm, title: e.target.value })}
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+                                    placeholder="e.g. Adsterra Popunder"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-2">Target Pages</label>
+                                    <div className="space-y-2">
+                                        {[
+                                            { id: 'dashboard', label: 'Dashboard' },
+                                            { id: 'server', label: 'Server Panel' },
+                                            { id: 'afk', label: 'AFK Page' }
+                                        ].map(page => (
+                                            <label key={page.id} className="flex items-center gap-3 cursor-pointer p-2 bg-white/5 rounded-lg hover:bg-white/10 transition">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={scriptAdForm.pageTargets[page.id as keyof typeof scriptAdForm.pageTargets]}
+                                                    onChange={e => setScriptAdForm({
+                                                        ...scriptAdForm,
+                                                        pageTargets: { ...scriptAdForm.pageTargets, [page.id]: e.target.checked }
+                                                    })}
+                                                    className="w-4 h-4 rounded border-purple-500 text-purple-600 focus:ring-purple-500"
+                                                />
+                                                <span className="text-white text-sm">{page.label}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-2">Load Position</label>
+                                    <div className="flex flex-col gap-2">
+                                        <label className="flex items-center gap-3 cursor-pointer p-2 bg-white/5 rounded-lg hover:bg-white/10">
+                                            <input
+                                                type="radio"
+                                                name="location"
+                                                checked={scriptAdForm.scriptLocation === 'head'}
+                                                onChange={() => setScriptAdForm({ ...scriptAdForm, scriptLocation: 'head' })}
+                                                className="text-purple-500"
+                                            />
+                                            <span className="text-white text-sm">Inside &lt;head&gt;</span>
+                                        </label>
+                                        <label className="flex items-center gap-3 cursor-pointer p-2 bg-white/5 rounded-lg hover:bg-white/10">
+                                            <input
+                                                type="radio"
+                                                name="location"
+                                                checked={scriptAdForm.scriptLocation === 'body'}
+                                                onChange={() => setScriptAdForm({ ...scriptAdForm, scriptLocation: 'body' })}
+                                                className="text-purple-500"
+                                            />
+                                            <span className="text-white text-sm">End of &lt;body&gt;</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-1">Priority (Weight)</label>
+                                    <input
+                                        type="number"
+                                        value={scriptAdForm.priority}
+                                        onChange={e => setScriptAdForm({ ...scriptAdForm, priority: parseInt(e.target.value) })}
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-1">Status</label>
+                                    <button
+                                        onClick={() => setScriptAdForm({ ...scriptAdForm, status: scriptAdForm.status === 'active' ? 'paused' : 'active' })}
+                                        className={`w-full py-3 rounded-xl font-bold transition ${scriptAdForm.status === 'active'
+                                                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                                : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30'
+                                            }`}
+                                    >
+                                        {scriptAdForm.status === 'active' ? '✅ Active' : '⏸️ Paused'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-2">Script Code</label>
+                                <textarea
+                                    value={scriptAdForm.rawCode}
+                                    onChange={e => setScriptAdForm({ ...scriptAdForm, rawCode: e.target.value })}
+                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-xs h-40 focus:ring-2 focus:ring-purple-500 outline-none resize-none"
+                                    placeholder="<script src='...'></script>"
+                                />
+                            </div>
+
+                            <div className="flex gap-3 mt-4">
+                                <button
+                                    onClick={() => setShowScriptAdModal(false)}
+                                    className="px-6 py-3 bg-white/5 hover:bg-white/10 rounded-xl transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={createScriptAd}
+                                    className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-purple-800 rounded-xl font-bold hover:opacity-90 transition shadow-lg shadow-purple-500/20"
+                                >
+                                    Save Script Ad
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
