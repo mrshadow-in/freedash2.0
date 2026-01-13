@@ -8,29 +8,59 @@ export default function AdBlockDetector() {
     useEffect(() => {
         const detectAdBlock = async () => {
             try {
-                // Method 1: Try to fetch a common ad script
+                let detectionCount = 0;
+                const requiredDetections = 2; // Need at least 2 methods to confirm
+
+                // Method 1: DOM-based detection (check if fake ad div is hidden)
                 const testAd = document.createElement('div');
                 testAd.innerHTML = '&nbsp;';
-                testAd.className = 'adsbox ad-placement ad-container';
+                testAd.className = 'adsbox ad-placement ad-container adsbygoogle';
                 testAd.style.height = '1px';
+                testAd.style.width = '1px';
                 testAd.style.position = 'absolute';
                 testAd.style.top = '-9999px';
+                testAd.style.left = '-9999px';
                 document.body.appendChild(testAd);
 
                 await new Promise(resolve => setTimeout(resolve, 100));
 
+                const computedStyle = window.getComputedStyle(testAd);
                 const isHidden = testAd.offsetHeight === 0 ||
-                    window.getComputedStyle(testAd).display === 'none' ||
-                    window.getComputedStyle(testAd).visibility === 'hidden';
+                    testAd.offsetParent === null ||
+                    computedStyle.display === 'none' ||
+                    computedStyle.visibility === 'hidden';
+
+                if (isHidden) {
+                    console.log('[AdBlockDetector] Method 1: Fake ad div is hidden');
+                    detectionCount++;
+                }
 
                 document.body.removeChild(testAd);
 
-                // Method 2: Check for common ad blocker properties
-                const hasAdBlocker = !!(
-                    isHidden ||
-                    typeof (window as any).adsbygoogle === 'undefined' ||
-                    (window as any).adblockDetected
-                );
+                // Method 2: Try to fetch a known ad network domain
+                try {
+                    const adTest = await fetch('https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js', {
+                        method: 'HEAD',
+                        mode: 'no-cors',
+                        cache: 'no-store'
+                    });
+                    // If we reach here, the request was allowed
+                    console.log('[AdBlockDetector] Method 2: Ad network fetch allowed');
+                } catch {
+                    console.log('[AdBlockDetector] Method 2: Ad network fetch blocked');
+                    detectionCount++;
+                }
+
+                // Method 3: Check for common ad blocker JavaScript signatures
+                if ((window as any).blockAdBlock ||
+                    (window as any).canRunAds === false ||
+                    (document as any).AdBlockDetected) {
+                    console.log('[AdBlockDetector] Method 3: JS signature detected');
+                    detectionCount++;
+                }
+
+                const hasAdBlocker = detectionCount >= requiredDetections;
+                console.log('[AdBlockDetector] Detection count:', detectionCount, '/', requiredDetections, '→', hasAdBlocker ? 'BLOCKED' : 'ALLOWED');
 
                 setIsBlocked(hasAdBlocker);
                 setIsChecking(false);
