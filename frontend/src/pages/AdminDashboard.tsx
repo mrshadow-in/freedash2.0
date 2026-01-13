@@ -2853,13 +2853,21 @@ function AdsTab({ settings, fetchSettings }: any) {
             return toast.error('Select at least one target page');
         }
 
+        // Auto-configure location based on type if not manually set (optional, but good UX)
+        let finalLocation = scriptAdForm.scriptLocation;
+        if (scriptAdForm.adType === 'popunder') finalLocation = 'head';
+        else finalLocation = 'body';
+
+        // Append type to title for clarity in list
+        const finalTitle = `[${scriptAdForm.adType.toUpperCase()}] ${scriptAdForm.title}`;
+
         try {
             await api.post('/ads/admin/create', {
-                title: scriptAdForm.title,
-                type: 'script',
+                title: finalTitle,
+                type: 'script', // Keep as 'script' for backend compatibility
                 rawCode: scriptAdForm.rawCode,
                 pageTargets: targets,
-                scriptLocation: scriptAdForm.scriptLocation,
+                scriptLocation: finalLocation,
                 priority: scriptAdForm.priority,
                 status: scriptAdForm.status,
                 position: 'script_zone' // Internal implementation detail
@@ -3455,7 +3463,14 @@ function AdsTab({ settings, fetchSettings }: any) {
                                 <label className="block text-sm font-medium text-gray-400 mb-2">Ad Type</label>
                                 <select
                                     value={scriptAdForm.adType}
-                                    onChange={e => setScriptAdForm({ ...scriptAdForm, adType: e.target.value })}
+                                    onChange={e => {
+                                        const type = e.target.value;
+                                        setScriptAdForm({
+                                            ...scriptAdForm,
+                                            adType: type,
+                                            scriptLocation: type === 'popunder' ? 'head' : 'body'
+                                        });
+                                    }}
                                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-purple-500 outline-none"
                                 >
                                     <option value="popunder">🎯 Popunder (Best CPM)</option>
