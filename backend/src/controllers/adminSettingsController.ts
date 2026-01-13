@@ -110,12 +110,11 @@ export const updateSmtpSettings = async (req: Request, res: Response) => {
                 }
             }
         });
-    });
-    await invalidateSettingsCache();
-    res.json({ message: 'SMTP settings updated', settings });
-} catch (error) {
-    res.status(500).json({ message: 'Failed to update SMTP settings' });
-}
+        await invalidateSettingsCache();
+        res.json({ message: 'SMTP settings updated', settings });
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to update SMTP settings' });
+    }
 };
 
 // Update Bot settings (rewards and discord config)
