@@ -591,6 +591,17 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                             />
                         </div>
                     </div>
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-2">Dashboard URL (for email links)</label>
+                        <input
+                            type="text"
+                            value={formData.appUrl || ''}
+                            onChange={(e) => setFormData({ ...formData, appUrl: e.target.value })}
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                            placeholder="https://dashboard.yourdomain.com"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Make sure to include https:// and no trailing slash.</p>
+                    </div>
                     <div className="flex gap-3">
                         <button
                             onClick={() => saveSettings('smtp')}

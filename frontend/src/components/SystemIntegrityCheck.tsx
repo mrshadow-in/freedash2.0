@@ -10,9 +10,9 @@ const SystemIntegrityCheck = () => {
     const [d2, setD2] = useState<string>('...'); // Line 2
 
     // Base64 Encoded Branding Strings
-    // "Free-Dash- 2025 - "
+
     const _s1_root = "RnJlZS1EYXNoLSAyMDI1IC0g";
-    // "LordCloud- WeebPoll Technologies India Private Limited"
+
     const _s2_root = "TG9yZENsb3VkLSBXZWViUG9sbCBUZWNobm9sb2dpZXMgSW5kaWEgUHJpdmF0ZSBMaW1pdGVk";
 
     useEffect(() => {
