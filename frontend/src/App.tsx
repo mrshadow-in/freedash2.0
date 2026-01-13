@@ -15,6 +15,7 @@ import SessionHeartbeat from './components/SessionHeartbeat';
 import DiscordSuccess from './pages/DiscordSuccess';
 import NotificationListener from './components/NotificationListener';
 import SystemIntegrityCheck from './components/SystemIntegrityCheck';
+import GlobalAdScript from './components/GlobalAdScript';
 
 
 function App() {
@@ -43,6 +44,7 @@ function App() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       <SystemIntegrityCheck />
+      <GlobalAdScript />
     </Router>
   );
 }

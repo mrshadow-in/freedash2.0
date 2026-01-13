@@ -1139,3 +1139,22 @@ export const updateSecuritySettings = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Failed to update security settings' });
     }
 };
+// Update Global Ad Script
+export const updateGlobalAdScript = async (req: Request, res: Response) => {
+    try {
+        const { globalAdScript } = req.body;
+        const currentSettings = await getSettingsOrCreate();
+
+        const settings = await prisma.settings.update({
+            where: { id: currentSettings.id },
+            data: {
+                globalAdScript: globalAdScript ?? undefined
+            }
+        });
+
+        await invalidateSettingsCache();
+        res.json({ message: 'Global ad script updated', settings });
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to update ad script' });
+    }
+};

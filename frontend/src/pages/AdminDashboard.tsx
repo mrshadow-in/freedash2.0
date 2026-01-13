@@ -214,7 +214,8 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
         billingAutoSuspend: false,
 
         billingAutoResume: false,
-        panelAccessEnabled: true
+        panelAccessEnabled: true,
+        globalAdScript: ''
     });
 
     useEffect(() => {
@@ -255,6 +256,7 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                 billingAutoSuspend: settings.billing?.autoSuspend ?? false,
                 billingAutoResume: settings.billing?.autoResume ?? false,
                 panelAccessEnabled: settings.security?.enablePanelAccess ?? true,
+                globalAdScript: settings.globalAdScript || '',
                 webhook: ''
             });
         }
@@ -319,6 +321,10 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
             } else if (type === 'security') {
                 await api.put('/admin/settings/security', {
                     enablePanelAccess: formData.panelAccessEnabled
+                });
+            } else if (type === 'ads-global') {
+                await api.put('/admin/settings/ads', {
+                    globalAdScript: formData.globalAdScript
                 });
             }
             await refreshTheme(); // Instant UI update
@@ -508,6 +514,29 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                         className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg hover:opacity-90 transition"
                     >
                         Save Security Settings
+                    </button>
+                </div>
+            </div>
+
+            {/* Global Ads & Scripts */}
+            <div className="border border-white/10 rounded-xl p-6 mb-6">
+                <h3 className="text-xl font-bold mb-4">📢 Global Ad Scripts</h3>
+                <p className="text-sm text-gray-400 mb-4">Inject raw HTML/JS (Popunders, Analytics, etc) into every page.</p>
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-2">Global Script Code (Header/Body)</label>
+                        <textarea
+                            value={formData.globalAdScript || ''}
+                            onChange={(e) => setFormData({ ...formData, globalAdScript: e.target.value })}
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white font-mono text-xs h-32"
+                            placeholder="<script src='...'></script>"
+                        />
+                    </div>
+                    <button
+                        onClick={() => saveSettings('ads-global')}
+                        className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg hover:opacity-90 transition"
+                    >
+                        Save Ad Scripts
                     </button>
                 </div>
             </div>

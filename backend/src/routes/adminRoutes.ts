@@ -24,6 +24,7 @@ router.delete('/settings/webhooks', adminController.removeWebhook);
 router.put('/settings/social-media', adminController.updateSocialMedia);
 router.put('/settings/plugins', adminController.updatePluginSettings);
 router.put('/settings/security', adminController.updateSecuritySettings);
+router.put('/settings/ads', adminController.updateGlobalAdScript);
 
 
 router.put('/settings/bot', adminController.updateBotSettings);
