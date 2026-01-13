@@ -851,7 +851,8 @@ export const createPlan = async (req: Request, res: Response) => {
                 slots: slots || 1,
                 priceCoins,
                 pteroEggId,
-                pteroNestId
+                pteroNestId,
+                pteroLocationId: req.body.pteroLocationId || 1
             }
         });
 
@@ -889,11 +890,11 @@ export const deletePlan = async (req: Request, res: Response) => {
 export const updatePlan = async (req: Request, res: Response) => {
     try {
         const { planId } = req.params;
-        const { name, ramMb, diskMb, cpuPercent, cpuCores, priceCoins, pteroEggId, pteroNestId, eggImage } = req.body;
+        const { name, ramMb, diskMb, cpuPercent, cpuCores, priceCoins, pteroEggId, pteroNestId, pteroLocationId, eggImage } = req.body;
 
         const plan = await prisma.plan.update({
             where: { id: planId },
-            data: { name, ramMb, diskMb, cpuPercent, cpuCores, priceCoins, pteroEggId, pteroNestId, eggImage }
+            data: { name, ramMb, diskMb, cpuPercent, cpuCores, priceCoins, pteroEggId, pteroNestId, pteroLocationId, eggImage }
         });
 
         res.json(plan);

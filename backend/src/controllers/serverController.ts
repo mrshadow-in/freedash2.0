@@ -90,7 +90,7 @@ export const createServer = async (req: AuthRequest, res: Response) => {
             const settings = await tx.settings.findFirst();
             const eggId = plan.pteroEggId || (settings?.pterodactyl as any)?.defaultEggId || 15;
             const nestId = plan.pteroNestId || (settings?.pterodactyl as any)?.defaultNestId || 1;
-            const locationId = (settings?.pterodactyl as any)?.defaultLocationId || 1;
+            const locationId = plan.pteroLocationId || (settings?.pterodactyl as any)?.defaultLocationId || 1;
 
             // Pterodactyl Call
             let pteroServer: any;

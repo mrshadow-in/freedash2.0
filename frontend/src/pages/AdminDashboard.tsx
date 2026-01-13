@@ -1476,6 +1476,7 @@ function PlansTab({ plans, fetchPlans, loading }: any) {
         priceCoins: 100,
         pteroEggId: 0,
         pteroNestId: 0,
+        pteroLocationId: 1,
         eggImage: ''
     });
 
@@ -1492,6 +1493,7 @@ function PlansTab({ plans, fetchPlans, loading }: any) {
                 priceCoins: 100,
                 pteroEggId: 0,
                 pteroNestId: 0,
+                pteroLocationId: 1,
                 eggImage: ''
             });
             fetchPlans();
@@ -1597,7 +1599,10 @@ function PlansTab({ plans, fetchPlans, loading }: any) {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 border-t border-white/10 pt-4">
+                    <div className="grid grid-cols-3 gap-4 border-t border-white/10 pt-4">
+                        <div className="col-span-3">
+                            <p className="text-sm font-bold text-gray-400 mb-2">Pterodactyl Configuration</p>
+                        </div>
                         <div>
                             <label className="block text-sm text-gray-400 mb-2">Pterodactyl Egg ID</label>
                             <input
@@ -1615,6 +1620,16 @@ function PlansTab({ plans, fetchPlans, loading }: any) {
                                 placeholder="0 (Use Default)"
                                 value={newPlan.pteroNestId}
                                 onChange={(e) => setNewPlan({ ...newPlan, pteroNestId: parseInt(e.target.value) })}
+                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-2">Pterodactyl Location ID</label>
+                            <input
+                                type="number"
+                                placeholder="1 (Use Default)"
+                                value={newPlan.pteroLocationId}
+                                onChange={(e) => setNewPlan({ ...newPlan, pteroLocationId: parseInt(e.target.value) })}
                                 className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
                             />
                         </div>
@@ -1747,7 +1762,7 @@ function PlansTab({ plans, fetchPlans, loading }: any) {
                                     />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-sm text-gray-400 mb-1">Egg ID</label>
                                     <input
@@ -1763,6 +1778,15 @@ function PlansTab({ plans, fetchPlans, loading }: any) {
                                         type="number"
                                         value={editingPlan.pteroNestId}
                                         onChange={(e) => setEditingPlan({ ...editingPlan, pteroNestId: parseInt(e.target.value) })}
+                                        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-1">Location ID</label>
+                                    <input
+                                        type="number"
+                                        value={editingPlan.pteroLocationId || 1}
+                                        onChange={(e) => setEditingPlan({ ...editingPlan, pteroLocationId: parseInt(e.target.value) })}
                                         className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
                                     />
                                 </div>

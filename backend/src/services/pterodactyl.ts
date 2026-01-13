@@ -117,8 +117,8 @@ export const createPteroServer = async (
             name,
             user: userId,
             egg: eggId,
-            docker_image: 'ghcr.io/pterodactyl/yolks:java_17',
-            startup: 'java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar {{SERVER_JARFILE}}',
+            docker_image: 'ghcr.io/pterodactyl/yolks:java_21',
+            startup: 'java -Xms128M -XX:MaxRAMPercentage=95.0 -Dterminal.jline=false -Dterminal.ansi=true -jar {{SERVER_JARFILE}}',
             environment: {
                 SERVER_JARFILE: 'server.jar',
                 BUILD_NUMBER: 'latest',
