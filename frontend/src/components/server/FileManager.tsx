@@ -219,6 +219,7 @@ const FileManager = ({ serverId }: FileManagerProps) => {
                         ) : files?.length === 0 ? (
                             <tr><td colSpan={4} className="text-center py-8 text-gray-500">Empty directory</td></tr>
                         ) : (
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             files?.map((file: any) => (
                                 <tr
                                     key={file.attributes.name}

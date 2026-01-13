@@ -3482,7 +3482,7 @@ function GamesTab({ settings, fetchSettings }: any) {
             await api.put('/admin/settings/games', { games: config });
             toast.success('Game settings updated!');
             fetchSettings();
-        } catch (error) {
+        } catch (_) {
             toast.error('Failed to update game settings');
         }
         setLoading(false);
