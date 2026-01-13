@@ -3022,7 +3022,8 @@ function AdsTab({ settings, fetchSettings }: any) {
         { id: 'afk-right-2', label: 'AFK Right Position 2' },
         { id: 'afk-right-3', label: 'AFK Right Position 3' },
         { id: 'afk-right-4', label: 'AFK Right Position 4' },
-        { id: 'afk-right-5', label: 'AFK Right Position 5 (Bottom)' }
+        { id: 'afk-right-5', label: 'AFK Right Position 5 (Bottom)' },
+        { id: 'afk_random', label: '🎲 AFK Page - Random Position' }
     ];
 
     const filteredAds = filterPosition === 'all'
