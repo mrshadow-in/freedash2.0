@@ -3556,6 +3556,16 @@ function AdsTab({ settings, fetchSettings }: any) {
                                             />
                                             <span className="text-white text-sm">End of &lt;body&gt;</span>
                                         </label>
+                                        <label className="flex items-center gap-3 cursor-pointer p-2 bg-white/5 rounded-lg hover:bg-white/10">
+                                            <input
+                                                type="radio"
+                                                name="location"
+                                                checked={scriptAdForm.scriptLocation === 'afk_random'}
+                                                onChange={() => setScriptAdForm({ ...scriptAdForm, scriptLocation: 'afk_random' })}
+                                                className="text-purple-500"
+                                            />
+                                            <span className="text-white text-sm">🎲 Random on AFK Page</span>
+                                        </label>
                                     </div>
                                 </div>
                             </div>

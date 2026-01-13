@@ -49,36 +49,57 @@ export default function ScriptAdInjector() {
 
                     console.log('[ScriptAdInjector] Injecting ad:', ad.title, 'to', ad.scriptLocation);
 
-                    // Parse the raw code to find script tags
-                    const container = document.createElement('div');
-                    container.innerHTML = ad.rawCode;
+                    // Create a container for the ad
+                    const adContainer = document.createElement('div');
+                    adContainer.id = existingId;
+                    adContainer.className = 'injected-ad-container';
+                    adContainer.innerHTML = ad.rawCode;
 
-                    const scripts = container.querySelectorAll('script');
-                    scripts.forEach((oldScript, index) => {
-                        const newScript = document.createElement('script');
+                    // Determine Injection Target
+                    let targetElement: HTMLElement | null = document.body;
 
-                        // Copy attributes
-                        Array.from(oldScript.attributes).forEach(attr => {
-                            newScript.setAttribute(attr.name, attr.value);
-                        });
-
-                        // Copy content
-                        newScript.innerHTML = oldScript.innerHTML;
-                        newScript.id = `${existingId}-${index}`;
-                        newScript.dataset.adId = ad.id;
-                        newScript.dataset.adName = ad.title;
-
-                        // Inject
-                        if (ad.scriptLocation === 'head') {
-                            document.head.appendChild(newScript);
-                            console.log('[ScriptAdInjector] ✅ Injected to <head>:', ad.title);
+                    if (ad.scriptLocation === 'head') {
+                        targetElement = document.head;
+                    } else if (ad.scriptLocation === 'afk_random' && pageType === 'afk') {
+                        // Find all eligible containers on AFK page
+                        const candidates = document.querySelectorAll('main div, section div, .card, .p-4');
+                        if (candidates.length > 0) {
+                            const randomIndex = Math.floor(Math.random() * candidates.length);
+                            targetElement = candidates[randomIndex] as HTMLElement;
+                            console.log('[ScriptAdInjector] 🎲 Selected random target:', targetElement);
                         } else {
-                            document.body.appendChild(newScript);
-                            console.log('[ScriptAdInjector] ✅ Injected to <body>:', ad.title);
+                            console.warn('[ScriptAdInjector] No candidates for random injection, falling back to body');
                         }
-                    });
-                });
+                    }
 
+                    // Inject the container
+                    if (ad.scriptLocation === 'head') {
+                        // Extract scripts and styles only for head
+                        const headItems = adContainer.querySelectorAll('script, style, link');
+                        headItems.forEach((item: any) => {
+                            const newItem = document.createElement(item.tagName);
+                            Array.from(item.attributes).forEach((attr: any) => newItem.setAttribute(attr.name, attr.value));
+                            newItem.innerHTML = item.innerHTML;
+                            document.head.appendChild(newItem);
+                        });
+                        console.log('[ScriptAdInjector] ✅ Injected to <head>:', ad.title);
+                    } else {
+                        // For body/random, append the visual container
+                        if (targetElement) targetElement.appendChild(adContainer);
+
+                        // Re-execute scripts inside the container
+                        const scripts = adContainer.querySelectorAll('script');
+                        scripts.forEach((oldScript) => {
+                            const newScript = document.createElement('script');
+                            Array.from(oldScript.attributes).forEach((attr: any) => newScript.setAttribute(attr.name, attr.value));
+                            newScript.innerHTML = oldScript.innerHTML;
+
+                            // Replace old script with new executable script
+                            oldScript.parentNode?.replaceChild(newScript, oldScript);
+                        });
+                        console.log(`[ScriptAdInjector] ✅ Injected to ${ad.scriptLocation}:`, ad.title);
+                    }
+                });
             } catch (error) {
                 console.error('[ScriptAdInjector] ❌ Error:', error);
             }
