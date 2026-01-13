@@ -25,12 +25,12 @@ export default function AdBlockDetector() {
                 }
 
                 let detectionCount = 0;
-                const requiredDetections = 2; // Need at least 2 methods to confirm
+                const totalMethods = 5;
 
-                // Method 1: DOM-based detection (check if fake ad div is hidden)
+                // Method 1: DOM-based detection with multiple ad class names
                 const testAd = document.createElement('div');
                 testAd.innerHTML = '&nbsp;';
-                testAd.className = 'adsbox ad-placement ad-container adsbygoogle';
+                testAd.className = 'ad ads adsbox ad-placement ad-container adsbygoogle advertisement';
                 testAd.style.height = '1px';
                 testAd.style.width = '1px';
                 testAd.style.position = 'absolute';
@@ -47,36 +47,73 @@ export default function AdBlockDetector() {
                     computedStyle.visibility === 'hidden';
 
                 if (isHidden) {
-                    console.log('[AdBlockDetector] Method 1: Fake ad div is hidden');
+                    console.log('[AdBlockDetector] ✓ Method 1: Fake ad div is hidden');
                     detectionCount++;
                 }
 
                 document.body.removeChild(testAd);
 
-                // Method 2: Try to fetch a known ad network domain
+                // Method 2: Try to create ad-like iframe
+                const adFrame = document.createElement('iframe');
+                adFrame.src = 'about:blank';
+                adFrame.className = 'ad-frame';
+                adFrame.style.width = '1px';
+                adFrame.style.height = '1px';
+                adFrame.style.position = 'absolute';
+                adFrame.style.top = '-9999px';
+                document.body.appendChild(adFrame);
+
+                await new Promise(resolve => setTimeout(resolve, 50));
+
+                if (adFrame.offsetHeight === 0 || adFrame.offsetParent === null) {
+                    console.log('[AdBlockDetector] ✓ Method 2: Ad iframe blocked');
+                    detectionCount++;
+                }
+
+                document.body.removeChild(adFrame);
+
+                // Method 3: Try to fetch a known ad network domain
                 try {
                     await fetch('https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js', {
                         method: 'HEAD',
                         mode: 'no-cors',
                         cache: 'no-store'
                     });
-                    // If we reach here, the request was allowed
-                    console.log('[AdBlockDetector] Method 2: Ad network fetch allowed');
+                    console.log('[AdBlockDetector] ✗ Method 3: Ad network fetch allowed');
                 } catch {
-                    console.log('[AdBlockDetector] Method 2: Ad network fetch blocked');
+                    console.log('[AdBlockDetector] ✓ Method 3: Ad network fetch blocked');
                     detectionCount++;
                 }
 
-                // Method 3: Check for common ad blocker JavaScript signatures
+                // Method 4: Check for common ad blocker JavaScript signatures
                 if ((window as any).blockAdBlock ||
                     (window as any).canRunAds === false ||
+                    (window as any).__firefox__ ||
                     (document as any).AdBlockDetected) {
-                    console.log('[AdBlockDetector] Method 3: JS signature detected');
+                    console.log('[AdBlockDetector] ✓ Method 4: JS signature detected');
                     detectionCount++;
                 }
 
-                const hasAdBlocker = detectionCount >= requiredDetections;
-                console.log('[AdBlockDetector] Detection count:', detectionCount, '/', requiredDetections, '→', hasAdBlocker ? 'BLOCKED' : 'ALLOWED');
+                // Method 5: Try to access a bait element
+                const bait = document.createElement('div');
+                bait.setAttribute('class', 'pub_300x250 pub_300x250m pub_728x90 text-ad textAd text_ad text_ads text-ads text-ad-links');
+                bait.setAttribute('style', 'width: 1px !important; height: 1px !important; position: absolute !important; left: -10000px !important; top: -1000px !important;');
+                document.body.appendChild(bait);
+
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                if (window.getComputedStyle(bait).display === 'none' ||
+                    bait.offsetHeight === 0 ||
+                    bait.offsetParent === null) {
+                    console.log('[AdBlockDetector] ✓ Method 5: Bait element blocked');
+                    detectionCount++;
+                }
+
+                document.body.removeChild(bait);
+
+                // Lower threshold - if ANY 1 method detects, we block
+                const hasAdBlocker = detectionCount >= 1;
+                console.log('[AdBlockDetector] Detection count:', detectionCount, '/', totalMethods, '→', hasAdBlocker ? '🔴 BLOCKED' : '✅ ALLOWED');
 
                 setIsBlocked(hasAdBlocker);
                 setIsChecking(false);
