@@ -3028,12 +3028,6 @@ function AdsTab({ settings, fetchSettings }: any) {
                 </div>
                 <div className="flex gap-3">
                     <button
-                        onClick={() => setShowGlobalScript(true)}
-                        className="px-4 py-3 bg-purple-600/20 border border-purple-500/30 text-purple-400 rounded-xl font-bold flex items-center gap-2 hover:bg-purple-600/30 transition"
-                    >
-                        📢 Global Scripts
-                    </button>
-                    <button
                         onClick={toggleDebugMode}
                         className={`px-4 py-3 rounded-xl font-bold transition flex items-center gap-2 border ${isDebugMode
                             ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/50'
@@ -3517,8 +3511,8 @@ function AdsTab({ settings, fetchSettings }: any) {
                                     <button
                                         onClick={() => setScriptAdForm({ ...scriptAdForm, status: scriptAdForm.status === 'active' ? 'paused' : 'active' })}
                                         className={`w-full py-3 rounded-xl font-bold transition ${scriptAdForm.status === 'active'
-                                                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                                : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30'
+                                            ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                            : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30'
                                             }`}
                                     >
                                         {scriptAdForm.status === 'active' ? '✅ Active' : '⏸️ Paused'}
