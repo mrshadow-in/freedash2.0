@@ -8,6 +8,22 @@ export default function AdBlockDetector() {
     useEffect(() => {
         const detectAdBlock = async () => {
             try {
+                // Check if user is admin - admins can use ad blockers
+                const userStr = localStorage.getItem('user');
+                if (userStr) {
+                    try {
+                        const user = JSON.parse(userStr);
+                        if (user?.role === 'admin') {
+                            console.log('[AdBlockDetector] Admin detected - bypassing check ✅');
+                            setIsBlocked(false);
+                            setIsChecking(false);
+                            return;
+                        }
+                    } catch (e) {
+                        console.warn('[AdBlockDetector] Failed to parse user data', e);
+                    }
+                }
+
                 let detectionCount = 0;
                 const requiredDetections = 2; // Need at least 2 methods to confirm
 
@@ -39,7 +55,7 @@ export default function AdBlockDetector() {
 
                 // Method 2: Try to fetch a known ad network domain
                 try {
-                    const adTest = await fetch('https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js', {
+                    await fetch('https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js', {
                         method: 'HEAD',
                         mode: 'no-cors',
                         cache: 'no-store'

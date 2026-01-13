@@ -9,7 +9,7 @@ const SystemIntegrityCheck = () => {
     const [d1, setD1] = useState<string>('...'); // Line 1
     const [d2, setD2] = useState<string>('...'); // Line 2
 
-    // Base64 Encoded Branding Strings
+  
 
     const _s1_root = "RnJlZS1EYXNoLSAyMDI1IC0g";
 
