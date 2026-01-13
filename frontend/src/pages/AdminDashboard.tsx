@@ -203,7 +203,10 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
         smtpUsername: '',
         smtpPassword: '',
         smtpFromEmail: '',
+        smtpPassword: '',
+        smtpFromEmail: '',
         smtpFromName: 'Panel',
+        appUrl: '', // Dashboard Link
         afkRotationInterval: 30,
         afkSaturationMode: false,
         billingEnabled: false,
@@ -243,7 +246,9 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                 smtpUsername: settings.smtp?.username || '',
                 smtpPassword: settings.smtp?.password || '',
                 smtpFromEmail: settings.smtp?.fromEmail || '',
+                smtpFromEmail: settings.smtp?.fromEmail || '',
                 smtpFromName: settings.smtp?.fromName || 'Panel',
+                appUrl: settings.smtp?.appUrl || '',
                 afkRotationInterval: settings.afk?.rotationInterval || 30,
                 afkSaturationMode: settings.afk?.saturationMode || false,
                 billingEnabled: settings.billing?.enabled ?? false,
@@ -300,7 +305,11 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                     username: formData.smtpUsername,
                     password: formData.smtpPassword,
                     fromEmail: formData.smtpFromEmail,
-                    fromName: formData.smtpFromName
+                    username: formData.smtpUsername,
+                    password: formData.smtpPassword,
+                    fromEmail: formData.smtpFromEmail,
+                    fromName: formData.smtpFromName,
+                    appUrl: formData.appUrl,
                 });
             } else if (type === 'billing') {
                 await api.put('/admin/settings/billing', {
@@ -597,7 +606,13 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                         <button
                             onClick={async () => {
                                 try {
-                                    await api.post('/admin/settings/smtp/test');
+                                    await api.post('/admin/settings/smtp/test', {
+                                        host: formData.smtpHost,
+                                        port: formData.smtpPort,
+                                        secure: formData.smtpSecure,
+                                        username: formData.smtpUsername,
+                                        password: formData.smtpPassword
+                                    });
                                     toast.success('SMTP connection successful!');
                                 } catch (error: any) {
                                     toast.error(error.response?.data?.message || 'Connection failed');

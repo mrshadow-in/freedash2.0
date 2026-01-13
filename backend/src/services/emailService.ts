@@ -38,14 +38,22 @@ export const sendEmail = async (to: string, subject: string, html: string, text?
     }
 };
 
-export const testSmtpConnection = async () => {
+export const testSmtpConnection = async (configOverride?: any) => {
     try {
-        const settings = await getSettings();
-        const smtp = (settings?.smtp as any);
+        let smtp;
+
+        if (configOverride) {
+            smtp = configOverride;
+        } else {
+            const settings = await getSettings();
+            smtp = (settings?.smtp as any);
+        }
 
         if (!smtp || !smtp.host) {
             throw new Error('SMTP not configured');
         }
+
+        console.log(`📧 [SMTP Test] Connecting to ${smtp.host}:${smtp.port} (SSL: ${smtp.secure})...`);
 
         const transporter = nodemailer.createTransport({
             host: smtp.host,

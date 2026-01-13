@@ -88,8 +88,11 @@ export const updateThemeSettings = async (req: Request, res: Response) => {
 
 // Update SMTP settings
 export const updateSmtpSettings = async (req: Request, res: Response) => {
+    console.log('📝 [SMTP Update] Request received');
     try {
-        const { host, port, secure, username, password, fromEmail, fromName } = req.body;
+        const { host, port, secure, username, password, fromEmail, fromName, appUrl } = req.body;
+        console.log(`📝 [SMTP Update] Updating settings for host: ${host}, port: ${port}`);
+        
         const currentSettings = await getSettingsOrCreate();
 
         const settings = await prisma.settings.update({
@@ -97,6 +100,14 @@ export const updateSmtpSettings = async (req: Request, res: Response) => {
             data: {
                 smtp: {
                     host,
+                    port: Number(port),
+                    secure: Boolean(secure),
+                    username,
+                    password,
+                    fromEmail,
+                    fromName,
+                    appUrl // Store the Dashboard Link
+                }
                     port,
                     secure,
                     username,
@@ -229,10 +240,25 @@ export const toggleBot = async (req: Request, res: Response) => {
 // Test SMTP connection
 export const testSmtpConnection = async (req: Request, res: Response) => {
     try {
+        // If credentials are provided in body, use them. Otherwise load from DB.
+        const { host, port, secure, username, password } = req.body;
+        let config = null;
+
+        if (host && port) {
+             config = {
+                host,
+                port: Number(port),
+                secure: Boolean(secure),
+                username,
+                password
+            };
+        }
+
         const { testSmtpConnection: testConnection } = await import('../services/emailService');
-        const result = await testConnection();
+        const result = await testConnection(config);
         res.json(result);
     } catch (error: any) {
+        console.error('❌ [SMTP Test] Error:', error.message);
         res.status(500).json({ message: error.message });
     }
 };

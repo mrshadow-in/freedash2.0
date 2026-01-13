@@ -36,7 +36,14 @@ router.post('/forgot-password', async (req, res) => {
 
         const settings = await prisma.settings.findFirst();
         const panelName = settings?.panelName || 'Panel';
-        const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
+
+        // 🔹 Use configured Dashboard URL, or fallback to Env, or fallback to Localhost
+        const smtpSettings = (settings?.smtp as any) || {};
+        const baseUrl = smtpSettings.appUrl || process.env.FRONTEND_URL || 'http://localhost:5173';
+
+        // Ensure no trailing slash
+        const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+        const resetLink = `${cleanBaseUrl}/reset-password?token=${token}`;
 
         // Dark themed email with reset button
         await sendEmail(
