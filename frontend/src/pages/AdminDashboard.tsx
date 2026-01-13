@@ -3021,8 +3021,8 @@ function AdsTab({ settings, fetchSettings }: any) {
         <div className="space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
-                        🎯 Unlimited Ads Engine
+                    <h2 className="text-2xl font-bold bg-gradient-to-r from-red-500 to-yellow-500 bg-clip-text text-transparent">
+                        🎯 Unlimited Ads Engine V2 (DEBUG)
                     </h2>
                     <p className="text-gray-400 mt-1">Manage positions, priorities, and unlimited dashboard ad zones</p>
                 </div>
@@ -3038,10 +3038,11 @@ function AdsTab({ settings, fetchSettings }: any) {
                         {isDebugMode ? 'Hide Positions' : 'Show Positions'}
                     </button>
                     <button
+                        id="debug-script-ad-btn"
                         onClick={() => setShowScriptAdModal(true)}
-                        className="px-4 py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-purple-500/20 hover:opacity-90 transition"
+                        className="px-6 py-3 bg-red-600 text-white rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-red-500/50 hover:bg-red-700 transition"
                     >
-                        ➕ Add Script Ad
+                        ➕ Add Script Ad (DEBUG)
                     </button>
                     <button
                         onClick={async () => {
