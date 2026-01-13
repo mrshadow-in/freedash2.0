@@ -217,6 +217,21 @@ export const getPteroServer = async (serverId: number) => {
     return (response.data as any).attributes;
 };
 
+export const getPteroServersByUserId = async (userId: number) => {
+    const config = await getPteroConfig();
+
+    const response = await axios.get(
+        `${config.url}/api/application/servers?filter[owner_id]=${userId}&include=allocations,node`,
+        {
+            headers: {
+                Authorization: `Bearer ${config.key}`,
+                Accept: 'application/vnd.pterodactyl.v1+json'
+            }
+        }
+    );
+    return (response.data as any).data.map((item: any) => item.attributes);
+};
+
 export const updatePteroServerBuild = async (
     serverId: number,
     memory: number,

@@ -105,7 +105,7 @@ export const createServer = async (req: AuthRequest, res: Response) => {
                     nestId,
                     plan.ramMb,
                     plan.diskMb,
-                    plan.cpuCores * 100, // Ptero uses % (100 = 1 core)
+                    plan.cpuPercent, // Use explicit % from plan
                     locationId
                 );
             } catch (err: any) {
@@ -158,7 +158,7 @@ export const createServer = async (req: AuthRequest, res: Response) => {
                     name: name,
                     ramMb: plan.ramMb,
                     diskMb: plan.diskMb,
-                    cpuCores: plan.cpuCores,
+                    cpuCores: Math.ceil(plan.cpuPercent / 100),
                     serverIp,
                     status: 'installing'
                 }
@@ -211,6 +211,96 @@ export const createServer = async (req: AuthRequest, res: Response) => {
 
 export const getMyServers = async (req: AuthRequest, res: Response) => {
     try {
+        const userId = req.user!.userId;
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // --- PTERODACTYL SYNC LOGIC ---
+        if (user.pteroUserId) {
+            try {
+                const { getPteroServersByUserId } = await import('../services/pterodactyl');
+                const pteroServers = await getPteroServersByUserId(user.pteroUserId);
+
+                for (const pServer of pteroServers) {
+                    const existing = await prisma.server.findFirst({
+                        where: { pteroServerId: pServer.id }
+                    });
+
+                    // Parse Specs
+                    const ramMb = pServer.limits.memory === 0 ? 1024 : pServer.limits.memory; // 0 = unlimited, maybe default to 1GB to be safe for billing
+                    const diskMb = pServer.limits.disk === 0 ? 5120 : pServer.limits.disk;
+                    const cpuCores = pServer.limits.cpu === 0 ? 1 : Math.ceil(pServer.limits.cpu / 100);
+
+                    if (existing) {
+                        // Update specs if changed (Fixes the "976GB" issue if it was a sync error)
+                        if (existing.ramMb !== ramMb || existing.diskMb !== diskMb || existing.status !== pServer.status) {
+                            await prisma.server.update({
+                                where: { id: existing.id },
+                                data: {
+                                    ramMb: ramMb,
+                                    diskMb: diskMb,
+                                    cpuCores: cpuCores,
+                                    status: pServer.suspended ? 'suspended' : 'active', // simplified status
+                                    name: pServer.name // Sync name too? Maybe optional
+                                }
+                            });
+                        }
+                    } else {
+                        // Import New Server
+                        console.log(`[Sync] Importing server ${pServer.name} (${pServer.id})`);
+
+                        // Find a plan that fits or default
+                        let plan = await prisma.plan.findFirst({
+                            where: {
+                                ramMb: { gte: ramMb },
+                                diskMb: { gte: diskMb }
+                            },
+                            orderBy: { priceCoins: 'asc' }
+                        });
+
+                        if (!plan) {
+                            // Fallback to any plan
+                            plan = await prisma.plan.findFirst();
+                        }
+
+                        if (plan) {
+                            // Extract IP
+                            const allocations = pServer.relationships?.allocations?.data || [];
+                            const defaultAlloc = allocations.find((a: any) => a.attributes.is_default) || allocations[0];
+                            let serverIp = 'Pending';
+                            if (defaultAlloc) {
+                                serverIp = `${defaultAlloc.attributes.ip}:${defaultAlloc.attributes.port}`;
+                            }
+
+                            await prisma.server.create({
+                                data: {
+                                    ownerId: userId,
+                                    pteroServerId: pServer.id,
+                                    pteroIdentifier: pServer.identifier,
+                                    planId: plan.id,
+                                    name: pServer.name,
+                                    ramMb,
+                                    diskMb,
+                                    cpuCores,
+                                    serverIp,
+                                    status: pServer.suspended ? 'suspended' : 'active'
+                                }
+                            });
+                        }
+                    }
+                }
+
+            } catch (err) {
+                console.error('[Sync] Failed to sync with Pterodactyl:', err);
+                // Continue to just return info from DB
+            }
+        }
+
+        // --- END SYNC LOGIC ---
+
         const servers = await prisma.server.findMany({
             where: {
                 ownerId: req.user!.userId,
@@ -219,60 +309,9 @@ export const getMyServers = async (req: AuthRequest, res: Response) => {
             include: { plan: true }
         });
 
-        // Sync Installing Status
-        // Sync Installing Status and Missing IP
-        const updatedServers = await Promise.all(servers.map(async (server: any) => {
-            // Check if we need to sync: status is installing OR ip is Pending
-            if (server.status === 'installing' || server.serverIp === 'Pending') {
-                try {
-                    const pteroData = await getPteroServer(server.pteroServerId);
-
-                    // Extract latest IP
-                    // Extract latest IP
-                    const allocations = pteroData.relationships?.allocations?.data || [];
-                    const node = pteroData.relationships?.node?.attributes;
-                    const primaryAllocation = allocations.find((a: any) => a.attributes.is_default) || allocations[0];
-
-                    let ipToUse = 'Pending';
-                    let portToUse = '';
-
-                    if (primaryAllocation) {
-                        ipToUse = primaryAllocation.attributes.ip;
-                        portToUse = primaryAllocation.attributes.port;
-
-                        if (ipToUse === '0.0.0.0' && node?.fqdn) {
-                            ipToUse = node.fqdn;
-                        }
-                    }
-
-                    const newIp = portToUse ? `${ipToUse}:${portToUse}` : 'Pending';
-
-                    let newStatus = server.status;
-
-                    if (pteroData.status === null) newStatus = 'active';
-                    else if (pteroData.status === 'suspended') newStatus = 'suspended';
-
-                    // Only update if changed
-                    if (newStatus !== server.status || (newIp !== 'Pending' && newIp !== server.serverIp)) {
-                        const updated = await prisma.server.update({
-                            where: { id: server.id },
-                            data: {
-                                status: newStatus,
-                                serverIp: newIp
-                            },
-                            include: { plan: true }
-                        });
-                        return updated;
-                    }
-                } catch (err) {
-                    console.error(`Failed to sync status for server ${server.id}`, err);
-                }
-            }
-            return server;
-        }));
-
-        res.json(updatedServers);
+        res.json(servers);
     } catch (error) {
+        console.error('Get Servers Error:', error);
         res.status(500).json({ message: 'Error fetching servers' });
     }
 };
