@@ -92,7 +92,7 @@ export const updateSmtpSettings = async (req: Request, res: Response) => {
     try {
         const { host, port, secure, username, password, fromEmail, fromName, appUrl } = req.body;
         console.log(`📝 [SMTP Update] Updating settings for host: ${host}, port: ${port}`);
-        
+
         const currentSettings = await getSettingsOrCreate();
 
         const settings = await prisma.settings.update({
@@ -108,20 +108,14 @@ export const updateSmtpSettings = async (req: Request, res: Response) => {
                     fromName,
                     appUrl // Store the Dashboard Link
                 }
-                    port,
-                    secure,
-                    username,
-                    password,
-                    fromEmail,
-                    fromName
-                }
             }
         });
-        await invalidateSettingsCache();
-        res.json({ message: 'SMTP settings updated', settings });
-    } catch (error) {
-        res.status(500).json({ message: 'Failed to update SMTP settings' });
-    }
+    });
+    await invalidateSettingsCache();
+    res.json({ message: 'SMTP settings updated', settings });
+} catch (error) {
+    res.status(500).json({ message: 'Failed to update SMTP settings' });
+}
 };
 
 // Update Bot settings (rewards and discord config)
@@ -245,7 +239,7 @@ export const testSmtpConnection = async (req: Request, res: Response) => {
         let config = null;
 
         if (host && port) {
-             config = {
+            config = {
                 host,
                 port: Number(port),
                 secure: Boolean(secure),
