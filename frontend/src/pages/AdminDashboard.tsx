@@ -158,7 +158,7 @@ const AdminDashboard = () => {
 
                     {activeTab === 'plans' && <PlansTab plans={plans} fetchPlans={fetchPlans} loading={loading} />}
                     {activeTab === 'codes' && <CodesTab codes={codes} fetchCodes={fetchCodes} loading={loading} />}
-                    {activeTab === 'ads' && <AdsTab />}
+                    {activeTab === 'ads' && <AdsTab settings={settings} fetchSettings={fetchSettings} />}
                     {activeTab === 'customize' && <CustomizeTab refreshTheme={refreshTheme} />}
                     {activeTab === 'bot' && <BotTab settings={settings} fetchSettings={fetchSettings} />}
 
@@ -518,28 +518,7 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                 </div>
             </div>
 
-            {/* Global Ads & Scripts */}
-            <div className="border border-white/10 rounded-xl p-6 mb-6">
-                <h3 className="text-xl font-bold mb-4">📢 Global Ad Scripts</h3>
-                <p className="text-sm text-gray-400 mb-4">Inject raw HTML/JS (Popunders, Analytics, etc) into every page.</p>
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm text-gray-400 mb-2">Global Script Code (Header/Body)</label>
-                        <textarea
-                            value={formData.globalAdScript || ''}
-                            onChange={(e) => setFormData({ ...formData, globalAdScript: e.target.value })}
-                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white font-mono text-xs h-32"
-                            placeholder="<script src='...'></script>"
-                        />
-                    </div>
-                    <button
-                        onClick={() => saveSettings('ads-global')}
-                        className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg hover:opacity-90 transition"
-                    >
-                        Save Ad Scripts
-                    </button>
-                </div>
-            </div>
+
 
             {/* SMTP Email Configuration */}
             <div className="border border-white/10 rounded-xl p-6">
@@ -2824,7 +2803,7 @@ function SocialTab({ settings, fetchSettings }: any) {
 }
 
 // Ads Management Tab
-function AdsTab() {
+function AdsTab({ settings, fetchSettings }: any) {
     const { isDebugMode, toggleDebugMode } = useAdStore();
     const [ads, setAds] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -2832,6 +2811,8 @@ function AdsTab() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState({ positionIndex: 0, priority: 0 });
     const [targetAdId, setTargetAdId] = useState<string | null>(null);
+    const [globalAdScript, setGlobalAdScript] = useState('');
+    const [showGlobalScript, setShowGlobalScript] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [showCreate, setShowCreate] = useState(false);
     const [newAd, setNewAd] = useState({
@@ -2897,6 +2878,25 @@ function AdsTab() {
     useEffect(() => {
         fetchAds();
     }, []);
+
+    useEffect(() => {
+        if (settings?.globalAdScript) {
+            setGlobalAdScript(settings.globalAdScript);
+        }
+    }, [settings]);
+
+    const saveGlobalScript = async () => {
+        try {
+            await api.put('/admin/settings/ads', {
+                globalAdScript
+            });
+            toast.success('Global scripts saved!');
+            fetchSettings();
+            setShowGlobalScript(false);
+        } catch (error) {
+            toast.error('Failed to save global scripts');
+        }
+    };
 
     const handleSaveEdit = async (id: string) => {
         try {
@@ -2977,6 +2977,12 @@ function AdsTab() {
                     <p className="text-gray-400 mt-1">Manage positions, priorities, and unlimited dashboard ad zones</p>
                 </div>
                 <div className="flex gap-3">
+                    <button
+                        onClick={() => setShowGlobalScript(true)}
+                        className="px-4 py-3 bg-purple-600/20 border border-purple-500/30 text-purple-400 rounded-xl font-bold flex items-center gap-2 hover:bg-purple-600/30 transition"
+                    >
+                        📢 Global Scripts
+                    </button>
                     <button
                         onClick={toggleDebugMode}
                         className={`px-4 py-3 rounded-xl font-bold transition flex items-center gap-2 border ${isDebugMode
