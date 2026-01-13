@@ -88,10 +88,8 @@ export const updateThemeSettings = async (req: Request, res: Response) => {
 
 // Update SMTP settings
 export const updateSmtpSettings = async (req: Request, res: Response) => {
-    console.log('📝 [SMTP Update] Request received');
     try {
         const { host, port, secure, username, password, fromEmail, fromName, appUrl } = req.body;
-        console.log(`📝 [SMTP Update] Updating settings for host: ${host}, port: ${port}`);
 
         const currentSettings = await getSettingsOrCreate();
 
@@ -251,7 +249,6 @@ export const testSmtpConnection = async (req: Request, res: Response) => {
         const result = await testConnection(config);
         res.json(result);
     } catch (error: any) {
-        console.error('❌ [SMTP Test] Error:', error.message);
         res.status(500).json({ message: error.message });
     }
 };
@@ -937,7 +934,6 @@ export const createUserByAdmin = async (req: Request, res: Response) => {
         try {
             const pteroUser = await createPteroUser(email, username, password);
             pteroUserId = pteroUser.id;
-            console.log(`✅ Pterodactyl user created for ${email} with ID: ${pteroUserId}`);
         } catch (pteroError: any) {
             console.error('⚠️  Failed to create Pterodactyl user:', pteroError.message);
             // Continue with user creation even if Pterodactyl fails

@@ -77,13 +77,13 @@ export const login = async (req: Request, res: Response) => {
         const accessToken = jwt.sign(
             { userId: user.id, role: user.role },
             ENV.JWT_SECRET,
-            { expiresIn: '7d' }
+            { expiresIn: '365d' }
         );
 
         const refreshToken = jwt.sign(
             { userId: user.id },
             ENV.JWT_REFRESH_SECRET,
-            { expiresIn: '7d' }
+            { expiresIn: '365d' }
         );
 
         // Update last active
@@ -119,7 +119,7 @@ export const refreshToken = async (req: Request, res: Response) => {
         const newAccessToken = jwt.sign(
             { userId: user.id, role: user.role },
             ENV.JWT_SECRET,
-            { expiresIn: '7d' }
+            { expiresIn: '365d' }
         );
 
         res.json({ accessToken: newAccessToken });

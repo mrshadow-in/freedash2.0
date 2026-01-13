@@ -9,7 +9,7 @@ import { ENV } from '../config/env';
 passport.use(new DiscordStrategy({
     clientID: ENV.DISCORD_CLIENT_ID || '',
     clientSecret: ENV.DISCORD_CLIENT_SECRET || '',
-    callbackURL: ENV.DISCORD_CALLBACK_URL || 'http://localhost:3000/auth/discord/callback',
+    callbackURL: ENV.DISCORD_CALLBACK_URL || '',
     scope: ['identify', 'email']
 },
     async (accessToken: string, refreshToken: string, profile: any, done: any) => {
@@ -76,16 +76,17 @@ export const discordCallback = (req: Request, res: Response, next: NextFunction)
         }
 
         // Generate JWT tokens
+        // Generate JWT tokens
         const accessToken = jwt.sign(
-            { id: user.id, role: user.role },
+            { userId: user.id, role: user.role },
             ENV.JWT_SECRET,
-            { expiresIn: '15m' }
+            { expiresIn: '365d' }
         );
 
         const refreshToken = jwt.sign(
-            { id: user.id },
+            { userId: user.id },
             ENV.JWT_REFRESH_SECRET,
-            { expiresIn: '7d' }
+            { expiresIn: '365d' }
         );
 
         // Redirect to frontend with tokens
