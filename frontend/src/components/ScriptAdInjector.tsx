@@ -11,45 +11,43 @@ export default function ScriptAdInjector() {
                 // Determine page type
                 let pageType = 'dashboard';
                 if (location.pathname.startsWith('/server/')) pageType = 'server';
-                else if (location.pathname === '/afk') pageType = 'afk';
+                else if (location.pathname.includes('/afk')) pageType = 'afk';
+
+                console.log('[ScriptAdInjector] Current page:', location.pathname, '→ Detected as:', pageType);
 
                 // Fetch script ads
                 const { data: ads } = await api.get('/ads?type=script');
+                console.log('[ScriptAdInjector] Fetched ads:', ads);
 
                 // Filter relevant ads
-                // Note: database stores JSON array, so we check if it includes our pageType
-                const relevantAds = ads.filter((ad: any) =>
-                    ad.pageTargets &&
-                    Array.isArray(ad.pageTargets) &&
-                    ad.pageTargets.includes(pageType) &&
-                    ad.status === 'active'
-                );
+                const relevantAds = ads.filter((ad: any) => {
+                    const hasTargets = ad.pageTargets && Array.isArray(ad.pageTargets);
+                    const matchesPage = hasTargets && ad.pageTargets.includes(pageType);
+                    const isActive = ad.status === 'active';
+
+                    console.log(`[ScriptAdInjector] Ad "${ad.title}":`, {
+                        pageTargets: ad.pageTargets,
+                        matchesPage,
+                        isActive,
+                        willInject: matchesPage && isActive
+                    });
+
+                    return matchesPage && isActive;
+                });
+
+                console.log('[ScriptAdInjector] Relevant ads to inject:', relevantAds.length);
 
                 // Sort by priority (desc)
                 relevantAds.sort((a: any, b: any) => (b.priority || 0) - (a.priority || 0));
 
                 relevantAds.forEach((ad: any) => {
-                    // Prevent duplicates per session/page load. 
-                    // Note: If user navigates away and back, we might re-inject if we don't track globally.
-                    // But usually ad networks handle deduplication or we want them to re-fire on new page view.
-                    // For SPA, "page view" is route change.
-                    // If we want to strictly run ONCE per app session for some, we'd need better tracking.
-                    // For now, allow re-injection on route change if the script logic allows it, 
-                    // BUT my code uses 'injectedScriptsRef' which persists for component lifetime.
-                    // Since this component will likely be at App root, it persists.
-                    // So we need to reset the ref on route change? Or keep it?
-                    // Usually ads should show on every "page view".
-                    // So we should NOT prevent re-injection if the route changed.
-                    // But we should prevent DOUBLE injection on the SAME route change.
-
-                    // Actually, if we use UUIDs for element IDs, we can check existence in DOM.
-
-                    // Let's rely on ad networks to handle frequency capping.
-                    // We just inject. But we check current DOM to avoid stacking if React re-renders affect us.
-                    // React Strict Mode might run effect twice.
-
                     const existingId = `script-ad-${ad.id}`;
-                    if (document.getElementById(existingId)) return;
+                    if (document.getElementById(existingId)) {
+                        console.log('[ScriptAdInjector] Ad already injected:', ad.title);
+                        return;
+                    }
+
+                    console.log('[ScriptAdInjector] Injecting ad:', ad.title, 'to', ad.scriptLocation);
 
                     // Parse the raw code to find script tags
                     const container = document.createElement('div');
@@ -68,23 +66,21 @@ export default function ScriptAdInjector() {
                         newScript.innerHTML = oldScript.innerHTML;
                         newScript.id = `${existingId}-${index}`;
                         newScript.dataset.adId = ad.id;
+                        newScript.dataset.adName = ad.title;
 
                         // Inject
                         if (ad.scriptLocation === 'head') {
                             document.head.appendChild(newScript);
+                            console.log('[ScriptAdInjector] ✅ Injected to <head>:', ad.title);
                         } else {
                             document.body.appendChild(newScript);
+                            console.log('[ScriptAdInjector] ✅ Injected to <body>:', ad.title);
                         }
                     });
-
-                    // Also handle non-script tags (like iframes or tracking pixels img)
-                    // If rawCode has other elements, we might want to append them too?
-                    // User prompt specifically said "Script Ad", but "Popunder" checks out.
-                    // Usually popunder is just JS.
                 });
 
             } catch (error) {
-                console.error('Failed to inject script ads', error);
+                console.error('[ScriptAdInjector] ❌ Error:', error);
             }
         };
 
