@@ -189,7 +189,7 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
     return (
         <div className={`flex flex-col lg:flex-row gap-6 ${isFullscreen ? 'fixed inset-0 z-50 bg-[#0c0229] p-4 h-screen w-screen' : 'min-h-[800px]'}`}>
             {/* Terminal Section */}
-            <div className={`flex-1 flex flex-col bg-[#0f111a] rounded-xl overflow-hidden border border-white/5 shadow-2xl min-w-0 ring-1 ring-white/5 ${isFullscreen ? 'h-full' : 'min-h-[600px]'}`}>
+            <div className={`flex-1 flex flex-col bg-[#0f111a] rounded-xl overflow-hidden border border-white/5 shadow-2xl min-w-0 ring-1 ring-white/5 ${isFullscreen ? 'h-full' : 'min-h-[800px]'}`}>
                 {/* Header with Status */}
                 <div className="flex items-center justify-between px-5 py-3 bg-[#13161f] border-b border-white/5 backdrop-blur-sm">
                     <div className="flex items-center gap-2">
@@ -200,7 +200,7 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
                     {/* Fullscreen Toggle */}
                     <button
                         onClick={() => setIsFullscreen(!isFullscreen)}
-                        className="lg:hidden flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-gray-300 bg-white/10 hover:bg-white/20 hover:text-white rounded-lg transition border border-white/10"
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-gray-300 bg-white/10 hover:bg-white/20 hover:text-white rounded-lg transition border border-white/10"
                     >
                         {isFullscreen ? (
                             <>
