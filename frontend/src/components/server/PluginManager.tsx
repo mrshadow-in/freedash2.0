@@ -59,7 +59,7 @@ const MODRINTH_POPULAR = [
         author: 'MilkBowl',
         downloads: 25000000,
         description: 'Vault is a Permissions, Chat, & Economy API',
-        icon: 'https://cdn.modrinth.com/data/H5uVvGLf/icon.png',
+        icon: 'https://cdn.modrinth.com/data/rj9SgaYL/baaa364f5fe1df363b363f6c37f0ea63387643e2_96.webp',
         provider: 'modrinth',
         premium: false
     },
@@ -69,7 +69,7 @@ const MODRINTH_POPULAR = [
         author: 'EssentialsX Team',
         downloads: 35000000,
         description: 'The essential plugin suite for Minecraft servers',
-        icon: 'https://cdn.modrinth.com/data/hXiIvTyT/icon.png',
+        icon: 'https://cdn.modrinth.com/data/hXiIvTyT/e621675be1d0421b43b65ab8082507532d937009_96.webp',
         provider: 'modrinth',
         premium: false
     },
@@ -79,7 +79,7 @@ const MODRINTH_POPULAR = [
         author: 'sk89q',
         downloads: 40000000,
         description: 'In-game Minecraft map editor - build faster!',
-        icon: 'https://cdn.modrinth.com/data/1u6JkXh5/icon.png',
+        icon: 'https://cdn.modrinth.com/data/1u6JkXh5/30698991048ced77e60c4e8284007d3782f2e6a3_96.webp',
         provider: 'modrinth',
         premium: false
     },
@@ -199,12 +199,12 @@ const PluginManager = ({ server }: PluginManagerProps) => {
                         <div className="flex items-center gap-3 bg-[#0d1117] p-1.5 rounded-xl border border-white/10 shadow-lg">
                             {/* Version Selector */}
                             <div className="relative">
-                                <div className="px-4 py-2 flex items-center gap-2 bg-[#161b22] rounded-lg border border-white/10 hover:border-green-500/30 transition-all group">
-                                    <Filter size={14} className="text-green-500" />
+                                <div className="px-4 py-2.5 flex items-center gap-2 bg-[#161b22] rounded-lg border border-white/10 hover:border-green-500/30 transition-all group">
+                                    <Filter size={16} className="text-green-500" />
                                     <select
                                         value={selectedVersion}
                                         onChange={e => setSelectedVersion(e.target.value)}
-                                        className="bg-transparent text-sm font-semibold text-white outline-none cursor-pointer pr-8 appearance-none"
+                                        className="bg-transparent text-base font-bold text-white outline-none cursor-pointer pr-8 appearance-none min-w-[80px]"
                                         style={{
                                             background: 'transparent',
                                             WebkitAppearance: 'none',
