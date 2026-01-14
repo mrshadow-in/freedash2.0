@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import { useAuthStore } from '../store/authStore';
-import { useAuthStore } from '../store/authStore';
+
 import ServerCard from '../components/ServerCard';
 import { Server, Plus, Coins, Activity, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
