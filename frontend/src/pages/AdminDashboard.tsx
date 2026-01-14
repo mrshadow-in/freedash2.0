@@ -218,7 +218,12 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
         globalAdScript: '',
         buttonAdsEnabled: false,
         buttonAdScript: '',
-        buttonAdCooldown: 10
+        buttonAdCooldown: 10,
+        adScript_createServer: '',
+        adScript_afkStart: '',
+        adScript_serverStart: '',
+        adScript_serverStop: '',
+        adScript_serverRenew: ''
     });
 
     useEffect(() => {
@@ -263,6 +268,13 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                 buttonAdsEnabled: settings.buttonAdsEnabled || false,
                 buttonAdScript: settings.buttonAdScript || '',
                 buttonAdCooldown: settings.buttonAdCooldown || 10,
+                // Granular
+                adScript_createServer: settings.adScript_createServer || '',
+                adScript_afkStart: settings.adScript_afkStart || '',
+                adScript_serverStart: settings.adScript_serverStart || '',
+                adScript_serverStop: settings.adScript_serverStop || '',
+                adScript_serverRenew: settings.adScript_serverRenew || '', // Fallback
+
                 webhook: ''
             });
         }
@@ -333,7 +345,13 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                     globalAdScript: formData.globalAdScript,
                     buttonAdsEnabled: formData.buttonAdsEnabled,
                     buttonAdScript: formData.buttonAdScript,
-                    buttonAdCooldown: formData.buttonAdCooldown
+                    buttonAdCooldown: formData.buttonAdCooldown,
+                    // Granular Scripts
+                    adScript_createServer: formData.adScript_createServer,
+                    adScript_afkStart: formData.adScript_afkStart,
+                    adScript_serverStart: formData.adScript_serverStart,
+                    adScript_serverStop: formData.adScript_serverStop,
+                    adScript_serverRenew: formData.adScript_serverRenew
                 });
             }
             await refreshTheme(); // Instant UI update
@@ -424,55 +442,125 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
 
             {/* Global Button Ads System */}
             <div className="border border-white/10 rounded-xl p-6">
-                <h3 className="text-xl font-bold mb-4 bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">🖱️ Global Button Ads System</h3>
+                <h3 className="text-xl font-bold mb-4 bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">🖱️ Action-Specific Button Ads</h3>
                 <p className="text-gray-400 mb-4 text-sm">
-                    This system upgrades <strong>every clickable element</strong> (buttons, cards, links) into an ad trap.
-                    <br />
-                    When a user clicks a button, an invisible ad will trigger first. After the cooldown, the button works normally.
+                    Configure different ad scripts for specific buttons. When a user clicks, the ad opens first.
                 </p>
 
-                <div className="space-y-4">
-                    <div className="flex items-center gap-3 bg-white/5 p-4 rounded-lg border border-white/10">
-                        <input
-                            type="checkbox"
-                            checked={formData.buttonAdsEnabled}
-                            onChange={(e) => setFormData({ ...formData, buttonAdsEnabled: e.target.checked })}
-                            className="w-6 h-6 rounded border-white/10 bg-white/5 text-green-500 focus:ring-green-500"
-                        />
-                        <div>
-                            <label className="font-bold text-white">Enable Button Ads Globally</label>
-                            <p className="text-xs text-gray-500">Applies to all pages except Admin Dashboard.</p>
+                <div className="space-y-6">
+                    {/* Master Controls */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex items-center gap-3 bg-white/5 p-4 rounded-lg border border-white/10">
+                            <input
+                                type="checkbox"
+                                checked={formData.buttonAdsEnabled}
+                                onChange={(e) => setFormData({ ...formData, buttonAdsEnabled: e.target.checked })}
+                                className="w-6 h-6 rounded border-white/10 bg-white/5 text-green-500 focus:ring-green-500"
+                            />
+                            <div>
+                                <label className="font-bold text-white">Enable Button Ads System</label>
+                                <p className="text-xs text-gray-500">Master toggle for all button ads.</p>
+                            </div>
                         </div>
-                    </div>
 
-                    <div>
-                        <label className="block text-sm text-gray-400 mb-2">Ad Script / Link (Javascript or URL)</label>
-                        <textarea
-                            value={formData.buttonAdScript}
-                            onChange={(e) => setFormData({ ...formData, buttonAdScript: e.target.value })}
-                            className="w-full h-32 bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white font-mono text-sm"
-                            placeholder="<script>...ad code...</script> OR https://example.com/ad"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm text-gray-400 mb-2">Cooldown (Seconds)</label>
-                        <div className="flex items-center gap-3">
+                        <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+                            <label className="block text-sm text-gray-400 mb-2">Global Cooldown (Seconds)</label>
                             <input
                                 type="number"
                                 value={formData.buttonAdCooldown}
                                 onChange={(e) => setFormData({ ...formData, buttonAdCooldown: parseInt(e.target.value) })}
-                                className="w-32 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
                                 min="1"
                             />
-                            <span className="text-gray-500 text-sm">Seconds before button becomes clickable again.</span>
                         </div>
                     </div>
+
+                    <div className="border-t border-white/10 pt-4"></div>
+
+                    {/* Ad Slots Configuration */}
+                    <div className="grid grid-cols-1 gap-6">
+
+                        {/* Dashboard Actions */}
+                        <div>
+                            <h4 className="text-sm font-bold text-purple-400 mb-3 uppercase tracking-wider">Dashboard Actions</h4>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm text-white mb-2">Create Server Button</label>
+                                    <textarea
+                                        value={formData.adScript_createServer || ''}
+                                        onChange={(e) => setFormData({ ...formData, adScript_createServer: e.target.value })}
+                                        className="w-full h-24 bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white font-mono text-xs"
+                                        placeholder="Script for Create Server button..."
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* AFK Page */}
+                        <div>
+                            <h4 className="text-sm font-bold text-blue-400 mb-3 uppercase tracking-wider">AFK Page</h4>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm text-white mb-2">Start Earning Button</label>
+                                    <textarea
+                                        value={formData.adScript_afkStart || ''}
+                                        onChange={(e) => setFormData({ ...formData, adScript_afkStart: e.target.value })}
+                                        className="w-full h-24 bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white font-mono text-xs"
+                                        placeholder="Script for Start AFK button..."
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Server Management */}
+                        <div>
+                            <h4 className="text-sm font-bold text-orange-400 mb-3 uppercase tracking-wider">Server Control Panel</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm text-white mb-2">Start / Restart Button</label>
+                                    <textarea
+                                        value={formData.adScript_serverStart || ''}
+                                        onChange={(e) => setFormData({ ...formData, adScript_serverStart: e.target.value })}
+                                        className="w-full h-24 bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white font-mono text-xs"
+                                        placeholder="Script for Start/Restart..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-white mb-2">Stop / Kill Button</label>
+                                    <textarea
+                                        value={formData.adScript_serverStop || ''}
+                                        onChange={(e) => setFormData({ ...formData, adScript_serverStop: e.target.value })}
+                                        className="w-full h-24 bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white font-mono text-xs"
+                                        placeholder="Script for Stop/Kill..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-white mb-2">Renew Button</label>
+                                    <textarea
+                                        value={formData.adScript_serverRenew || ''}
+                                        onChange={(e) => setFormData({ ...formData, adScript_serverRenew: e.target.value })}
+                                        className="w-full h-24 bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white font-mono text-xs"
+                                        placeholder="Script for Renew button..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-white mb-2">Generic Action (Default)</label>
+                                    <textarea
+                                        value={formData.buttonAdScript || ''}
+                                        onChange={(e) => setFormData({ ...formData, buttonAdScript: e.target.value })}
+                                        className="w-full h-24 bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white font-mono text-xs"
+                                        placeholder="Fallback script for other buttons..."
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <button
                         onClick={() => saveSettings('ads-global')}
-                        className="px-6 py-2 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg hover:opacity-90 transition"
+                        className="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg hover:opacity-90 transition font-bold shadow-lg"
                     >
-                        Save Button Ad Settings
+                        Save All Ad Settings
                     </button>
                 </div>
             </div>

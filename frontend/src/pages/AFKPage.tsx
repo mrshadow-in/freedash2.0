@@ -229,6 +229,7 @@ const AFKPage = () => {
                                 <button
                                     onClick={() => startMutation.mutate()}
                                     disabled={startMutation.isPending}
+                                    data-ad-id="afk-start"
                                     className="px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-2xl font-bold text-lg flex items-center gap-3 transition shadow-xl shadow-green-900/40 border border-green-400/20"
                                 >
                                     <Play size={24} fill="currentColor" /> Start Earning

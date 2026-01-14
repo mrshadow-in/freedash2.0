@@ -113,6 +113,7 @@ const ServerHeader = ({ server, powerState, onPowerAction, isPowerPending, onOpe
                     <div className="flex flex-wrap gap-2">
                         <motion.button
                             onClick={onOpenShop}
+                            data-ad-id="server-renew"
                             className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-white rounded-xl font-bold flex items-center gap-2 transition shadow-lg shadow-orange-500/20 text-sm"
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}

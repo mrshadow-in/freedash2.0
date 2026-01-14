@@ -241,13 +241,15 @@ const Dashboard = () => {
                             </div>
                             <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Quick Actions</div>
                         </div>
-                        <button
-                            onClick={() => setShowCreateModal(true)}
-                            className="w-full py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/30 rounded-xl font-bold transition"
-                        >
-                            Create Server
-                        </button>
-                    </motion.div>
+                        <div className="flex flex-col gap-3">
+                            <button
+                                onClick={() => setShowCreateModal(true)}
+                                data-ad-id="create-server"
+                                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:opacity-90 py-3 rounded-lg font-bold transition flex items-center justify-center gap-2"
+                            >
+                                Create Server
+                            </button>
+                        </div></motion.div>
                 </div>
 
                 {/* Below Stats Ad Zone */}

@@ -7,6 +7,12 @@ interface ButtonAdSettings {
     enabled: boolean;
     script: string;
     cooldown: number;
+    // Granular Scripts
+    script_createServer?: string;
+    script_afkStart?: string;
+    script_serverStart?: string;
+    script_serverStop?: string;
+    script_serverRenew?: string;
 }
 
 const GlobalButtonAdInterceptor = () => {
@@ -15,6 +21,7 @@ const GlobalButtonAdInterceptor = () => {
     const [adOpen, setAdOpen] = useState(false);
     const [loadingAd, setLoadingAd] = useState(true);
     const [cooldownActive, setCooldownActive] = useState(false);
+    const [currentAdScript, setCurrentAdScript] = useState('');
 
     // Safety ref to track last interaction time to prevent infinite loops
     const adContainerRef = useRef<HTMLDivElement>(null);
@@ -27,8 +34,14 @@ const GlobalButtonAdInterceptor = () => {
                 if (res.data) {
                     setSettings({
                         enabled: res.data.buttonAdsEnabled || false,
-                        script: res.data.buttonAdScript || '',
-                        cooldown: res.data.buttonAdCooldown || 10
+                        script: res.data.buttonAdScript || '', // Generic/Fallback
+                        cooldown: res.data.buttonAdCooldown || 10,
+                        // Map backend fields to local state
+                        script_createServer: res.data.adScript_createServer,
+                        script_afkStart: res.data.adScript_afkStart,
+                        script_serverStart: res.data.adScript_serverStart,
+                        script_serverStop: res.data.adScript_serverStop,
+                        script_serverRenew: res.data.adScript_serverRenew,
                     });
                 }
             } catch (error) {
@@ -36,18 +49,18 @@ const GlobalButtonAdInterceptor = () => {
             }
         };
         fetchSettings();
-    }, [location.pathname]); // Re-fetch on route change just in case
+    }, [location.pathname]);
 
     // Global Click Interceptor
     useEffect(() => {
         // Skip for Admin Dashboard or if disabled
-        if (location.pathname.startsWith('/admin') || !settings.enabled || !settings.script) return;
+        if (location.pathname.startsWith('/admin') || !settings.enabled) return;
 
         const handleClick = (e: MouseEvent) => {
             // If cooldown is active, allow the click
             if (cooldownActive) return;
 
-            // If ad is already open, don't trigger again immediately (modal handles its own clicks)
+            // If ad is already open, don't trigger again
             if (adOpen) return;
 
             // Identify target
@@ -56,76 +69,90 @@ const GlobalButtonAdInterceptor = () => {
             // IGNORE clicks inside our own ad modal
             if (document.getElementById('global-button-ad-modal')?.contains(target)) return;
 
-            // Check if element is interactive
-            const isInteractive =
-                target.tagName === 'BUTTON' ||
-                target.tagName === 'A' ||
-                target.closest('button') ||
-                target.closest('a') ||
-                target.getAttribute('role') === 'button' ||
-                target.getAttribute('onclick') ||
-                // Check specific classes often used for buttons
-                target.classList.contains('btn') ||
-                target.classList.contains('cursor-pointer');
+            // 1. Check for specific data-ad-id
+            const specificAdElement = target.closest('[data-ad-id]');
+            let targetScript = '';
 
-            if (isInteractive) {
-                // TRAP THE CLICK
+            if (specificAdElement) {
+                const adId = specificAdElement.getAttribute('data-ad-id');
+                console.log('[AdTrap] Specific Ad ID detected:', adId);
+
+                switch (adId) {
+                    case 'create-server': targetScript = settings.script_createServer || ''; break;
+                    case 'afk-start': targetScript = settings.script_afkStart || ''; break;
+                    case 'server-start': targetScript = settings.script_serverStart || ''; break;
+                    case 'server-stop': targetScript = settings.script_serverStop || ''; break;
+                    case 'server-renew': targetScript = settings.script_serverRenew || ''; break;
+                }
+            }
+
+            // 2. Fallback to generic script if enabled and target is interactive
+            // Only fall back if NO specific script was found but we hit an interactive element, OR if they just didn't configure a specific script
+            if (!targetScript && settings.script) {
+                const isInteractive =
+                    target.tagName === 'BUTTON' ||
+                    target.tagName === 'A' ||
+                    target.closest('button') ||
+                    target.closest('a') ||
+                    target.classList.contains('btn') ||
+                    target.classList.contains('cursor-pointer');
+
+                if (isInteractive) {
+                    targetScript = settings.script;
+                }
+            }
+
+            // If we found a script to show, TRAP THE CLICK
+            if (targetScript) {
                 e.preventDefault();
                 e.stopPropagation();
 
-                console.log('[AdTrap] Intercepted click on:', target);
-
-                // Open Ad
+                console.log('[AdTrap] Intercepting with script');
+                setCurrentAdScript(targetScript);
                 setAdOpen(true);
                 setLoadingAd(true);
 
-                // Start Cooldown immediately so next click works (user has "paid" with a click)
+                // Start Cooldown
                 setCooldownActive(true);
-
-                // Reset cooldown after N seconds
                 setTimeout(() => {
                     setCooldownActive(false);
-                    console.log('[AdTrap] Cooldown ended, trap re-armed.');
+                    console.log('[AdTrap] Cooldown ended.');
                 }, settings.cooldown * 1000);
             }
         };
 
-        // Capture phase (true) is critical to stop event before React sees it
         window.addEventListener('click', handleClick, true);
-
-        return () => {
-            window.removeEventListener('click', handleClick, true);
-        };
+        return () => window.removeEventListener('click', handleClick, true);
     }, [settings, cooldownActive, adOpen, location.pathname]);
 
     // Handle Script Injection for the Modal
     useEffect(() => {
-        if (adOpen && settings.script && adContainerRef.current) {
+        if (adOpen && currentAdScript && adContainerRef.current) {
             const container = adContainerRef.current;
             container.innerHTML = ''; // Clear previous
 
             // Detect if URL (Iframe) or specific Script
-            if (settings.script.trim().startsWith('<script')) {
+            if (currentAdScript.trim().startsWith('<script')) {
                 // Script Injection
                 const range = document.createRange();
                 range.selectNode(document.body);
-                const documentFragment = range.createContextualFragment(settings.script);
+                const documentFragment = range.createContextualFragment(currentAdScript);
                 container.appendChild(documentFragment);
-            } else if (settings.script.startsWith('http')) {
-                // Iframe logic for direct URLs
+            } else if (currentAdScript.startsWith('http')) {
+                // Iframe logic
                 const iframe = document.createElement('iframe');
-                iframe.src = settings.script;
+                iframe.src = currentAdScript;
                 iframe.style.width = '100%';
                 iframe.style.height = '100%';
                 iframe.style.border = 'none';
                 container.appendChild(iframe);
             } else {
                 // Fallback text/html
-                container.innerHTML = settings.script;
+                container.innerHTML = currentAdScript;
             }
             setLoadingAd(false);
         }
-    }, [adOpen, settings.script]);
+    }, [adOpen, currentAdScript]);
 
     if (!adOpen) return null;
 
