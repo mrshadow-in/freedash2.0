@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { X, Loader2 } from 'lucide-react';
-import { useAuthStore } from '../store/authStore';
 import api from '../api/client';
 
 interface ButtonAdSettings {
@@ -12,14 +11,12 @@ interface ButtonAdSettings {
 
 const GlobalButtonAdInterceptor = () => {
     const location = useLocation();
-    const { user } = useAuthStore();
     const [settings, setSettings] = useState<ButtonAdSettings>({ enabled: false, script: '', cooldown: 10 });
     const [adOpen, setAdOpen] = useState(false);
     const [loadingAd, setLoadingAd] = useState(true);
     const [cooldownActive, setCooldownActive] = useState(false);
 
     // Safety ref to track last interaction time to prevent infinite loops
-    const lastAdTriggerTime = useRef<number>(0);
     const adContainerRef = useRef<HTMLDivElement>(null);
 
     // Fetch settings on mount

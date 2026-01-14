@@ -260,7 +260,6 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                 billingAutoResume: settings.billing?.autoResume ?? false,
                 panelAccessEnabled: settings.security?.enablePanelAccess ?? true,
                 globalAdScript: settings.globalAdScript || '',
-                globalAdScript: settings.globalAdScript || '',
                 buttonAdsEnabled: settings.buttonAdsEnabled || false,
                 buttonAdScript: settings.buttonAdScript || '',
                 buttonAdCooldown: settings.buttonAdCooldown || 10,
