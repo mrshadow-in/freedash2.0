@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Zap, Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Zap, Loader2, AlertTriangle } from 'lucide-react';
 import api from '../../api/client';
 import toast from 'react-hot-toast';
 

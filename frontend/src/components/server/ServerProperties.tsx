@@ -45,10 +45,7 @@ const ServerProperties = ({ server }: ServerPropertiesProps) => {
         setProperties((prev: any) => ({ ...prev, [key]: value }));
     };
 
-    // Helper to format key names for display (e.g. allow-flight -> Allow Flight)
-    const formatKey = (key: string) => {
-        return key.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    };
+
 
     if (loading) {
         return (

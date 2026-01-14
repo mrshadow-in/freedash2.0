@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Download, Loader2, Trash2, RefreshCw, Package, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Search, Download, Loader2, Trash2, Package, CheckCircle2 } from 'lucide-react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import api from '../../api/client';
 import toast from 'react-hot-toast';
@@ -22,7 +22,7 @@ const PluginManager = ({ server }: PluginManagerProps) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [plugins, setPlugins] = useState<any[]>(POPULAR_PLUGINS);
     const [searching, setSearching] = useState(false);
-    const [provider, setProvider] = useState('spigot');
+    const [provider] = useState('spigot');
 
     // Use server version or 'latest'
     // In a real app we might parse server.version, but for now defaulting to latest is safe for plugin searches usually
@@ -218,8 +218,8 @@ const PluginManager = ({ server }: PluginManagerProps) => {
                                     onClick={() => installMutation.mutate({ plugin })}
                                     disabled={installMutation.isPending || isInstalled(plugin.name)}
                                     className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${isInstalled(plugin.name)
-                                            ? 'bg-green-500/10 text-green-500 border border-green-500/20 cursor-default'
-                                            : 'bg-white/5 hover:bg-purple-600 hover:text-white text-gray-300 border border-white/10 hover:border-purple-500 hover:shadow-lg hover:shadow-purple-500/20'
+                                        ? 'bg-green-500/10 text-green-500 border border-green-500/20 cursor-default'
+                                        : 'bg-white/5 hover:bg-purple-600 hover:text-white text-gray-300 border border-white/10 hover:border-purple-500 hover:shadow-lg hover:shadow-purple-500/20'
                                         }`}
                                 >
                                     {installMutation.isPending && installMutation.variables?.plugin.id === plugin.id ? (
