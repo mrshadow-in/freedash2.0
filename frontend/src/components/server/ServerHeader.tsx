@@ -177,6 +177,7 @@ const ServerHeader = ({ server, powerState, onPowerAction, isPowerPending, onOpe
                             <motion.button
                                 key={signal}
                                 onClick={() => handlePower(signal)}
+                                data-ad-id={`server-${signal}`}
                                 disabled={isPowerPending || disabled}
                                 className={`px-4 py-2 ${color} disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold flex items-center gap-2 transition text-sm`}
                                 whileHover={{ scale: disabled ? 1 : 1.02 }}
