@@ -110,9 +110,11 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
                     // eslint-disable-next-line no-control-regex
                     const cleanLog = log.replace(/\x1b\[[0-9;]*m/g, '');
 
-                    // EULA Detection
-                    if (cleanLog.includes('You need to agree to the EULA in order to run the server')) {
-                        setShowEulaModal(true);
+                    // EULA Detection (Broadened)
+                    const lowerLog = cleanLog.toLowerCase();
+                    if (lowerLog.includes('eula') && (lowerLog.includes('agree') || lowerLog.includes('true') || lowerLog.includes('go to eula.txt'))) {
+                        // Prevent spamming state updates
+                        setShowEulaModal(prev => !prev ? true : prev);
                     }
 
                     cleanLog.split('\n').forEach(line => {

@@ -179,72 +179,98 @@ const ManageServer = () => {
                     </div>
 
                     {/* RIGHT CONTENT AREA */}
-                    <div className="flex-1 flex flex-col min-w-0 bg-[#0d1117] relative">
+                    <div className="flex-1 flex flex-col min-w-0 bg-[#0d1117] relative h-full">
 
-                        {/* We need the ServerHeader for power controls. Let's put it at the top of the content area but compact. */}
-                        <div className="p-6 overflow-y-auto h-full scrollbar-thin scrollbar-thumb-white/10">
+                        {/* 
+                            For Console: We want NO parent scroll. Flex column: [Header] [Console (flex-1)].
+                            For Others: We want parent scroll.
+                        */}
+                        <div className={`flex flex-col h-full ${activeTab === 'console' ? 'overflow-hidden' : 'overflow-y-auto scrollbar-thin scrollbar-thumb-white/10'}`}>
 
-                            {/* Header Ad */}
-                            <AdZone position="server-header" className="mb-6" />
+                            {/* Content Padding Wrapper - Conditional */}
+                            <div className={`${activeTab === 'console' ? 'h-full flex flex-col p-4' : 'p-6'}`}>
 
-                            <ServerHeader
-                                server={server}
-                                powerState={actualStatus}
-                                onPowerAction={(signal) => powerMutation.mutate(signal)}
-                                isPowerPending={powerMutation.isPending}
-                                onOpenShop={() => setIsShopOpen(true)}
-                                onDelete={handleDelete}
-                                panelUrl={settings?.pterodactylUrl || ''}
-                                panelAccessEnabled={settings?.security?.enablePanelAccess ?? true}
-                                userRole={user?.role || 'user'}
-                            />
-
-                            {/* Tab Content */}
-                            <div className="mt-4">
-                                {server.status === 'suspended' ? (
-                                    <div className="bg-white/5 rounded-xl p-12 border border-white/10 text-center">
-                                        <svg className="w-16 h-16 mx-auto text-orange-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                        </svg>
-                                        <h3 className="text-xl font-bold text-white mb-2">Access Restricted</h3>
-                                        <p className="text-gray-400">This server is suspended. All management features are disabled.</p>
-                                    </div>
-                                ) : (
-                                    <>
-                                        {activeTab === 'console' && (
-                                            <div className="h-[calc(100%-20px)]">
-                                                <Console serverId={id!} serverStatus={server?.status} />
-                                            </div>
-                                        )}
-
-                                        {activeTab === 'files' && (
-                                            <FileManager serverId={id!} />
-                                        )}
-
-                                        {activeTab === 'minecraft' && (
-                                            <MinecraftTab server={server} />
-                                        )}
-
-                                        {activeTab === 'shop' && (
-                                            <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
-                                                <div className="text-center mb-8">
-                                                    <ShoppingCart className="mx-auto mb-4 text-purple-400" size={48} />
-                                                    <h2 className="text-3xl font-bold text-white mb-2">Upgrade Your Server</h2>
-                                                    <p className="text-gray-400">Scale your resources instantly with coins</p>
-                                                </div>
-
-                                                {/* Pricing Cards would go here, omitting for brevity in this view logic since they are static/fetched */}
-
-                                                <button
-                                                    onClick={() => setIsShopOpen(true)}
-                                                    className="w-full py-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 rounded-xl font-bold text-lg transition shadow-lg shadow-purple-500/25 transform hover:scale-[1.02] active:scale-[0.98]"
-                                                >
-                                                    Open Shop Modal
-                                                </button>
-                                            </div>
-                                        )}
-                                    </>
+                                {/* Header Ad - Optional, maybe hide on console to save space or keep compact? */}
+                                {activeTab !== 'console' && (
+                                    <AdZone position="server-header" className="mb-6" />
                                 )}
+
+                                <ServerHeader
+                                    server={server}
+                                    powerState={actualStatus}
+                                    onPowerAction={(signal) => powerMutation.mutate(signal)}
+                                    isPowerPending={powerMutation.isPending}
+                                    onOpenShop={() => setIsShopOpen(true)}
+                                    onDelete={handleDelete}
+                                    panelUrl={settings?.pterodactylUrl || ''}
+                                    panelAccessEnabled={settings?.security?.enablePanelAccess ?? true}
+                                    userRole={user?.role || 'user'}
+                                />
+
+                                {/* Tab Content */}
+                                <div className={`${activeTab === 'console' ? 'flex-1 min-h-0 mt-4' : 'mt-4'}`}>
+                                    {server.status === 'suspended' ? (
+                                        <div className="bg-white/5 rounded-xl p-12 border border-white/10 text-center">
+                                            <svg className="w-16 h-16 mx-auto text-orange-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                            </svg>
+                                            <h3 className="text-xl font-bold text-white mb-2">Access Restricted</h3>
+                                            <p className="text-gray-400">This server is suspended. All management features are disabled.</p>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {activeTab === 'console' && (
+                                                <Console serverId={id!} serverStatus={server?.status} />
+                                            )}
+
+                                            {activeTab === 'files' && (
+                                                <FileManager serverId={id!} />
+                                            )}
+
+                                            {activeTab === 'minecraft' && (
+                                                <MinecraftTab server={server} />
+                                            )}
+
+                                            {activeTab === 'shop' && (
+                                                <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
+                                                    <div className="text-center mb-8">
+                                                        <ShoppingCart className="mx-auto mb-4 text-purple-400" size={48} />
+                                                        <h2 className="text-3xl font-bold text-white mb-2">Upgrade Your Server</h2>
+                                                        <p className="text-gray-400">Scale your resources instantly with coins</p>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                                                        <div className="bg-white/5 border border-blue-500/20 rounded-xl p-6 text-center">
+                                                            <div className="text-4xl font-bold text-blue-400 mb-2">
+                                                                {pricing?.ramPerGB || 100}
+                                                            </div>
+                                                            <div className="text-gray-400">Coins per GB RAM</div>
+                                                        </div>
+                                                        <div className="bg-white/5 border border-green-500/20 rounded-xl p-6 text-center">
+                                                            <div className="text-4xl font-bold text-green-400 mb-2">
+                                                                {pricing?.diskPerGB || 50}
+                                                            </div>
+                                                            <div className="text-gray-400">Coins per GB Disk</div>
+                                                        </div>
+                                                        <div className="bg-white/5 border border-purple-500/20 rounded-xl p-6 text-center">
+                                                            <div className="text-4xl font-bold text-purple-400 mb-2">
+                                                                {pricing?.cpuPerCore || 20}
+                                                            </div>
+                                                            <div className="text-gray-400">Coins per CPU Core</div>
+                                                        </div>
+                                                    </div>
+
+                                                    <button
+                                                        onClick={() => setIsShopOpen(true)}
+                                                        className="w-full py-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 rounded-xl font-bold text-lg transition shadow-lg shadow-purple-500/25 transform hover:scale-[1.02] active:scale-[0.98]"
+                                                    >
+                                                        Open Shop Modal
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
                             </div>
 
                             <ShopModal
