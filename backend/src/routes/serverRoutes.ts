@@ -20,7 +20,8 @@ import {
     getServerResources,
     renameServerFile,
     deleteServerFile,
-    updateServer
+    updateServer,
+    acceptEula
 } from '../controllers/serverController';
 import { estimateCost, purchaseItem } from '../controllers/shopController';
 import * as mcController from '../controllers/minecraftController';
@@ -42,6 +43,7 @@ router.put('/:id', updateServer as any); // Added update route
 router.delete('/:id', deleteServer as any);
 router.post('/:id/upgrade', upgradeServer as any);
 router.post('/:id/power', powerServer as any);
+router.post('/:id/accept-eula', acceptEula as any); // Manual EULA acceptance
 router.get('/:id/resources', getServerResources as any);
 router.get('/:id/usage', getServerUsage as any);
 router.get('/:id/console', getConsoleCredentials as any);

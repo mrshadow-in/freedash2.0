@@ -16,6 +16,7 @@ import PluginManager from '../components/server/PluginManager';
 import VersionManager from '../components/server/VersionManager';
 import ServerProperties from '../components/server/ServerProperties';
 import AdZone from '../components/AdZone';
+import EulaModal from '../components/EulaModal';
 
 
 const ManageServer = () => {
@@ -25,6 +26,8 @@ const ManageServer = () => {
     const queryClient = useQueryClient();
     const [isShopOpen, setIsShopOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'console' | 'files' | 'plugins' | 'version' | 'properties' | 'shop'>('console');
+    const [showEulaModal, setShowEulaModal] = useState(false);
+    const [pendingPowerSignal, setPendingPowerSignal] = useState<string | null>(null);
 
     // Fetch Server Details
     const { data: server, isLoading, error } = useQuery({
@@ -69,7 +72,26 @@ const ManageServer = () => {
         ? server.status
         : (resources?.current_state || 'offline');
 
-    // Power Mutation
+    // Accept EULA Mutation
+    const acceptEulaMutation = useMutation({
+        mutationFn: async () => {
+            return api.post(`/servers/${id}/accept-eula`);
+        },
+        onSuccess: () => {
+            toast.success('EULA accepted successfully!');
+            setShowEulaModal(false);
+            // Now execute the pending power signal if any
+            if (pendingPowerSignal) {
+                powerMutation.mutate(pendingPowerSignal);
+                setPendingPowerSignal(null);
+            }
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Failed to accept EULA');
+        }
+    });
+
+    // Power Mutation - Modified to check for EULA on start/restart
     const powerMutation = useMutation({
         mutationFn: async (signal: string) => {
             return api.post(`/servers/${id}/power`, { signal });
@@ -78,7 +100,9 @@ const ManageServer = () => {
             toast.success(`Signal sent: ${variables}`);
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Power action failed');
+            // Check if error is EULA related (you can customize this based on backend error)
+            const errorMsg = error.response?.data?.message || 'Power action failed';
+            toast.error(errorMsg);
         }
     });
 
@@ -100,6 +124,18 @@ const ManageServer = () => {
     const handleDelete = () => {
         if (window.confirm(`Are you sure you want to delete "${server?.name}"? This action cannot be undone!`)) {
             deleteMutation.mutate();
+        }
+    };
+
+    // Handle Power Action with EULA check
+    const handlePowerAction = (signal: string) => {
+        // Intercept start/restart to show EULA modal first
+        if (signal === 'start' || signal === 'restart') {
+            setPendingPowerSignal(signal);
+            setShowEulaModal(true);
+        } else {
+            // For stop/kill, execute immediately
+            powerMutation.mutate(signal);
         }
     };
 
@@ -223,7 +259,7 @@ const ManageServer = () => {
                                         <ServerHeader
                                             server={server}
                                             powerState={actualStatus}
-                                            onPowerAction={(signal) => powerMutation.mutate(signal)}
+                                            onPowerAction={handlePowerAction}
                                             isPowerPending={powerMutation.isPending}
                                             onOpenShop={() => setIsShopOpen(true)}
                                             onDelete={handleDelete}
@@ -321,6 +357,16 @@ const ManageServer = () => {
                                 onClose={() => setIsShopOpen(false)}
                                 server={server}
                                 pricing={pricing}
+                            />
+
+                            <EulaModal
+                                isOpen={showEulaModal}
+                                onClose={() => {
+                                    setShowEulaModal(false);
+                                    setPendingPowerSignal(null);
+                                }}
+                                onAccept={() => acceptEulaMutation.mutate()}
+                                isLoading={acceptEulaMutation.isPending}
                             />
                         </div>
                     </div>

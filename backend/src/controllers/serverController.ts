@@ -174,13 +174,7 @@ export const createServer = async (req: AuthRequest, res: Response) => {
             timeout: 30000 // default: 5000
         }).then(async (result: any) => {
 
-            // === AUTO EULA ON CREATE ===
-            if (result.server && result.server.pteroIdentifier) {
-                // Clean up delay to allow server to be "ready" enough or just try? 
-                // Usually on create it might be Installing, so it might fail. 
-                // But we can try.
-                setTimeout(() => ensureEula(result.server.pteroIdentifier), 5000);
-            }
+            // EULA will be created manually when user accepts it via popup
 
             // Send Discord webhook notification
             const { sendServerCreatedWebhook } = await import('../services/webhookService');
@@ -396,11 +390,7 @@ export const powerServer = async (req: AuthRequest, res: Response) => {
         if (!server) return res.status(404).json({ message: 'Server not found' });
         if (!server.pteroIdentifier) return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
 
-        // === AUTO EULA ON START ===
-        // Only check on start or restart
-        if (signal === 'start' || signal === 'restart') {
-            await ensureEula(server.pteroIdentifier);
-        }
+        // EULA will be handled via manual acceptance popup in frontend
 
         await powerPteroServer(server.pteroIdentifier, signal);
 
@@ -797,3 +787,30 @@ export const updateServer = async (req: AuthRequest, res: Response) => {
         res.status(500).json({ message: 'Failed to update server' });
     }
 };
+
+// Accept EULA - Manual user action only
+export const acceptEula = async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+
+    try {
+        const server = await prisma.server.findFirst({
+            where: { id: id, ownerId: req.user!.userId }
+        });
+
+        if (!server) return res.status(404).json({ message: 'Server not found' });
+        if (!server.pteroIdentifier) return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
+
+        // Create EULA file
+        await writeFileContent(server.pteroIdentifier, 'eula.txt', 'eula=true');
+        console.log(`[EULA] User ${req.user!.userId} manually accepted EULA for server ${server.name} (${server.pteroIdentifier})`);
+
+        res.json({ message: 'EULA accepted successfully' });
+    } catch (error: any) {
+        console.error('Accept EULA error:', error);
+        res.status(500).json({
+            message: 'Failed to accept EULA',
+            error: error.message || 'Server might be installing or not ready yet'
+        });
+    }
+};
+
