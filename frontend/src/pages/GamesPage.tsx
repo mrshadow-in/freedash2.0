@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import { toast } from 'react-hot-toast';
 import { Dices, Coins, Gift, Trophy } from 'lucide-react';
+import Header from '../components/Header';
 
 const GamesPage = () => {
     const queryClient = useQueryClient();
@@ -227,84 +228,96 @@ const GamesPage = () => {
 
 
     return (
-        <div className="max-w-6xl mx-auto space-y-8">
-            <motion.div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                    Arcade
-                </h1>
-                <p className="text-gray-400">Play games to earn more coins!</p>
-            </motion.div>
+        <div className="min-h-screen bg-theme pb-20 text-white">
+            {/* LordCloud Header */}
+            <Header />
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Game Cards */}
-                <div
-                    onClick={() => setSelectedGame('dice')}
-                    className={`cursor-pointer group relative overflow-hidden rounded-2xl border ${selectedGame === 'dice' ? 'border-purple-500 bg-purple-500/10' : 'border-white/10 bg-[#0d0620]'} hover:border-purple-500/50 transition-all p-6`}
-                >
-                    <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-100 group-hover:scale-110 transition">
-                        <Dices size={48} className="text-purple-400" />
-                    </div>
-                    <h3 className="font-bold text-xl mb-2">Dice Roll</h3>
-                    <p className="text-sm text-gray-400">Predict the roll. Win up to 5x!</p>
-                </div>
-
-                <div
-                    onClick={() => setSelectedGame('flip')}
-                    className={`cursor-pointer group relative overflow-hidden rounded-2xl border ${selectedGame === 'flip' ? 'border-yellow-500 bg-yellow-500/10' : 'border-white/10 bg-[#0d0620]'} hover:border-yellow-500/50 transition-all p-6`}
-                >
-                    <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-100 group-hover:scale-110 transition">
-                        <Coins size={48} className="text-yellow-400" />
-                    </div>
-                    <h3 className="font-bold text-xl mb-2">Coin Flip</h3>
-                    <p className="text-sm text-gray-400">Heads or Tails? Double your money.</p>
-                </div>
-
-                <div
-                    onClick={() => setSelectedGame('slots')}
-                    className={`cursor-pointer group relative overflow-hidden rounded-2xl border ${selectedGame === 'slots' ? 'border-pink-500 bg-pink-500/10' : 'border-white/10 bg-[#0d0620]'} hover:border-pink-500/50 transition-all p-6`}
-                >
-                    <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-100 group-hover:scale-110 transition">
-                        <Gift size={48} className="text-pink-400" />
-                    </div>
-                    <h3 className="font-bold text-xl mb-2">Slots</h3>
-                    <p className="text-sm text-gray-400">Spin to win jackpot prizes!</p>
-                </div>
+            {/* Background Effects */}
+            <div className="fixed inset-0 z-0 pointer-events-none">
+                <div className="absolute top-0 left-[-20%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[150px]" />
+                <div className="absolute top-[20%] right-[-20%] w-[50%] h-[50%] bg-blue-900/10 rounded-full blur-[150px]" />
             </div>
 
-            {/* Game Area */}
-            <AnimatePresence mode="wait">
-                {selectedGame && (
-                    <motion.div
-                        key={selectedGame}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        className="bg-[#0f0726] border border-white/10 rounded-2xl p-8 max-w-2xl mx-auto shadow-2xl relative overflow-hidden"
+            {/* Content */}
+            <div className="relative z-10 max-w-6xl mx-auto px-6 py-10 space-y-8">
+                <motion.div>
+                    <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                        Arcade
+                    </h1>
+                    <p className="text-gray-400">Play games to earn more coins!</p>
+                </motion.div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Game Cards */}
+                    <div
+                        onClick={() => setSelectedGame('dice')}
+                        className={`cursor-pointer group relative overflow-hidden rounded-2xl border ${selectedGame === 'dice' ? 'border-purple-500 bg-purple-500/10' : 'border-white/10 bg-[#0d0620]'} hover:border-purple-500/50 transition-all p-6`}
                     >
-                        {/* Background Glow */}
-                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
-
-                        <div className="relative z-10">
-                            <div className="flex justify-between items-center mb-6">
-                                <h2 className="text-2xl font-bold capitalize">{selectedGame === 'flip' ? 'Coin Flip' : selectedGame === 'dice' ? 'Dice Roll' : 'Slot Machine'}</h2>
-                                <button onClick={() => setSelectedGame(null)} className="text-gray-400 hover:text-white">Close</button>
-                            </div>
-
-                            {selectedGame === 'dice' && <DiceGame />}
-                            {selectedGame === 'flip' && <CoinFlipGame />}
-                            {selectedGame === 'slots' && <SlotsGame />}
+                        <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-100 group-hover:scale-110 transition">
+                            <Dices size={48} className="text-purple-400" />
                         </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                        <h3 className="font-bold text-xl mb-2">Dice Roll</h3>
+                        <p className="text-sm text-gray-400">Predict the roll. Win up to 5x!</p>
+                    </div>
 
-            {!selectedGame && (
-                <div className="text-center py-12 opacity-50">
-                    <Trophy size={48} className="mx-auto mb-4 text-gray-600" />
-                    <p>Select a game to start playing</p>
+                    <div
+                        onClick={() => setSelectedGame('flip')}
+                        className={`cursor-pointer group relative overflow-hidden rounded-2xl border ${selectedGame === 'flip' ? 'border-yellow-500 bg-yellow-500/10' : 'border-white/10 bg-[#0d0620]'} hover:border-yellow-500/50 transition-all p-6`}
+                    >
+                        <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-100 group-hover:scale-110 transition">
+                            <Coins size={48} className="text-yellow-400" />
+                        </div>
+                        <h3 className="font-bold text-xl mb-2">Coin Flip</h3>
+                        <p className="text-sm text-gray-400">Heads or Tails? Double your money.</p>
+                    </div>
+
+                    <div
+                        onClick={() => setSelectedGame('slots')}
+                        className={`cursor-pointer group relative overflow-hidden rounded-2xl border ${selectedGame === 'slots' ? 'border-pink-500 bg-pink-500/10' : 'border-white/10 bg-[#0d0620]'} hover:border-pink-500/50 transition-all p-6`}
+                    >
+                        <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-100 group-hover:scale-110 transition">
+                            <Gift size={48} className="text-pink-400" />
+                        </div>
+                        <h3 className="font-bold text-xl mb-2">Slots</h3>
+                        <p className="text-sm text-gray-400">Spin to win jackpot prizes!</p>
+                    </div>
                 </div>
-            )}
-        </div>
+
+                {/* Game Area */}
+                <AnimatePresence mode="wait">
+                    {selectedGame && (
+                        <motion.div
+                            key={selectedGame}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            className="bg-[#0f0726] border border-white/10 rounded-2xl p-8 max-w-2xl mx-auto shadow-2xl relative overflow-hidden"
+                        >
+                            {/* Background Glow */}
+                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+
+                            <div className="relative z-10">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-2xl font-bold capitalize">{selectedGame === 'flip' ? 'Coin Flip' : selectedGame === 'dice' ? 'Dice Roll' : 'Slot Machine'}</h2>
+                                    <button onClick={() => setSelectedGame(null)} className="text-gray-400 hover:text-white">Close</button>
+                                </div>
+
+                                {selectedGame === 'dice' && <DiceGame />}
+                                {selectedGame === 'flip' && <CoinFlipGame />}
+                                {selectedGame === 'slots' && <SlotsGame />}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {!selectedGame && (
+                    <div className="text-center py-12 opacity-50">
+                        <Trophy size={48} className="mx-auto mb-4 text-gray-600" />
+                        <p>Select a game to start playing</p>
+                    </div>
+                )}
+            </div> {/* Close content div */}
+        </div> {/* Close main wrapper div */ }
     );
 };
 
