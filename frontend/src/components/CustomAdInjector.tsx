@@ -170,7 +170,7 @@ export default function CustomAdInjector() {
                                 overlay.addEventListener('mouseenter', () => { overlay.dataset.hover = 'true'; });
                                 overlay.addEventListener('mouseleave', () => { overlay.dataset.hover = 'false'; });
 
-                                overlay.addEventListener('click', (e) => {
+                                overlay.addEventListener('click', () => {
                                     // If hitting the hole, we want to act?
                                     // Yes, any click on overlay triggers cooldown.
                                     console.log('[AdTrap] Click detected on trap overlay');
