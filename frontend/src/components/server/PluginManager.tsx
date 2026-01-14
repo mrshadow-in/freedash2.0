@@ -8,18 +8,81 @@ interface PluginManagerProps {
     server: any;
 }
 
-// Fallback versions if API fails
+// Comprehensive Minecraft version list (all major releases)
 const FALLBACK_VERSIONS = [
-    '1.21.1', '1.21', '1.20.6', '1.20.4', '1.20.2', '1.20.1',
-    '1.19.4', '1.19.2', '1.18.2', '1.16.5', '1.12.2'
+    // 1.21.x
+    '1.21.1', '1.21',
+    // 1.20.x
+    '1.20.6', '1.20.5', '1.20.4', '1.20.3', '1.20.2', '1.20.1', '1.20',
+    // 1.19.x
+    '1.19.4', '1.19.3', '1.19.2', '1.19.1', '1.19',
+    // 1.18.x
+    '1.18.2', '1.18.1', '1.18',
+    // 1.17.x
+    '1.17.1', '1.17',
+    // 1.16.x
+    '1.16.5', '1.16.4', '1.16.3', '1.16.2', '1.16.1', '1.16',
+    // 1.15.x
+    '1.15.2', '1.15.1', '1.15',
+    // 1.14.x
+    '1.14.4', '1.14.3', '1.14.2', '1.14.1', '1.14',
+    // 1.13.x
+    '1.13.2', '1.13.1', '1.13',
+    // 1.12.x
+    '1.12.2', '1.12.1', '1.12',
+    // 1.11.x
+    '1.11.2', '1.11',
+    // 1.10.x
+    '1.10.2', '1.10',
+    // 1.9.x
+    '1.9.4', '1.9.2', '1.9',
+    // 1.8.x
+    '1.8.9', '1.8.8', '1.8'
 ];
 
 // **ACTUAL PLUGINS** for Bukkit/Spigot/Paper servers (NOT Fabric/Forge mods!)
+// Using verified icon URLs from Modrinth CDN
 const MODRINTH_POPULAR = [
-    { id: 'Opn7SYjf', name: 'LuckPerms', author: 'Luck', downloads: 45000000, description: 'A permissions plugin for Minecraft servers', icon: 'https://cdn.modrinth.com/data/Opn7SYjf/c9a39346e4d4e0b7e0aa0bae8a71c99bad2f4dc5_icon.png', provider: 'modrinth', premium: false },
-    { id: 'Lu3gAkPd', name: 'Vault', author: 'MilkBowl', downloads: 25000000, description: 'Vault is a Permissions, Chat, & Economy API', icon: 'https://cdn.modrinth.com/data/Lu3gAkPd/icon.png', provider: 'modrinth', premium: false },
-    { id: 'fRQREgAc', name: 'EssentialsX', author: 'EssentialsX Team', downloads: 35000000, description: 'The essential plugin suite for Minecraft servers', icon: 'https://cdn.modrinth.com/data/fRQREgAc/81a5e73c0e1d3d0cb41c15c8e2050c6ce6adbf28.png', provider: 'modrinth', premium: false },
-    { id: '1u6JkXh5', name: 'WorldEdit', author: 'sk89q', downloads: 40000000, description: 'In-game Minecraft map editor - build faster!', icon: 'https://cdn.modrinth.com/data/1u6JkXh5/icon.png', provider: 'modrinth', premium: false },
+    {
+        id: 'Opn7SYjf',
+        name: 'LuckPerms',
+        author: 'Luck',
+        downloads: 45000000,
+        description: 'A permissions plugin for Minecraft servers',
+        icon: 'https://cdn.modrinth.com/data/Opn7SYjf/icon.png',
+        provider: 'modrinth',
+        premium: false
+    },
+    {
+        id: 'Lu3gAkPd',
+        name: 'Vault',
+        author: 'MilkBowl',
+        downloads: 25000000,
+        description: 'Vault is a Permissions, Chat, & Economy API',
+        icon: 'https://cdn.modrinth.com/data/Lu3gAkPd/icon.png',
+        provider: 'modrinth',
+        premium: false
+    },
+    {
+        id: 'fRQREgAc',
+        name: 'EssentialsX',
+        author: 'EssentialsX Team',
+        downloads: 35000000,
+        description: 'The essential plugin suite for Minecraft servers',
+        icon: 'https://cdn.modrinth.com/data/fRQREgAc/icon.png',
+        provider: 'modrinth',
+        premium: false
+    },
+    {
+        id: '1u6JkXh5',
+        name: 'WorldEdit',
+        author: 'sk89q',
+        downloads: 40000000,
+        description: 'In-game Minecraft map editor - build faster!',
+        icon: 'https://cdn.modrinth.com/data/1u6JkXh5/icon.png',
+        provider: 'modrinth',
+        premium: false
+    },
 ];
 
 const PluginManager = ({ server }: PluginManagerProps) => {
