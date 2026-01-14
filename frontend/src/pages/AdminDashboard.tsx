@@ -2930,13 +2930,8 @@ function AdsTab({ settings, fetchSettings }: any) {
         }
         setCreating(true);
         try {
-            // If raw code is provided, force type to script and position to script_zone
-            // This ensures it uses the script injector overlay logic instead of fixed slots
-            const adPayload = {
-                ...newAd,
-                type: newAd.rawCode ? 'script' : newAd.type,
-                position: newAd.rawCode ? 'script_zone' : newAd.position
-            };
+            // Use user-selected values for type and position
+            const adPayload = { ...newAd };
 
             if (isEditing && targetAdId) {
                 await api.put(`/ads/admin/update/${targetAdId}`, adPayload);
@@ -3132,7 +3127,7 @@ function AdsTab({ settings, fetchSettings }: any) {
                                     />
                                 </div>
                                 {/* Only show Type/Size for image-based ads, not script ads */}
-                                {!newAd.rawCode && (
+                                {
                                     <div>
                                         <label className="block text-sm font-medium text-gray-400 mb-1">Type / Size</label>
                                         <select
@@ -3143,14 +3138,17 @@ function AdsTab({ settings, fetchSettings }: any) {
                                         >
                                             <option value="leaderboard" className="bg-gray-900 text-white">Leaderboard (728x90)</option>
                                             <option value="banner" className="bg-gray-900 text-white">Banner (468x60)</option>
+                                            <option value="medium-rectangle" className="bg-gray-900 text-white">Medium Rectangle (300x250)</option>
+                                            <option value="vertical-banner" className="bg-gray-900 text-white">Vertical Banner (160x300)</option>
+                                            <option value="mobile-banner" className="bg-gray-900 text-white">Mobile Banner (320x50)</option>
                                             <option value="square" className="bg-gray-900 text-white">Square / Sidebar</option>
                                             <option value="full-width" className="bg-gray-900 text-white">Full Width Native</option>
                                             <option value="promo-strip" className="bg-gray-900 text-white">Promo Strip (Small)</option>
                                         </select>
                                     </div>
-                                )}
+                                }
                                 {/* Only show Position for image-based ads, not script ads */}
-                                {!newAd.rawCode && (
+                                {
                                     <div>
                                         <label className="block text-sm font-medium text-gray-400 mb-1">Position</label>
                                         <select
@@ -3164,7 +3162,7 @@ function AdsTab({ settings, fetchSettings }: any) {
                                             ))}
                                         </select>
                                     </div>
-                                )}
+                                }
                                 <div className="flex items-center gap-3 py-2">
                                     <input
                                         type="checkbox"

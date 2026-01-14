@@ -65,6 +65,9 @@ interface AdZoneProps {
 const sizeClasses: Record<string, string> = {
     leaderboard: 'w-full max-w-[728px] h-[90px]',
     banner: 'w-full max-w-[468px] h-[60px]',
+    'medium-rectangle': 'w-full max-w-[300px] h-[250px]', // 300x250
+    'vertical-banner': 'w-full max-w-[160px] h-[300px]',   // 160x300
+    'mobile-banner': 'w-full max-w-[320px] h-[50px]',      // 320x50
     square: 'w-full max-w-[300px] h-auto min-h-[100px]',
     'promo-strip': 'w-full h-[40px]',
     'full-width': 'w-full h-auto min-h-[100px]',
