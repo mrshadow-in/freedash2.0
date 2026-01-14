@@ -125,7 +125,7 @@ export const updateServerProperties = async (req: AuthRequest, res: Response) =>
 
 export const searchPlugins = async (req: Request, res: Response) => {
     try {
-        const { q, provider = 'spigot' } = req.query;
+        const { q, provider = 'spigot', version } = req.query;
         if (!q) return res.json([]);
 
         const settings = await getSettingsOrCreate();
@@ -133,9 +133,23 @@ export const searchPlugins = async (req: Request, res: Response) => {
 
         if (provider === 'modrinth') {
             // Modrinth Search - STRICT plugins only
-            // facets: ["project_type:plugin"] AND ["categories:bukkit" OR "categories:spigot" OR "categories:paper"]
-            const facets = encodeURIComponent('["project_type:plugin",["categories:bukkit","categories:spigot","categories:paper"]]');
-            const response = await axios.get(`https://api.modrinth.com/v2/search?query=${q}&limit=20&facets=[["project_type:plugin"],["categories:bukkit","categories:spigot","categories:paper"]]`);
+            const facetList = [
+                ["project_type:plugin"],
+                ["categories:bukkit", "categories:spigot", "categories:paper"]
+            ];
+
+            if (version && version !== 'latest') {
+                facetList.push([`versions:${version}`]);
+            }
+
+            const facetsString = JSON.stringify(facetList);
+            const response = await axios.get(`https://api.modrinth.com/v2/search`, {
+                params: {
+                    query: q,
+                    limit: 20,
+                    facets: facetsString
+                }
+            });
 
             const plugins = ((response.data as any).hits || []).map((p: any) => ({
                 id: p.project_id,
