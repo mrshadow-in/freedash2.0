@@ -316,8 +316,8 @@ const GamesPage = () => {
                         <p>Select a game to start playing</p>
                     </div>
                 )}
-            </div> {/* Close content div */}
-        </div> {/* Close main wrapper div */ }
+            </div>
+        </div>
     );
 };
 
