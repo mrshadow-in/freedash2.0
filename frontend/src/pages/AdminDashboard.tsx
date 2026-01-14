@@ -1,4 +1,3 @@
-```
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -132,11 +131,10 @@ const AdminDashboard = () => {
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
-                                className={`px - 6 py - 3 capitalize transition whitespace - nowrap flex - shrink - 0 rounded - xl font - bold ${
-    activeTab === tab
-    ? 'bg-purple-600 text-white shadow-lg'
-    : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
-} `}
+                                className={`px-6 py-3 capitalize transition whitespace-nowrap flex-shrink-0 rounded-xl font-bold ${activeTab === tab
+                                    ? 'bg-purple-600 text-white shadow-lg'
+                                    : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
+                                    }`}
                             >
                                 {tab}
                             </button>
@@ -985,7 +983,7 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                                     });
                                     toast.dismiss();
                                     if (data.success) {
-                                        toast.success(data.message + ` (${ data.data?.userCount || 0 } users found)`);
+                                        toast.success(data.message + ` (${data.data?.userCount || 0} users found)`);
                                     }
                                 } catch (error: any) {
                                     toast.dismiss();
@@ -1089,7 +1087,7 @@ function UsersTab({ users, fetchUsers, loading }: any) {
                 updateData.password = editingUser.password;
             }
 
-            await api.put(`/ admin / users / ${ editingUser.id } `, updateData);
+            await api.put(`/admin/users/${editingUser.id}`, updateData);
             toast.success('User updated successfully!');
             setShowEditUser(false);
             setEditingUser(null);
@@ -1101,355 +1099,355 @@ function UsersTab({ users, fetchUsers, loading }: any) {
 
     const giveCoins = async (userId: string) => {
         try {
-            await api.put(`/ admin / users / ${ userId }/coins`, { coins: coinAmount });
-toast.success('Coins updated!');
-setShowGiveCoins(null);
-fetchUsers();
+            await api.put(`/admin/users/${userId}/coins`, { coins: coinAmount });
+            toast.success('Coins updated!');
+            setShowGiveCoins(null);
+            fetchUsers();
         } catch (error) {
-    toast.error('Failed to update coins');
-}
+            toast.error('Failed to update coins');
+        }
     };
 
-const changeRole = async (userId: string, newRole: string) => {
-    try {
-        await api.put(`/admin/users/${userId}/role`, { role: newRole });
-        toast.success('Role updated!');
-        fetchUsers();
-    } catch (error) {
-        toast.error('Failed to update role');
-    }
-};
+    const changeRole = async (userId: string, newRole: string) => {
+        try {
+            await api.put(`/admin/users/${userId}/role`, { role: newRole });
+            toast.success('Role updated!');
+            fetchUsers();
+        } catch (error) {
+            toast.error('Failed to update role');
+        }
+    };
 
-const banUser = async (userId: string) => {
-    try {
-        await api.post(`/admin/users/${userId}/ban`);
-        toast.success('User banned');
-        fetchUsers();
-    } catch (error) {
-        toast.error('Failed to ban user');
-    }
-};
+    const banUser = async (userId: string) => {
+        try {
+            await api.post(`/admin/users/${userId}/ban`);
+            toast.success('User banned');
+            fetchUsers();
+        } catch (error) {
+            toast.error('Failed to ban user');
+        }
+    };
 
-const unbanUser = async (userId: string) => {
-    try {
-        await api.post(`/admin/users/${userId}/unban`);
-        toast.success('User unbanned');
-        fetchUsers();
-    } catch (error) {
-        toast.error('Failed to unban user');
-    }
-};
+    const unbanUser = async (userId: string) => {
+        try {
+            await api.post(`/admin/users/${userId}/unban`);
+            toast.success('User unbanned');
+            fetchUsers();
+        } catch (error) {
+            toast.error('Failed to unban user');
+        }
+    };
 
-const unlinkDiscord = async (userId: string) => {
-    if (!window.confirm('Are you sure you want to unlink this Discord account?')) return;
-    try {
-        await api.post(`/admin/users/${userId}/unlink-discord`);
-        toast.success('Discord unlinked!');
-        fetchUsers();
-    } catch (error) {
-        toast.error('Failed to unlink Discord');
-    }
-};
+    const unlinkDiscord = async (userId: string) => {
+        if (!window.confirm('Are you sure you want to unlink this Discord account?')) return;
+        try {
+            await api.post(`/admin/users/${userId}/unlink-discord`);
+            toast.success('Discord unlinked!');
+            fetchUsers();
+        } catch (error) {
+            toast.error('Failed to unlink Discord');
+        }
+    };
 
-return (
-    <div>
-        <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold">User Management</h3>
-            <button
-                onClick={() => setShowCreateUser(true)}
-                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg hover:opacity-90 transition"
-            >
-                + Add User
-            </button>
-        </div>
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold">User Management</h3>
+                <button
+                    onClick={() => setShowCreateUser(true)}
+                    className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg hover:opacity-90 transition"
+                >
+                    + Add User
+                </button>
+            </div>
 
-        {/* Create User Modal */}
-        {showCreateUser && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-                <div className="bg-[#1a0b2e] border border-white/10 rounded-2xl p-6 w-full max-w-md">
-                    <h3 className="text-xl font-bold mb-4">Create New User</h3>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-2">Username</label>
-                            <input
-                                type="text"
-                                value={newUser.username}
-                                onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
-                                placeholder="johndoe"
-                            />
+            {/* Create User Modal */}
+            {showCreateUser && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-[#1a0b2e] border border-white/10 rounded-2xl p-6 w-full max-w-md">
+                        <h3 className="text-xl font-bold mb-4">Create New User</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Username</label>
+                                <input
+                                    type="text"
+                                    value={newUser.username}
+                                    onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                                    placeholder="johndoe"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Email</label>
+                                <input
+                                    type="email"
+                                    value={newUser.email}
+                                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                                    placeholder="user@example.com"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Password</label>
+                                <input
+                                    type="password"
+                                    value={newUser.password}
+                                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                                    placeholder="••••••••"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Initial Coins</label>
+                                <input
+                                    type="number"
+                                    value={newUser.coins}
+                                    onChange={(e) => setNewUser({ ...newUser, coins: parseInt(e.target.value) || 0 })}
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                                    placeholder="0"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Role</label>
+                                <select
+                                    value={newUser.role}
+                                    onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                                >
+                                    <option value="user">User</option>
+                                    <option value="mod">Moderator</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
                         </div>
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-2">Email</label>
-                            <input
-                                type="email"
-                                value={newUser.email}
-                                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
-                                placeholder="user@example.com"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-2">Password</label>
-                            <input
-                                type="password"
-                                value={newUser.password}
-                                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
-                                placeholder="••••••••"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-2">Initial Coins</label>
-                            <input
-                                type="number"
-                                value={newUser.coins}
-                                onChange={(e) => setNewUser({ ...newUser, coins: parseInt(e.target.value) || 0 })}
-                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
-                                placeholder="0"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-2">Role</label>
-                            <select
-                                value={newUser.role}
-                                onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                        <div className="flex gap-2 mt-6">
+                            <button
+                                onClick={() => setShowCreateUser(false)}
+                                className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition"
                             >
-                                <option value="user">User</option>
-                                <option value="mod">Moderator</option>
-                                <option value="admin">Admin</option>
-                            </select>
+                                Cancel
+                            </button>
+                            <button
+                                onClick={createUser}
+                                className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg hover:opacity-90 transition"
+                            >
+                                Create User
+                            </button>
                         </div>
                     </div>
-                    <div className="flex gap-2 mt-6">
-                        <button
-                            onClick={() => setShowCreateUser(false)}
-                            className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={createUser}
-                            className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg hover:opacity-90 transition"
-                        >
-                            Create User
-                        </button>
-                    </div>
                 </div>
-            </div>
-        )}
+            )}
 
-        {/* Give Coins Modal */}
-        {showGiveCoins && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-                <div className="bg-[#1a0b2e] border border-white/10 rounded-2xl p-6 w-full max-w-sm">
-                    <h3 className="text-xl font-bold mb-4">Give Coins</h3>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-2">Amount</label>
-                            <input
-                                type="number"
-                                value={coinAmount}
-                                onChange={(e) => setCoinAmount(parseInt(e.target.value) || 0)}
-                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
-                                placeholder="Enter coin amount"
-                            />
+            {/* Give Coins Modal */}
+            {showGiveCoins && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-[#1a0b2e] border border-white/10 rounded-2xl p-6 w-full max-w-sm">
+                        <h3 className="text-xl font-bold mb-4">Give Coins</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Amount</label>
+                                <input
+                                    type="number"
+                                    value={coinAmount}
+                                    onChange={(e) => setCoinAmount(parseInt(e.target.value) || 0)}
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                                    placeholder="Enter coin amount"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex gap-2 mt-6">
+                            <button
+                                onClick={() => setShowGiveCoins(null)}
+                                className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    giveCoins(showGiveCoins);
+                                }}
+                                className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg hover:opacity-90 transition"
+                            >
+                                Update
+                            </button>
                         </div>
                     </div>
-                    <div className="flex gap-2 mt-6">
-                        <button
-                            onClick={() => setShowGiveCoins(null)}
-                            className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={() => {
-                                giveCoins(showGiveCoins);
-                            }}
-                            className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg hover:opacity-90 transition"
-                        >
-                            Update
-                        </button>
-                    </div>
                 </div>
-            </div>
-        )}
+            )}
 
-        {loading ? (
-            <p>Loading...</p>
-        ) : (
-            <div className="overflow-x-auto">
-                <table className="w-full">
-                    <thead className="border-b border-white/10">
-                        <tr>
-                            <th className="text-left p-3">Username</th>
-                            <th className="text-left p-3">Email</th>
-                            <th className="text-left p-3">Coins</th>
-                            <th className="text-left p-3">Role</th>
-                            <th className="text-left p-3">Status</th>
-                            <th className="text-left p-3">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {users.map((user: any) => (
-                            <tr key={user.id} className="border-b border-white/5">
-                                <td className="p-3">{user.username}</td>
-                                <td className="p-3">{user.email}</td>
-                                <td className="p-3">
-                                    <div className="flex items-center gap-2">
-                                        <span>{user.coins}</span>
-                                        <button
-                                            onClick={() => {
-                                                setCoinAmount(user.coins);
-                                                setShowGiveCoins(user.id);
-                                            }}
-                                            className="px-2 py-1 bg-yellow-500/20 hover:bg-yellow-500/30 rounded text-xs transition"
-                                            title="Give Coins"
-                                        >
-                                            💰
-                                        </button>
-                                    </div>
-                                </td>
-                                <td className="p-3">
-                                    <select
-                                        value={user.role}
-                                        onChange={(e) => changeRole(user.id, e.target.value)}
-                                        className={`px-2 py-1 rounded text-xs bg-white/10 border border-white/20 ${user.role === 'admin' ? 'text-purple-400' :
-                                            user.role === 'mod' ? 'text-blue-400' : 'text-gray-400'
-                                            }`}
-                                    >
-                                        <option value="user">User</option>
-                                        <option value="mod">Mod</option>
-                                        <option value="admin">Admin</option>
-                                    </select>
-                                </td>
-                                <td className="p-3">
-                                    {user.isBanned ? (
-                                        <span className="text-red-400">Banned</span>
-                                    ) : (
-                                        <span className="text-green-400">Active</span>
-                                    )}
-                                </td>
-                                <td className="p-3 space-x-2">
-                                    <button
-                                        onClick={() => openEditModal(user)}
-                                        className="px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 rounded text-sm"
-                                    >
-                                        Edit
-                                    </button>
-                                    {user.discordId && (
-                                        <button
-                                            onClick={() => unlinkDiscord(user.id)}
-                                            className="px-3 py-1 bg-indigo-500/20 hover:bg-indigo-500/30 rounded text-sm text-indigo-400"
-                                            title={`Unlink Discord ID: ${user.discordId}`}
-                                        >
-                                            Unlink
-                                        </button>
-                                    )}
-                                    {user.isBanned ? (
-                                        <button
-                                            onClick={() => unbanUser(user.id)}
-                                            className="px-3 py-1 bg-green-500/20 hover:bg-green-500/30 rounded text-sm"
-                                        >
-                                            Unban
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={() => banUser(user.id)}
-                                            className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 rounded text-sm"
-                                        >
-                                            Ban
-                                        </button>
-                                    )}
-                                </td>
+            {loading ? (
+                <p>Loading...</p>
+            ) : (
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead className="border-b border-white/10">
+                            <tr>
+                                <th className="text-left p-3">Username</th>
+                                <th className="text-left p-3">Email</th>
+                                <th className="text-left p-3">Coins</th>
+                                <th className="text-left p-3">Role</th>
+                                <th className="text-left p-3">Status</th>
+                                <th className="text-left p-3">Actions</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        )}
+                        </thead>
+                        <tbody>
+                            {users.map((user: any) => (
+                                <tr key={user.id} className="border-b border-white/5">
+                                    <td className="p-3">{user.username}</td>
+                                    <td className="p-3">{user.email}</td>
+                                    <td className="p-3">
+                                        <div className="flex items-center gap-2">
+                                            <span>{user.coins}</span>
+                                            <button
+                                                onClick={() => {
+                                                    setCoinAmount(user.coins);
+                                                    setShowGiveCoins(user.id);
+                                                }}
+                                                className="px-2 py-1 bg-yellow-500/20 hover:bg-yellow-500/30 rounded text-xs transition"
+                                                title="Give Coins"
+                                            >
+                                                💰
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td className="p-3">
+                                        <select
+                                            value={user.role}
+                                            onChange={(e) => changeRole(user.id, e.target.value)}
+                                            className={`px-2 py-1 rounded text-xs bg-white/10 border border-white/20 ${user.role === 'admin' ? 'text-purple-400' :
+                                                user.role === 'mod' ? 'text-blue-400' : 'text-gray-400'
+                                                }`}
+                                        >
+                                            <option value="user">User</option>
+                                            <option value="mod">Mod</option>
+                                            <option value="admin">Admin</option>
+                                        </select>
+                                    </td>
+                                    <td className="p-3">
+                                        {user.isBanned ? (
+                                            <span className="text-red-400">Banned</span>
+                                        ) : (
+                                            <span className="text-green-400">Active</span>
+                                        )}
+                                    </td>
+                                    <td className="p-3 space-x-2">
+                                        <button
+                                            onClick={() => openEditModal(user)}
+                                            className="px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 rounded text-sm"
+                                        >
+                                            Edit
+                                        </button>
+                                        {user.discordId && (
+                                            <button
+                                                onClick={() => unlinkDiscord(user.id)}
+                                                className="px-3 py-1 bg-indigo-500/20 hover:bg-indigo-500/30 rounded text-sm text-indigo-400"
+                                                title={`Unlink Discord ID: ${user.discordId}`}
+                                            >
+                                                Unlink
+                                            </button>
+                                        )}
+                                        {user.isBanned ? (
+                                            <button
+                                                onClick={() => unbanUser(user.id)}
+                                                className="px-3 py-1 bg-green-500/20 hover:bg-green-500/30 rounded text-sm"
+                                            >
+                                                Unban
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={() => banUser(user.id)}
+                                                className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 rounded text-sm"
+                                            >
+                                                Ban
+                                            </button>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
 
-        {/* Edit User Modal */}
-        {showEditUser && editingUser && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-                <div className="bg-[#1a0b2e] border border-white/10 rounded-2xl p-6 w-full max-w-md">
-                    <h3 className="text-xl font-bold mb-4">Edit User</h3>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-2">Username (Read-only)</label>
-                            <input
-                                type="text"
-                                value={editingUser.username}
-                                disabled
-                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-gray-500 cursor-not-allowed"
-                            />
+            {/* Edit User Modal */}
+            {showEditUser && editingUser && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-[#1a0b2e] border border-white/10 rounded-2xl p-6 w-full max-w-md">
+                        <h3 className="text-xl font-bold mb-4">Edit User</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Username (Read-only)</label>
+                                <input
+                                    type="text"
+                                    value={editingUser.username}
+                                    disabled
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-gray-500 cursor-not-allowed"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Email</label>
+                                <input
+                                    type="email"
+                                    value={editingUser.email}
+                                    onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                                    placeholder="user@example.com"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">New Password (leave blank to keep current)</label>
+                                <input
+                                    type="password"
+                                    value={editingUser.password}
+                                    onChange={(e) => setEditingUser({ ...editingUser, password: e.target.value })}
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                                    placeholder="••••••••"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Coins</label>
+                                <input
+                                    type="number"
+                                    value={editingUser.coins}
+                                    onChange={(e) => setEditingUser({ ...editingUser, coins: parseInt(e.target.value) })}
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Role</label>
+                                <select
+                                    value={editingUser.role}
+                                    onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                                >
+                                    <option value="user">User</option>
+                                    <option value="mod">Moderator</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
                         </div>
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-2">Email</label>
-                            <input
-                                type="email"
-                                value={editingUser.email}
-                                onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
-                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
-                                placeholder="user@example.com"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-2">New Password (leave blank to keep current)</label>
-                            <input
-                                type="password"
-                                value={editingUser.password}
-                                onChange={(e) => setEditingUser({ ...editingUser, password: e.target.value })}
-                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
-                                placeholder="••••••••"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-2">Coins</label>
-                            <input
-                                type="number"
-                                value={editingUser.coins}
-                                onChange={(e) => setEditingUser({ ...editingUser, coins: parseInt(e.target.value) })}
-                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-2">Role</label>
-                            <select
-                                value={editingUser.role}
-                                onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
-                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                        <div className="flex gap-2 mt-6">
+                            <button
+                                onClick={updateUser}
+                                className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg hover:opacity-90 transition"
                             >
-                                <option value="user">User</option>
-                                <option value="mod">Moderator</option>
-                                <option value="admin">Admin</option>
-                            </select>
+                                Save Changes
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowEditUser(false);
+                                    setEditingUser(null);
+                                }}
+                                className="flex-1 px-4 py-2 bg-white/5 rounded-lg hover:bg-white/10 transition"
+                            >
+                                Cancel
+                            </button>
                         </div>
-                    </div>
-                    <div className="flex gap-2 mt-6">
-                        <button
-                            onClick={updateUser}
-                            className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg hover:opacity-90 transition"
-                        >
-                            Save Changes
-                        </button>
-                        <button
-                            onClick={() => {
-                                setShowEditUser(false);
-                                setEditingUser(null);
-                            }}
-                            className="flex-1 px-4 py-2 bg-white/5 rounded-lg hover:bg-white/10 transition"
-                        >
-                            Cancel
-                        </button>
                     </div>
                 </div>
-            </div>
-        )}
-    </div>
-);
+            )}
+        </div>
+    );
 }
 
 // Servers Tab
@@ -1488,7 +1486,6 @@ function ServersTab({ servers, fetchServers, loading }: any) {
         }
     };
 
-    // Separate servers into active and suspended
     // Separate servers into active and suspended
     const suspendedServers = servers.filter((s: any) => s.status === 'suspended' || s.isSuspended);
     const activeServers = servers.filter((s: any) => !suspendedServers.includes(s));
