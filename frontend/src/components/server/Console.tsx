@@ -187,37 +187,107 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
     }, [isFullscreen]);
 
     return (
-        <div className={`flex flex-col lg:flex-row gap-6 ${isFullscreen ? 'fixed inset-0 z-50 bg-[#0c0229] p-4 h-screen w-screen' : 'min-h-[800px]'}`}>
-            {/* Terminal Section */}
-            <div className={`flex-1 flex flex-col bg-[#0f111a] rounded-xl overflow-hidden border border-white/5 shadow-2xl min-w-0 ring-1 ring-white/5 ${isFullscreen ? 'h-full' : 'min-h-[800px]'}`}>
+    return (
+        <div className={`flex flex-col gap-6 ${isFullscreen ? 'fixed inset-0 z-50 bg-[#0c0229] p-4 h-screen w-screen' : ''}`}>
+
+            {/* Live Stats Row - Hidden in fullscreen to save space, or can be kept compact */}
+            {!isFullscreen && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* CPU Card */}
+                    <div className="bg-[#0f111a] border border-white/5 rounded-xl p-4 shadow-lg ring-1 ring-white/5 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition">
+                            <Cpu size={40} className="text-indigo-500" />
+                        </div>
+                        <h3 className="text-gray-500 text-xs uppercase font-bold mb-1 tracking-wider">CPU Usage</h3>
+                        <div className="text-2xl font-mono font-bold text-white mb-2">{stats?.cpu_absolute?.toFixed(1) || 0}%</div>
+
+                        {/* Progress Bar */}
+                        <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)] transition-all duration-300"
+                                style={{ width: `${Math.min(stats?.cpu_absolute || 0, 100)}%` }}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Memory Card */}
+                    <div className="bg-[#0f111a] border border-white/5 rounded-xl p-4 shadow-lg ring-1 ring-white/5 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition">
+                            <Activity size={40} className="text-blue-500" />
+                        </div>
+                        <h3 className="text-gray-500 text-xs uppercase font-bold mb-1 tracking-wider">Memory</h3>
+                        <div className="flex items-end gap-2 mb-2">
+                            <div className="text-2xl font-mono font-bold text-white">{formatBytes(stats?.memory_bytes || 0)}</div>
+                            <div className="text-xs text-gray-500 mb-1">/ {formatBytes(stats?.memory_limit_bytes || 0)}</div>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)] transition-all duration-300"
+                                style={{ width: `${Math.min(((stats?.memory_bytes || 0) / (stats?.memory_limit_bytes || 1)) * 100, 100)}%` }}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Storage/Network Card */}
+                    <div className="bg-[#0f111a] border border-white/5 rounded-xl p-4 shadow-lg ring-1 ring-white/5 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition">
+                            <Wifi size={40} className="text-purple-500" />
+                        </div>
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h3 className="text-gray-500 text-xs uppercase font-bold mb-1 tracking-wider">Disk</h3>
+                                <div className="text-lg font-mono font-bold text-white mb-2">{formatBytes(stats?.disk_bytes || 0)}</div>
+                            </div>
+                            <div className="text-right">
+                                <h3 className="text-gray-500 text-xs uppercase font-bold mb-1 tracking-wider">Network</h3>
+                                <div className="text-xs text-gray-400 font-mono">
+                                    RX: <span className="text-green-400">{formatBytes(stats?.network?.rx_bytes || 0)}</span>
+                                </div>
+                                <div className="text-xs text-gray-400 font-mono">
+                                    TX: <span className="text-orange-400">{formatBytes(stats?.network?.tx_bytes || 0)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Fake Activity Bar */}
+                        <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mt-1">
+                            <div className="h-full w-full bg-gradient-to-r from-transparent via-purple-500/50 to-transparent animate-shimmer" />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Terminal Container */}
+            <div className={`flex-1 flex flex-col bg-[#0f111a] rounded-xl overflow-hidden border border-white/5 shadow-2xl min-w-0 ring-1 ring-white/5 ${isFullscreen ? 'h-full' : 'min-h-[600px] h-[600px]'}`}>
                 {/* Header with Status */}
                 <div className="flex items-center justify-between px-5 py-3 bg-[#13161f] border-b border-white/5 backdrop-blur-sm">
-                    <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${status === 'connected' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'}`} />
-                        <span className="text-xs font-mono text-gray-400 uppercase tracking-widest font-semibold">{status}</span>
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 px-3 py-1 bg-black/20 rounded-lg border border-white/5">
+                            <div className={`w-2 h-2 rounded-full ${status === 'connected' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'}`} />
+                            <span className="text-xs font-mono text-gray-300 uppercase tracking-widest font-bold">{status}</span>
+                        </div>
+                        {stats?.uptime && (
+                            <span className="text-xs font-mono text-gray-500">
+                                Uptime: <span className="text-gray-300">{(stats.uptime / 1000).toFixed(0)}s</span>
+                            </span>
+                        )}
                     </div>
 
                     {/* Fullscreen Toggle */}
                     <button
                         onClick={() => setIsFullscreen(!isFullscreen)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-gray-300 bg-white/10 hover:bg-white/20 hover:text-white rounded-lg transition border border-white/10"
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition border border-white/5"
                     >
-                        {isFullscreen ? (
-                            <>
-                                <Minimize2 size={14} /> <span>Exit Fullscreen</span>
-                            </>
-                        ) : (
-                            <>
-                                <Maximize2 size={14} /> <span>Maximize</span>
-                            </>
-                        )}
+                        {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                     </button>
                 </div>
 
-                <div className="flex-1 relative min-h-0 bg-[#0f111a]">
+                <div className="flex-1 relative min-h-0 bg-[#0d1117] p-2">
                     {/* Loaders/Error overlays */}
                     {status === 'connecting' && (
-                        <div className="absolute inset-0 flex flex-col z-20 items-center justify-center bg-[#0f111a]/90 gap-4 backdrop-blur-sm transition-all duration-300">
+                        <div className="absolute inset-0 flex flex-col z-20 items-center justify-center bg-[#0d1117]/90 gap-4 backdrop-blur-sm transition-all duration-300">
                             <Loader2 className="animate-spin text-indigo-500" size={32} />
                             <span className="text-gray-400 text-sm font-mono tracking-wider">CONNECTING TO WINGS...</span>
                         </div>
@@ -227,103 +297,22 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
                 </div>
 
                 {/* Input */}
-                <div className="flex items-center gap-3 px-5 py-4 bg-[#13161f] border-t border-white/5 safe-area-bottom">
-                    <span className="text-indigo-400 font-mono text-lg font-bold">{'>'}</span>
+                <div className="flex items-center gap-3 px-4 py-3 bg-[#13161f] border-t border-white/5 safe-area-bottom">
+                    <span className="text-indigo-500 font-mono text-lg font-bold">{'>'}</span>
                     <input
                         type="text"
                         value={command}
                         onChange={(e) => setCommand(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && sendCommand()}
                         placeholder="Type a command..."
-                        className="flex-1 bg-transparent border-none outline-none text-gray-200 font-mono placeholder-gray-600 focus:ring-0"
+                        className="flex-1 bg-transparent border-none outline-none text-gray-200 font-mono placeholder-gray-600 focus:ring-0 text-sm"
                         disabled={status !== 'connected'}
                     />
+                    <div className="text-[10px] text-gray-600 font-mono hidden sm:block">
+                        ⏎ to send
+                    </div>
                 </div>
             </div>
-
-            {/* Stats Sidebar - Hidden in fullscreen */}
-            {!isFullscreen && (
-                <div className="w-full lg:w-72 flex flex-col gap-4">
-
-                    {/* Uptime/State Card */}
-                    <div className="bg-[#0f111a] border border-white/5 rounded-xl p-5 shadow-lg ring-1 ring-white/5 backdrop-blur-sm">
-                        <h3 className="text-gray-500 text-xs uppercase font-bold mb-2 tracking-wider">Server State</h3>
-                        <div className="flex items-center gap-3">
-                            <div className={`w-3 h-3 rounded-full ${stats?.state === 'running' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'}`} />
-                            <span className="text-white font-mono capitalize text-lg font-semibold">{stats?.state || 'Unknown'}</span>
-                        </div>
-                        <div className="mt-3 text-xs text-gray-500 font-mono flex justify-between">
-                            <span>Uptime:</span>
-                            <span className="text-gray-300">{stats?.uptime ? (stats.uptime / 1000).toFixed(0) + 's' : '--'}</span>
-                        </div>
-                    </div>
-
-                    {/* CPU Graph */}
-                    <div className="bg-[#0f111a] border border-white/5 rounded-xl p-5 flex-1 min-h-[180px] shadow-lg ring-1 ring-white/5 flex flex-col justify-between">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-gray-500 text-xs uppercase font-bold flex items-center gap-2 tracking-wider"><Cpu size={14} className="text-indigo-500" /> CPU Load</h3>
-                            <span className="text-indigo-400 font-mono text-sm font-bold">{stats?.cpu_absolute?.toFixed(1) || 0}%</span>
-                        </div>
-                        <div className="h-32 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={statsHistory}>
-                                    <defs>
-                                        <linearGradient id="cpuGradient" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#818cf8" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#818cf8" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <Area type="monotone" dataKey="cpu" stroke="#818cf8" fill="url(#cpuGradient)" strokeWidth={2} isAnimationActive={false} />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-
-                    {/* Memory Graph */}
-                    <div className="bg-[#0f111a] border border-white/5 rounded-xl p-5 flex-1 min-h-[180px] shadow-lg ring-1 ring-white/5 flex flex-col justify-between">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-gray-500 text-xs uppercase font-bold flex items-center gap-2 tracking-wider"><Activity size={14} className="text-blue-500" /> Memory</h3>
-                            <span className="text-blue-400 font-mono text-sm font-bold">{formatBytes(stats?.memory_bytes || 0)}</span>
-                        </div>
-                        <div className="h-32 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={statsHistory}>
-                                    <defs>
-                                        <linearGradient id="memGradient" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <Area type="monotone" dataKey="memory" stroke="#3b82f6" fill="url(#memGradient)" strokeWidth={2} isAnimationActive={false} />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-
-                    {/* Network / Disk Text */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-[#0f111a] border border-white/5 rounded-xl p-4 shadow-lg ring-1 ring-white/5">
-                            <h3 className="text-gray-500 text-xs uppercase font-bold mb-2 flex items-center gap-2 tracking-wider"><HardDrive size={12} className="text-purple-500" /> Disk</h3>
-                            <div className="text-purple-400 font-mono text-sm font-bold truncate">
-                                {formatBytes(stats?.disk_bytes || 0)}
-                            </div>
-                        </div>
-                        <div className="bg-[#0f111a] border border-white/5 rounded-xl p-4 shadow-lg ring-1 ring-white/5">
-                            <h3 className="text-gray-500 text-xs uppercase font-bold mb-2 flex items-center gap-2 tracking-wider"><Wifi size={12} className="text-yellow-500" /> Net</h3>
-                            <div className="flex flex-col gap-1">
-                                <div className="flex justify-between text-[10px] text-gray-400">
-                                    <span>IN</span>
-                                    <span className="text-yellow-400 font-mono">{formatBytes(stats?.network?.rx_bytes || 0)}</span>
-                                </div>
-                                <div className="flex justify-between text-[10px] text-gray-400">
-                                    <span>OUT</span>
-                                    <span className="text-yellow-400 font-mono">{formatBytes(stats?.network?.tx_bytes || 0)}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
