@@ -161,8 +161,9 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
 
     // Auto-scroll effect
     useEffect(() => {
-        if (isAutoScroll && messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        if (isAutoScroll && scrollContainerRef.current) {
+            const { scrollHeight, clientHeight } = scrollContainerRef.current;
+            scrollContainerRef.current.scrollTop = scrollHeight - clientHeight;
         }
     }, [logs, isAutoScroll]);
 
@@ -170,7 +171,7 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
     const handleScroll = () => {
         if (!scrollContainerRef.current) return;
         const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
-        const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+        const isNearBottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 50;
         setIsAutoScroll(isNearBottom);
     };
 
@@ -358,6 +359,23 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
                         {logs.map((log, i) => renderLogLine(log, i))}
                         <div ref={messagesEndRef} />
                     </div>
+
+                    {/* Scroll to Bottom Button */}
+                    {!isAutoScroll && (
+                        <button
+                            onClick={() => {
+                                setIsAutoScroll(true);
+                                if (scrollContainerRef.current) {
+                                    const { scrollHeight, clientHeight } = scrollContainerRef.current;
+                                    scrollContainerRef.current.scrollTop = scrollHeight - clientHeight;
+                                }
+                            }}
+                            className="absolute bottom-4 right-4 bg-indigo-600 hover:bg-indigo-500 text-white p-2 rounded-full shadow-xl transition transform hover:scale-110 active:scale-95 animate-in fade-in zoom-in duration-200 z-10"
+                            title="Scroll to Bottom"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                        </button>
+                    )}
                 </div>
 
                 {/* Input Bar */}
