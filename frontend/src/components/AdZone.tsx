@@ -72,21 +72,45 @@ const sizeClasses: Record<string, string> = {
 };
 
 const RawAdRenderer: React.FC<{ code: string }> = ({ code }) => {
+    const containerRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        if (!containerRef.current || !code) return;
+
+        // Clear previous content
+        containerRef.current.innerHTML = '';
+
+        try {
+            // Create a temporary container
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = code;
+
+            // Append non-script elements using a range to properly handle HTML parsing
+            const range = document.createRange();
+            range.setStart(containerRef.current, 0);
+            containerRef.current.appendChild(range.createContextualFragment(code));
+
+            // Re-run scripts
+            // This is necessary because setting innerHTML or using fragments doesn't auto-execute scripts in React
+            const injectedScripts = containerRef.current.querySelectorAll('script');
+            injectedScripts.forEach(oldScript => {
+                const newScript = document.createElement('script');
+                Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                oldScript.parentNode?.replaceChild(newScript, oldScript);
+            });
+
+        } catch (error) {
+            console.error('Error rendering raw ad:', error);
+        }
+    }, [code]);
+
     return (
-        <div className="w-full h-full flex justify-center items-center overflow-hidden">
-            <iframe
-                title="Advertisement"
-                srcDoc={`
-                    <html>
-                        <body style="margin: 0; display: flex; justify-content: center; align-items: center; background: transparent;">
-                            ${code}
-                        </body>
-                    </html>
-                `}
-                className="w-full h-full border-none shadow-none"
-                sandbox="allow-scripts allow-popups allow-forms allow-same-origin"
-            />
-        </div>
+        <div
+            ref={containerRef}
+            className="w-full h-auto overflow-visible [&>iframe]:w-full [&>iframe]:h-auto [&>iframe]:border-none"
+            style={{ maxWidth: 'none', minHeight: '10px' }}
+        />
     );
 };
 
@@ -211,7 +235,7 @@ const AdZone: React.FC<AdZoneProps> = ({
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 1.05 }}
                             transition={{ duration: 0.5 }}
-                            className={`relative border border-white/10 rounded-lg overflow-hidden group transition-all hover:border-purple-500/50 ${sizeClasses[ad.type] || 'w-full h-auto'}`}
+                            className={`relative border border-white/10 rounded-lg ${ad.rawCode ? 'overflow-visible' : 'overflow-hidden'} group transition-all hover:border-purple-500/50 ${sizeClasses[ad.type] || 'w-full h-auto'}`}
                         >
                             {ad.rawCode ? (
                                 <RawAdRenderer code={ad.rawCode} />
