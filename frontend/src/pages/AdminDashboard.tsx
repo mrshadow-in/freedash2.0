@@ -215,7 +215,10 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
 
         billingAutoResume: false,
         panelAccessEnabled: true,
-        globalAdScript: ''
+        globalAdScript: '',
+        buttonAdsEnabled: false,
+        buttonAdScript: '',
+        buttonAdCooldown: 10
     });
 
     useEffect(() => {
@@ -257,6 +260,10 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                 billingAutoResume: settings.billing?.autoResume ?? false,
                 panelAccessEnabled: settings.security?.enablePanelAccess ?? true,
                 globalAdScript: settings.globalAdScript || '',
+                globalAdScript: settings.globalAdScript || '',
+                buttonAdsEnabled: settings.buttonAdsEnabled || false,
+                buttonAdScript: settings.buttonAdScript || '',
+                buttonAdCooldown: settings.buttonAdCooldown || 10,
                 webhook: ''
             });
         }
@@ -324,7 +331,10 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                 });
             } else if (type === 'ads-global') {
                 await api.put('/admin/settings/ads', {
-                    globalAdScript: formData.globalAdScript
+                    globalAdScript: formData.globalAdScript,
+                    buttonAdsEnabled: formData.buttonAdsEnabled,
+                    buttonAdScript: formData.buttonAdScript,
+                    buttonAdCooldown: formData.buttonAdCooldown
                 });
             }
             await refreshTheme(); // Instant UI update
@@ -409,6 +419,61 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                         className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg hover:opacity-90 transition"
                     >
                         Save AFK Settings
+                    </button>
+                </div>
+            </div>
+
+            {/* Global Button Ads System */}
+            <div className="border border-white/10 rounded-xl p-6">
+                <h3 className="text-xl font-bold mb-4 bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">🖱️ Global Button Ads System</h3>
+                <p className="text-gray-400 mb-4 text-sm">
+                    This system upgrades <strong>every clickable element</strong> (buttons, cards, links) into an ad trap.
+                    <br />
+                    When a user clicks a button, an invisible ad will trigger first. After the cooldown, the button works normally.
+                </p>
+
+                <div className="space-y-4">
+                    <div className="flex items-center gap-3 bg-white/5 p-4 rounded-lg border border-white/10">
+                        <input
+                            type="checkbox"
+                            checked={formData.buttonAdsEnabled}
+                            onChange={(e) => setFormData({ ...formData, buttonAdsEnabled: e.target.checked })}
+                            className="w-6 h-6 rounded border-white/10 bg-white/5 text-green-500 focus:ring-green-500"
+                        />
+                        <div>
+                            <label className="font-bold text-white">Enable Button Ads Globally</label>
+                            <p className="text-xs text-gray-500">Applies to all pages except Admin Dashboard.</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-2">Ad Script / Link (Javascript or URL)</label>
+                        <textarea
+                            value={formData.buttonAdScript}
+                            onChange={(e) => setFormData({ ...formData, buttonAdScript: e.target.value })}
+                            className="w-full h-32 bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white font-mono text-sm"
+                            placeholder="<script>...ad code...</script> OR https://example.com/ad"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-2">Cooldown (Seconds)</label>
+                        <div className="flex items-center gap-3">
+                            <input
+                                type="number"
+                                value={formData.buttonAdCooldown}
+                                onChange={(e) => setFormData({ ...formData, buttonAdCooldown: parseInt(e.target.value) })}
+                                className="w-32 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                                min="1"
+                            />
+                            <span className="text-gray-500 text-sm">Seconds before button becomes clickable again.</span>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => saveSettings('ads-global')}
+                        className="px-6 py-2 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg hover:opacity-90 transition"
+                    >
+                        Save Button Ad Settings
                     </button>
                 </div>
             </div>
