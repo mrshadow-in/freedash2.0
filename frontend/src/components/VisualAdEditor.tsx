@@ -16,7 +16,7 @@ const VisualAdEditor: React.FC = () => {
             !c.startsWith('focus:') &&
             !c.startsWith('active:') &&
             !c.includes('ad-overlay')
-        );
+        ).map(c => CSS.escape(c)); // Escape special characters for valid selector
 
         let selector = el.tagName.toLowerCase();
         if (classes.length > 0) {
