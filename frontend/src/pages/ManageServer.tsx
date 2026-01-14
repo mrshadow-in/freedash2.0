@@ -140,272 +140,150 @@ const ManageServer = () => {
 
             <Header />
 
-            <div className={`relative z-10 mx-auto ${activeTab === 'console' ? 'w-full px-2' : 'max-w-[1600px] px-4 sm:px-6 py-6 sm:py-10'}`}>
-                <div className="flex gap-6 items-start">
-                    {/* Left Sidebar Ad - Hide on Console Tab */}
-                    {activeTab !== 'console' && (
-                        <div className="hidden xl:block w-[300px] shrink-0 sticky top-24">
-                            <AdZone position="server-sidebar-left" className="w-full" />
-                        </div>
-                    )}
+            <div className={`relative z-10 mx-auto ${activeTab === 'console' ? 'w-full h-[calc(100vh-80px)] overflow-hidden' : 'max-w-[1600px] px-4 sm:px-6 py-6 sm:py-10'}`}>
 
-                    <div className="flex-1 min-w-0">
-                        {/* Server Header Ad Zone - Hide on Console Tab */}
-                        {activeTab !== 'console' && (
-                            <AdZone
-                                position="server-header"
-                                className="mb-6"
-                                rotate={true}
-                                rotationInterval={45}
-                            />
-                        )}
+                {/* Main Split Layout */}
+                <div className="flex bg-[#0f111a] rounded-2xl overflow-hidden shadow-2xl h-full border border-white/5">
 
-                        <ServerHeader
-                            server={server}
-                            powerState={actualStatus}
-                            onPowerAction={(signal) => powerMutation.mutate(signal)}
-                            isPowerPending={powerMutation.isPending}
-                            onOpenShop={() => setIsShopOpen(true)}
-                            onDelete={handleDelete}
-                            panelUrl={settings?.pterodactylUrl || ''}
-                            panelAccessEnabled={settings?.security?.enablePanelAccess ?? true}
-                            userRole={user?.role || 'user'}
-                        />
-
-                        {/* Suspended Server Banner */}
-                        {server.status === 'suspended' && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="bg-gradient-to-r from-orange-600/20 to-red-600/20 border-2 border-orange-500/50 rounded-2xl p-6 mb-6 backdrop-blur-sm"
-                            >
-                                <div className="flex items-start gap-4">
-                                    <div className="p-3 bg-orange-500/20 rounded-full">
-                                        <svg className="w-6 h-6 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                        </svg>
-                                    </div>
-                                    <div className="flex-1">
-                                        <h3 className="text-xl font-bold text-orange-400 mb-2">Server Suspended</h3>
-                                        <p className="text-gray-300 mb-3">
-                                            This server has been suspended and is currently inaccessible. All management features are disabled.
-                                        </p>
-                                        {server.suspendReason && (
-                                            <p className="text-sm text-gray-400">
-                                                <strong>Reason:</strong> {server.suspendReason}
-                                            </p>
-                                        )}
-                                        <p className="text-sm text-gray-500 mt-2">
-                                            Please contact support to resolve this issue.
-                                        </p>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
-
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 }}
-                            className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 border border-purple-500/30 rounded-2xl p-6 mb-8 backdrop-blur-sm"
-                        >
-                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                                <div>
-                                    <h3 className="text-sm font-medium text-gray-400 mb-1">Server Address</h3>
-                                    <div className="flex items-center gap-3">
-                                        <code className="text-2xl font-bold text-white font-mono">{fullAddress}</code>
-                                        <button
-                                            onClick={() => copyToClipboard(fullAddress)}
-                                            className="p-2 hover:bg-white/10 rounded-lg transition"
-                                            title="Copy IP"
-                                        >
-                                            {copiedIP ? (
-                                                <Check size={20} className="text-green-400" />
-                                            ) : (
-                                                <Copy size={20} className="text-gray-400" />
-                                            )}
-                                        </button>
-                                    </div>
-                                </div>
+                    {/* LEFT SIDEBAR NAVIGATION */}
+                    <div className="w-64 bg-[#161b22] border-r border-white/5 flex flex-col shrink-0">
+                        {/* Server Title / Header Area in Sidebar */}
+                        <div className="p-6 border-b border-white/5 bg-[#0d1117]">
+                            <h2 className="text-white font-bold truncate" title={server.name}>{server.name}</h2>
+                            <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full ${actualStatus === 'running' ? 'bg-green-500' : 'bg-red-500'}`} />
+                                <span className="uppercase">{actualStatus}</span>
                             </div>
-                        </motion.div>
+                        </div>
 
-                        {/* Resource Stats Bar - Hide on Console Tab since it has its own */}
-                        {activeTab !== 'console' && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.15 }}
-                                className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"
-                            >
-                                <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 flex items-center justify-between">
-                                    <div>
-                                        <div className="text-gray-400 text-xs font-bold uppercase mb-1">Memory (RAM)</div>
-                                        <div className="text-xl font-bold text-white font-mono">
-                                            {(server.ramMb && server.ramMb >= 1024) ? `${(server.ramMb / 1024).toFixed(1)} GB` : `${server.ramMb || 0} MB`}
-                                        </div>
-                                    </div>
-                                    <div className="p-3 bg-blue-500/20 rounded-lg">
-                                        <svg className="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-                                        </svg>
-                                    </div>
-                                </div>
-
-                                <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 flex items-center justify-between">
-                                    <div>
-                                        <div className="text-gray-400 text-xs font-bold uppercase mb-1">Storage (Disk)</div>
-                                        <div className="text-xl font-bold text-white font-mono">
-                                            {(server.diskMb && server.diskMb >= 1024) ? `${(server.diskMb / 1024).toFixed(1)} GB` : `${server.diskMb || 0} MB`}
-                                        </div>
-                                    </div>
-                                    <div className="p-3 bg-green-500/20 rounded-lg">
-                                        <svg className="w-6 h-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
-                                        </svg>
-                                    </div>
-                                </div>
-
-                                <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 flex items-center justify-between">
-                                    <div>
-                                        <div className="text-gray-400 text-xs font-bold uppercase mb-1">CPU Cores</div>
-                                        <div className="text-xl font-bold text-white font-mono">
-                                            {server.cpuCores || 1} Core{(server.cpuCores || 1) > 1 ? 's' : ''}
-                                        </div>
-                                    </div>
-                                    <div className="p-3 bg-purple-500/20 rounded-lg">
-                                        <svg className="w-6 h-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-                                        </svg>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
-
-                        {/* Tab Navigation - Only Resources and Shop */}
-                        <div className="flex gap-4 border-b border-white/10 mb-8 overflow-x-auto pb-2">
+                        {/* Navigation Items */}
+                        <div className="flex-1 overflow-y-auto py-4 space-y-1">
                             <button
                                 onClick={() => setActiveTab('console')}
-                                className={`flex items-center gap-2 px-6 py-3 font-bold transition whitespace-nowrap rounded-t-lg ${activeTab === 'console' ? 'text-white bg-white/5 border-b-2 border-slate-500' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                className={`w-full flex items-center gap-3 px-6 py-3 text-sm font-medium transition-all relative border-l-2 ${activeTab === 'console' ? 'bg-white/5 text-white border-blue-500' : 'text-gray-400 hover:text-white hover:bg-white/5 border-transparent'}`}
                             >
                                 <Terminal size={18} /> Console
                             </button>
-
                             <button
                                 onClick={() => setActiveTab('files')}
-                                className={`flex items-center gap-2 px-6 py-3 font-bold transition whitespace-nowrap rounded-t-lg ${activeTab === 'files' ? 'text-white bg-white/5 border-b-2 border-yellow-500' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                className={`w-full flex items-center gap-3 px-6 py-3 text-sm font-medium transition-all relative border-l-2 ${activeTab === 'files' ? 'bg-white/5 text-white border-yellow-500' : 'text-gray-400 hover:text-white hover:bg-white/5 border-transparent'}`}
                             >
                                 <FolderOpen size={18} /> Files
                             </button>
-
-                            <button
-                                onClick={() => setActiveTab('shop')}
-                                className={`flex items-center gap-2 px-6 py-3 font-bold transition whitespace-nowrap rounded-t-lg ${activeTab === 'shop' ? 'text-white bg-white/5 border-b-2 border-purple-500' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
-                            >
-                                <ShoppingCart size={18} /> Shop
-                            </button>
                             <button
                                 onClick={() => setActiveTab('minecraft')}
-                                className={`flex items-center gap-2 px-6 py-3 font-bold transition whitespace-nowrap rounded-t-lg ${activeTab === 'minecraft' ? 'text-white bg-white/5 border-b-2 border-green-500' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                className={`w-full flex items-center gap-3 px-6 py-3 text-sm font-medium transition-all relative border-l-2 ${activeTab === 'minecraft' ? 'bg-white/5 text-white border-green-500' : 'text-gray-400 hover:text-white hover:bg-white/5 border-transparent'}`}
                             >
                                 <Ghost size={18} /> Minecraft
                             </button>
+                            <button
+                                onClick={() => setActiveTab('shop')}
+                                className={`w-full flex items-center gap-3 px-6 py-3 text-sm font-medium transition-all relative border-l-2 ${activeTab === 'shop' ? 'bg-white/5 text-white border-purple-500' : 'text-gray-400 hover:text-white hover:bg-white/5 border-transparent'}`}
+                            >
+                                <ShoppingCart size={18} /> Shop
+                            </button>
                         </div>
 
-                        {/* Tab Content */}
-                        <div className="min-h-[500px]">
-                            {server.status === 'suspended' ? (
-                                <div className="bg-white/5 rounded-xl p-12 border border-white/10 text-center">
-                                    <svg className="w-16 h-16 mx-auto text-orange-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                    </svg>
-                                    <h3 className="text-xl font-bold text-white mb-2">Access Restricted</h3>
-                                    <p className="text-gray-400">This server is suspended. All management features are disabled.</p>
-                                </div>
-                            ) : (
-                                <>
-                                    {activeTab === 'console' && (
-                                        <Console serverId={id!} serverStatus={server?.status} />
-                                    )}
-
-                                    {activeTab === 'files' && (
-                                        <FileManager serverId={id!} />
-                                    )}
-
-                                    {activeTab === 'minecraft' && (
-                                        <MinecraftTab server={server} />
-                                    )}
-
-
-
-
-
-                                    {activeTab === 'shop' && (
-                                        <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
-                                            <div className="text-center mb-8">
-                                                <ShoppingCart className="mx-auto mb-4 text-purple-400" size={48} />
-                                                <h2 className="text-3xl font-bold text-white mb-2">Upgrade Your Server</h2>
-                                                <p className="text-gray-400">Scale your resources instantly with coins</p>
-                                            </div>
-
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                                                <div className="bg-white/5 border border-blue-500/20 rounded-xl p-6 text-center">
-                                                    <div className="text-4xl font-bold text-blue-400 mb-2">
-                                                        {pricing?.ramPerGB || 100}
-                                                    </div>
-                                                    <div className="text-gray-400">Coins per GB RAM</div>
-                                                </div>
-                                                <div className="bg-white/5 border border-green-500/20 rounded-xl p-6 text-center">
-                                                    <div className="text-4xl font-bold text-green-400 mb-2">
-                                                        {pricing?.diskPerGB || 50}
-                                                    </div>
-                                                    <div className="text-gray-400">Coins per GB Disk</div>
-                                                </div>
-                                                <div className="bg-white/5 border border-purple-500/20 rounded-xl p-6 text-center">
-                                                    <div className="text-4xl font-bold text-purple-400 mb-2">
-                                                        {pricing?.cpuPerCore || 20}
-                                                    </div>
-                                                    <div className="text-gray-400">Coins per CPU Core</div>
-                                                </div>
-                                            </div>
-
-                                            <button
-                                                onClick={() => setIsShopOpen(true)}
-                                                className="w-full py-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 rounded-xl font-bold text-lg transition shadow-lg shadow-purple-500/25 transform hover:scale-[1.02] active:scale-[0.98]"
-                                            >
-                                                Open Shop Modal
-                                            </button>
-                                        </div>
-                                    )}
-                                </>
-                            )}
-
-                            <ShopModal
-                                isOpen={isShopOpen}
-                                onClose={() => setIsShopOpen(false)}
-                                server={server}
-                                pricing={pricing}
-                            />
+                        {/* Sidebar Footer (Optional Ad or Back) */}
+                        <div className="p-4 border-t border-white/5">
+                            <Link to="/" className="flex items-center gap-2 text-gray-500 hover:text-white transition text-xs">
+                                <span>← Back to Dashboard</span>
+                            </Link>
                         </div>
-
-                        {/* Server Footer Ad Zone - Hide on Console */}
-                        {activeTab !== 'console' && (
-                            <AdZone
-                                position="server-footer"
-                                className="mt-8 mb-4"
-                                rotate={true}
-                                rotationInterval={60}
-                            />
-                        )}
-
                     </div>
 
-                    {/* Right Sidebar Ad - Hide on Console (if it was visible) */}
-                    {activeTab !== 'console' && (
-                        <div className="hidden xl:block w-[300px] shrink-0 sticky top-24">
-                            <AdZone position="server-sidebar-right" className="w-full" />
+                    {/* RIGHT CONTENT AREA */}
+                    <div className="flex-1 flex flex-col min-w-0 bg-[#0d1117] relative">
+                        {/* Server Header (Power, IP, etc.) - Only show if NOT console to maximize space, OR keep it compact? 
+                             User asked to remove top bar vertical usage. Let's keep ServerHeader but make it part of the content area flow, 
+                             or maybe HIDE it for console to give full immersion?
+                             Reference: "After moving navigation to the left, the console should expand fully... No top tab bar..."
+                             Let's keep ServerHeader for context but strictly scrollable content. 
+                         */}
+
+                        {/* We need the ServerHeader for power controls. Let's put it at the top of the content area but compact. */}
+                        <div className="p-6 overflow-y-auto h-full scrollbar-thin scrollbar-thumb-white/10">
+
+                            <ServerHeader
+                                server={server}
+                                powerState={actualStatus}
+                                onPowerAction={(signal) => powerMutation.mutate(signal)}
+                                isPowerPending={powerMutation.isPending}
+                                onOpenShop={() => setIsShopOpen(true)}
+                                onDelete={handleDelete}
+                                panelUrl={settings?.pterodactylUrl || ''}
+                                panelAccessEnabled={settings?.security?.enablePanelAccess ?? true}
+                                userRole={user?.role || 'user'}
+                            />
+
+                            {/* Tab Content */}
+                            <div className="mt-4">
+                                {server.status === 'suspended' ? (
+                                    <div className="bg-white/5 rounded-xl p-12 border border-white/10 text-center">
+                                        <svg className="w-16 h-16 mx-auto text-orange-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                        </svg>
+                                        <h3 className="text-xl font-bold text-white mb-2">Access Restricted</h3>
+                                        <p className="text-gray-400">This server is suspended. All management features are disabled.</p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {activeTab === 'console' && (
+                                            <div className="h-[calc(100%-20px)]">
+                                                <Console serverId={id!} serverStatus={server?.status} />
+                                            </div>
+                                        )}
+
+                                        {activeTab === 'files' && (
+                                            <FileManager serverId={id!} />
+                                        )}
+
+                                        {activeTab === 'minecraft' && (
+                                            <MinecraftTab server={server} />
+                                        )}
+
+                                        {activeTab === 'shop' && (
+                                            <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
+                                                <div className="text-center mb-8">
+                                                    <ShoppingCart className="mx-auto mb-4 text-purple-400" size={48} />
+                                                    <h2 className="text-3xl font-bold text-white mb-2">Upgrade Your Server</h2>
+                                                    <p className="text-gray-400">Scale your resources instantly with coins</p>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                                                    <div className="bg-white/5 border border-blue-500/20 rounded-xl p-6 text-center">
+                                                        <div className="text-4xl font-bold text-blue-400 mb-2">
+                                                            {pricing?.ramPerGB || 100}
+                                                        </div>
+                                                        <div className="text-gray-400">Coins per GB RAM</div>
+                                                    </div>
+                                                    <div className="bg-white/5 border border-green-500/20 rounded-xl p-6 text-center">
+                                                        <div className="text-4xl font-bold text-green-400 mb-2">
+                                                            {pricing?.diskPerGB || 50}
+                                                        </div>
+                                                        <div className="text-gray-400">Coins per GB Disk</div>
+                                                    </div>
+                                                    <div className="bg-white/5 border border-purple-500/20 rounded-xl p-6 text-center">
+                                                        <div className="text-4xl font-bold text-purple-400 mb-2">
+                                                            {pricing?.cpuPerCore || 20}
+                                                        </div>
+                                                        <div className="text-gray-400">Coins per CPU Core</div>
+                                                    </div>
+                                                </div>
+
+                                                <button
+                                                    onClick={() => setIsShopOpen(true)}
+                                                    className="w-full py-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 rounded-xl font-bold text-lg transition shadow-lg shadow-purple-500/25 transform hover:scale-[1.02] active:scale-[0.98]"
+                                                >
+                                                    Open Shop Modal
+                                                </button>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
                         </div>
-                    )}
+                    </div>
                 </div>
             </div>
         </div>
