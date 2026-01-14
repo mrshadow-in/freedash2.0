@@ -10,6 +10,7 @@ import { useTheme } from '../context/ThemeContext';
 import { Plus, Loader2 } from 'lucide-react';
 
 import WingsManager from '../components/admin/WingsManager';
+import VisualAdEditor from '../components/VisualAdEditor';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -2839,6 +2840,7 @@ function AdsTab({ settings, fetchSettings }: any) {
     const [showGlobalScript, setShowGlobalScript] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [showCreate, setShowCreate] = useState(false);
+    const [isVisualMode, setIsVisualMode] = useState(false);
     const [newAd, setNewAd] = useState({
         title: '',
         imageUrl: '',
@@ -3051,12 +3053,30 @@ function AdsTab({ settings, fetchSettings }: any) {
         { id: 'afk_random', label: '🎲 AFK Page - Random Position' }
     ];
 
+    const handleVisualSelect = (selector: string) => {
+        setIsVisualMode(false);
+        setNewAd({
+            ...newAd, // Keep defaults
+            position: `custom:${selector}`,
+            title: `Overlay Ad on ${selector}`,
+            type: 'script',
+            rawCode: ''
+        });
+        setShowCreate(true);
+        toast.success(`🎯 Target selected: ${selector}`);
+    };
+
     const filteredAds = filterPosition === 'all'
         ? ads
         : ads.filter(ad => ad.position === filterPosition);
 
     return (
         <div className="space-y-8">
+            <VisualAdEditor
+                isActive={isVisualMode}
+                onClose={() => setIsVisualMode(false)}
+                onSelect={handleVisualSelect}
+            />
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h2 className="text-2xl font-bold bg-gradient-to-r from-red-500 to-yellow-500 bg-clip-text text-transparent">
@@ -3074,6 +3094,12 @@ function AdsTab({ settings, fetchSettings }: any) {
                     >
                         <span>{isDebugMode ? '👁️' : '🙈'}</span>
                         {isDebugMode ? 'Hide Positions' : 'Show Positions'}
+                    </button>
+                    <button
+                        onClick={() => setIsVisualMode(true)}
+                        className="px-6 py-3 bg-purple-600 text-white rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-purple-500/50 hover:bg-purple-700 transition"
+                    >
+                        🎯 Place Ads Visually
                     </button>
                     <button
                         id="debug-script-ad-btn"
@@ -3151,16 +3177,34 @@ function AdsTab({ settings, fetchSettings }: any) {
                                 {
                                     <div>
                                         <label className="block text-sm font-medium text-gray-400 mb-1">Position</label>
-                                        <select
-                                            value={newAd.position}
-                                            onChange={e => setNewAd({ ...newAd, position: e.target.value })}
-                                            className="w-full bg-gray-900 border border-white/10 rounded-xl px-4 py-3 text-white [&>option]:bg-gray-900 [&>option]:text-white"
-                                            style={{ colorScheme: 'dark' }}
-                                        >
-                                            {adPositions.filter(p => p.id !== 'all').map(p => (
-                                                <option key={p.id} value={p.id} className="bg-gray-900 text-white">{p.label}</option>
-                                            ))}
-                                        </select>
+                                        {newAd.position.startsWith('custom:') ? (
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={newAd.position}
+                                                    readOnly
+                                                    className="w-full bg-purple-900/20 border border-purple-500/50 rounded-xl px-4 py-3 text-purple-300 font-mono text-sm"
+                                                />
+                                                <button
+                                                    onClick={() => setNewAd({ ...newAd, position: 'top' })}
+                                                    className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition"
+                                                    title="Reset to standard position"
+                                                >
+                                                    ❌
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <select
+                                                value={newAd.position}
+                                                onChange={e => setNewAd({ ...newAd, position: e.target.value })}
+                                                className="w-full bg-gray-900 border border-white/10 rounded-xl px-4 py-3 text-white [&>option]:bg-gray-900 [&>option]:text-white"
+                                                style={{ colorScheme: 'dark' }}
+                                            >
+                                                {adPositions.filter(p => p.id !== 'all').map(p => (
+                                                    <option key={p.id} value={p.id} className="bg-gray-900 text-white">{p.label}</option>
+                                                ))}
+                                            </select>
+                                        )}
                                     </div>
                                 }
                                 <div className="flex items-center gap-3 py-2">

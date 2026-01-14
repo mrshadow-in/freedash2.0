@@ -18,6 +18,7 @@ import NotificationListener from './components/NotificationListener';
 import SystemIntegrityCheck from './components/SystemIntegrityCheck';
 import GlobalAdScript from './components/GlobalAdScript';
 import ScriptAdInjector from './components/ScriptAdInjector';
+import CustomAdInjector from './components/CustomAdInjector';
 import AdBlockDetector from './components/AdBlockDetector';
 
 
@@ -51,6 +52,7 @@ function App() {
       <SystemIntegrityCheck />
       <GlobalAdScript />
       <ScriptAdInjector />
+      <CustomAdInjector />
       <AdBlockDetector />
     </Router>
   );
