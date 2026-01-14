@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Download, Loader2, Trash2, Package, CheckCircle2, Cloud, Filter, X, Info } from 'lucide-react';
+import { Search, Download, Loader2, Trash2, Package, CheckCircle2, Cloud, Filter } from 'lucide-react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import api from '../../api/client';
 import toast from 'react-hot-toast';
@@ -27,7 +27,6 @@ const PluginManager = ({ server }: PluginManagerProps) => {
     const [searching, setSearching] = useState(false);
     const [provider, setProvider] = useState<'modrinth' | 'spigot'>('modrinth');
     const [selectedVersion, setSelectedVersion] = useState<string>('1.21.1');
-    const [selectedPlugin, setSelectedPlugin] = useState<any>(null); // For Install Modal
 
     // 1. Fetch Minecraft Versions Dynamically
     const { data: mcVersions = FALLBACK_VERSIONS } = useQuery({
@@ -88,10 +87,7 @@ const PluginManager = ({ server }: PluginManagerProps) => {
 
     // 4. Install Action
     const installMutation = useMutation({
-        mutationFn: async ({ plugin, versionId }: { plugin: any; versionId?: string }) => {
-            // If versionId provided, use it? Or just pass selectedVersion and let backend matching handle it?
-            // The prompt says "one-click install... specific versions".
-            // Let's pass the specific version file URL if we had it, but our backend installPlugin expects resourceId.
+        mutationFn: async ({ plugin }: { plugin: any }) => {
             // Simplified: If we pass 'version' param to install, backend acts smart.
             return api.post(`/servers/${server.id}/minecraft/plugins/install`, {
                 resourceId: plugin.id,
@@ -102,7 +98,6 @@ const PluginManager = ({ server }: PluginManagerProps) => {
         },
         onSuccess: (_, variables) => {
             toast.success(`Installing ${variables.plugin.name}...`);
-            setSelectedPlugin(null); // Close modal if open
             setTimeout(() => refetchInstalled(), 5000);
         },
         onError: (error: any) => {
