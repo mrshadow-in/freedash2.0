@@ -187,7 +187,6 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
     }, [isFullscreen]);
 
     return (
-    return (
         <div className={`flex flex-col gap-6 ${isFullscreen ? 'fixed inset-0 z-50 bg-[#0c0229] p-4 h-screen w-screen' : ''}`}>
 
             {/* Live Stats Row - Hidden in fullscreen to save space, or can be kept compact */}
