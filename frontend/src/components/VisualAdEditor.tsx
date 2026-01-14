@@ -6,32 +6,22 @@ const VisualAdEditor: React.FC = () => {
     const { isVisualMode, setVisualMode, setActiveSelector, setAdModalOpen } = useAdStore();
     const [hoveredElement, setHoveredElement] = useState<HTMLElement | null>(null);
 
-    // Generate a unique selector for an element
+    // Generate a robust structural selector (Path-based)
     const getUniqueSelector = (el: HTMLElement): string => {
-        if (el.id) return `#${el.id}`;
+        if (el.id) return `#${CSS.escape(el.id)}`;
+        if (el.tagName.toLowerCase() === 'body') return 'body';
+        if (el.tagName.toLowerCase() === 'html') return 'html';
 
-        // Try precise classes
-        const classes = Array.from(el.classList).filter(c =>
-            !c.startsWith('hover:') &&
-            !c.startsWith('focus:') &&
-            !c.startsWith('active:') &&
-            !c.includes('ad-overlay')
-        ).map(c => CSS.escape(c)); // Escape special characters for valid selector
+        // Get index among siblings of same type
+        const siblings = Array.from(el.parentElement?.children || []);
+        const sameTypeSiblings = siblings.filter(s => s.tagName === el.tagName);
+        const index = sameTypeSiblings.indexOf(el) + 1;
 
-        let selector = el.tagName.toLowerCase();
-        if (classes.length > 0) {
-            selector += `.${classes.join('.')}`;
-        }
+        const tagName = el.tagName.toLowerCase();
+        const selector = sameTypeSiblings.length > 1 ? `${tagName}:nth-of-type(${index})` : tagName;
 
-        // Add nth-child if needed for uniqueness
-        const siblings = el.parentElement?.children;
-        if (siblings && siblings.length > 1) {
-            const index = Array.from(siblings).indexOf(el) + 1;
-            selector += `:nth-child(${index})`;
-        }
-
-        // Add parent context if simple selector is too generic
-        if (el.parentElement && el.parentElement.tagName !== 'BODY') {
+        // Recurse up to parent
+        if (el.parentElement) {
             const parentSelector = getUniqueSelector(el.parentElement);
             return `${parentSelector} > ${selector}`;
         }

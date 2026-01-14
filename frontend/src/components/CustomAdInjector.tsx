@@ -39,7 +39,7 @@ export default function CustomAdInjector() {
                             overlay.id = adId;
                             overlay.className = 'custom-ad-overlay';
                             overlay.style.position = 'absolute';
-                            overlay.style.zIndex = '9999'; // High z-index as requested
+                            overlay.style.zIndex = '2147483647'; // Max z-index to ensure visibility
                             overlay.style.overflow = 'hidden';
                             overlay.style.pointerEvents = 'auto'; // Ad is clickable
 
