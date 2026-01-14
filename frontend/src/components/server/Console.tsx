@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Loader2, Cpu, Activity, Wifi, Maximize2, Minimize2, Terminal as TerminalIcon } from 'lucide-react';
+import api from '../../api/client';
+import { toast } from 'react-hot-toast';
 
 
 interface ConsoleProps {
@@ -17,6 +19,7 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
     const [logs, setLogs] = useState<string[]>([]);
     const [command, setCommand] = useState('');
     const [isAutoScroll, setIsAutoScroll] = useState(true);
+    const [showEulaModal, setShowEulaModal] = useState(false);
 
     const sendCommand = () => {
         if (!command.trim()) return;
@@ -107,6 +110,11 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
                     // eslint-disable-next-line no-control-regex
                     const cleanLog = log.replace(/\x1b\[[0-9;]*m/g, '');
 
+                    // EULA Detection
+                    if (cleanLog.includes('You need to agree to the EULA in order to run the server')) {
+                        setShowEulaModal(true);
+                    }
+
                     cleanLog.split('\n').forEach(line => {
                         if (line.trim()) validLogs.push(line);
                     });
@@ -126,6 +134,26 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
             case 'token expired':
                 connect();
                 break;
+        }
+    };
+
+    const handleAcceptEula = async () => {
+        try {
+            toast.loading('Accepting EULA...');
+            // 1. Write EULA file
+            await api.post(`/servers/${serverId}/files/write`, {
+                file: 'eula.txt',
+                content: 'eula=true'
+            });
+
+            // 2. Restart Server
+            await api.post(`/servers/${serverId}/power`, { signal: 'start' });
+
+            toast.success('EULA Accepted. Starting server...');
+            setShowEulaModal(false);
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to accept EULA');
         }
     };
 
@@ -274,6 +302,38 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
                     onScroll={handleScroll}
                     className="flex-1 relative min-h-0 bg-[#0d1117] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent p-2 font-mono text-sm"
                 >
+                    {/* EULA Modal Overlay */}
+                    {showEulaModal && (
+                        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                            <div className="bg-[#161b22] border border-red-500/50 rounded-xl p-6 max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-300">
+                                <div className="flex items-center gap-3 mb-4 text-red-400">
+                                    <TerminalIcon size={32} />
+                                    <h3 className="text-xl font-bold text-white">EULA Acceptance Required</h3>
+                                </div>
+                                <p className="text-gray-300 mb-6 leading-relaxed">
+                                    The server cannot start because you have not agreed to the Minecraft EULA.
+                                </p>
+                                <div className="bg-black/30 p-3 rounded mb-6 text-xs text-gray-500 font-mono">
+                                    By clicking "I Agree", you are indicating your agreement to the <a href="https://account.mojang.com/documents/minecraft_eula" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">Minecraft EULA</a>.
+                                </div>
+                                <div className="flex justify-end gap-3">
+                                    <button
+                                        onClick={() => setShowEulaModal(false)}
+                                        className="px-4 py-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition"
+                                    >
+                                        Dismiss
+                                    </button>
+                                    <button
+                                        onClick={handleAcceptEula}
+                                        className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg shadow-lg shadow-red-900/20 transition-all hover:scale-105 active:scale-95"
+                                    >
+                                        I Agree & Start Server
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Connection Loader */}
                     {status === 'connecting' && (
                         <div className="flex flex-col items-center justify-center h-full gap-4 opacity-50">
