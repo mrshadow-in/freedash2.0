@@ -238,7 +238,7 @@ const AdZone: React.FC<AdZoneProps> = ({
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 1.05 }}
                             transition={{ duration: 0.5 }}
-                            className={`relative border border-white/10 rounded-lg ${ad.rawCode ? 'overflow-visible' : 'overflow-hidden'} group transition-all hover:border-purple-500/50 ${sizeClasses[ad.type] || 'w-full h-auto'}`}
+                            className={`${ad.rawCode ? 'absolute top-0 left-1/2 -translate-x-1/2 z-[50] overflow-visible' : 'relative overflow-hidden'} border border-white/10 rounded-lg group transition-all hover:border-purple-500/50 ${sizeClasses[ad.type] || 'w-full h-auto'}`}
                         >
                             {ad.rawCode ? (
                                 <RawAdRenderer code={ad.rawCode} />
