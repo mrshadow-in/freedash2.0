@@ -58,6 +58,7 @@ router.post('/:id/reinstall', reinstallServerAction as any);
 router.get('/:id/minecraft/properties', mcController.getServerProperties as any);
 router.put('/:id/minecraft/properties', mcController.updateServerProperties as any);
 router.get('/:id/minecraft/plugins', mcController.searchPlugins as any);
+router.get('/:id/minecraft/plugins/versions', mcController.getPluginVersions as any);
 router.post('/:id/minecraft/plugins/install', mcController.installPlugin as any);
 router.get('/:id/minecraft/plugins/installed', mcController.getInstalledPlugins as any);
 router.delete('/:id/minecraft/plugins/:filename', mcController.deletePlugin as any);

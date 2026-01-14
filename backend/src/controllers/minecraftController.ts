@@ -240,6 +240,44 @@ export const searchPlugins = async (req: Request, res: Response) => {
     }
 };
 
+export const getPluginVersions = async (req: Request, res: Response) => {
+    try {
+        const { resourceId, provider = 'spigot', version } = req.query;
+        if (!resourceId) return res.status(400).json({ message: 'Missing resourceId' });
+
+        if (provider === 'modrinth') {
+            // Fetch versions from Modrinth
+            // Filter by loaders: bukkit, spigot, paper
+            const loaders = JSON.stringify(["bukkit", "spigot", "paper"]);
+            const params: any = { loaders };
+            if (version) {
+                params.game_versions = JSON.stringify([version]);
+            }
+
+            const response = await axios.get(`https://api.modrinth.com/v2/project/${resourceId}/version`, { params });
+
+            const versions = (response.data as any[]).map(v => ({
+                id: v.id,
+                name: v.name,
+                versionNumber: v.version_number,
+                gameVersions: v.game_versions,
+                loaders: v.loaders,
+                date: v.date_published,
+                downloads: v.downloads,
+                file: v.files.find((f: any) => f.primary) || v.files[0]
+            }));
+
+            res.json(versions);
+        } else {
+            // Placeholder for Spigot (Spiget doesn't easily expose specific versions in standard search, usually just latest)
+            res.json([]);
+        }
+    } catch (error) {
+        console.error('Error fetching plugin versions:', error);
+        res.json([]);
+    }
+};
+
 export const installPlugin = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
