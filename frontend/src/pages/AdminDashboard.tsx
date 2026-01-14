@@ -2857,7 +2857,6 @@ function AdsTab({ settings, fetchSettings }: any) {
     const [scriptAdForm, setScriptAdForm] = useState({
         title: '',
         adType: 'popunder', // popunder, native, social_bar, banner, smartlink
-        bannerSize: '728x90', // Only for banner type
         rawCode: '',
         pageTargets: { dashboard: false, server: false, afk: false },
         scriptLocation: 'body',
@@ -2901,7 +2900,6 @@ function AdsTab({ settings, fetchSettings }: any) {
             setScriptAdForm({
                 title: '',
                 adType: 'popunder',
-                bannerSize: '728x90',
                 rawCode: '',
                 pageTargets: { dashboard: false, server: false, afk: false },
                 scriptLocation: 'body',
@@ -3513,26 +3511,7 @@ function AdsTab({ settings, fetchSettings }: any) {
                                 </p>
                             </div>
 
-                            {/* Banner Size (Only show if type is banner) */}
-                            {scriptAdForm.adType === 'banner' && (
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-400 mb-2">Banner Size</label>
-                                    <select
-                                        value={scriptAdForm.bannerSize}
-                                        onChange={e => setScriptAdForm({ ...scriptAdForm, bannerSize: e.target.value })}
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-purple-500 outline-none"
-                                    >
-                                        <option value="728x90">728×90 - Leaderboard (Header/Footer)</option>
-                                        <option value="300x250">300×250 - Medium Rectangle (Sidebar)</option>
-                                        <option value="336x280">336×280 - Large Rectangle</option>
-                                        <option value="160x600">160×600 - Wide Skyscraper (Sidebar)</option>
-                                        <option value="300x600">300×600 - Half Page</option>
-                                        <option value="970x250">970×250 - Billboard</option>
-                                        <option value="320x50">320×50 - Mobile Banner</option>
-                                        <option value="300x50">300×50 - Mobile Small</option>
-                                    </select>
-                                </div>
-                            )}
+
 
                             <div className="grid grid-cols-2 gap-6">
                                 <div>

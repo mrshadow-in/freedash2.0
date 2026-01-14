@@ -53,6 +53,19 @@ export default function ScriptAdInjector() {
                     const adContainer = document.createElement('div');
                     adContainer.id = existingId;
                     adContainer.className = 'injected-ad-container';
+
+                    // Make script ads overlap buttons and clickable elements with high z-index
+                    // Using relative positioning so they flow naturally but stay on top
+                    adContainer.style.cssText = `
+                        position: relative !important;
+                        z-index: 9999 !important;
+                        pointer-events: auto !important;
+                        width: auto !important;
+                        height: auto !important;
+                        display: block !important;
+                        margin: 10px auto !important;
+                    `;
+
                     adContainer.innerHTML = ad.rawCode;
 
                     // Determine Injection Target
