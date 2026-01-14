@@ -64,6 +64,9 @@ export default function ScriptAdInjector() {
                         height: auto !important;
                         display: block !important;
                         margin: 10px auto !important;
+                        overflow: visible !important;
+                        max-width: none !important;
+                        max-height: none !important;
                     `;
 
                     adContainer.innerHTML = ad.rawCode;
