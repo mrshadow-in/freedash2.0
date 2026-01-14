@@ -3051,6 +3051,10 @@ function AdsTab({ settings, fetchSettings }: any) {
         { id: 'afk_random', label: '🎲 AFK Page - Random Position' }
     ];
 
+    const filteredAds = filterPosition === 'all'
+        ? ads
+        : ads.filter(ad => ad.position === filterPosition);
+
     return (
         <div className="space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

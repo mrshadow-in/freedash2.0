@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAdStore } from '../store/adStore';
-import { X, Save, Copy } from 'lucide-react';
+import { X, Save } from 'lucide-react';
 import api from '../api/client';
 import toast from 'react-hot-toast';
 
