@@ -34,7 +34,7 @@ export default function CustomAdInjector() {
                         if (targetEl) {
                             console.log(`[CustomAdInjector] 🎯 Found target for "${ad.title}":`, selector);
 
-                            // Detect if target is a button/interactive element
+                            // Detect if target ITSELF is a button/interactive element
                             const isButtonTarget = targetEl.tagName === 'BUTTON' ||
                                 targetEl.tagName === 'A' ||
                                 targetEl.getAttribute('role') === 'button' ||
@@ -42,26 +42,36 @@ export default function CustomAdInjector() {
                                 targetEl.closest('a') !== null ||
                                 targetEl.classList.contains('btn');
 
+                            // Detect if target CONTAINS a button (for the "Hole" logic)
+                            const innerBtn = targetEl.querySelector('button, a[role="button"], .btn') as HTMLElement;
+                            const hasInnerBtn = !!innerBtn && !isButtonTarget; // Only apply hole if target itself isn't the button
+
                             // Create Overlay Container
                             const overlay = document.createElement('div');
                             overlay.id = adId;
                             overlay.className = 'custom-ad-overlay';
                             overlay.dataset.hover = 'false'; // Track hover state
-                            overlay.dataset.isTrap = isButtonTarget ? 'true' : 'false';
+                            overlay.dataset.isTrap = (isButtonTarget || hasInnerBtn) ? 'true' : 'false';
 
                             // Base Styles
                             overlay.style.position = 'absolute';
                             overlay.style.overflow = 'hidden';
-                            overlay.style.pointerEvents = 'auto';
+                            overlay.style.pointerEvents = 'auto'; // Always capture clicks first
 
                             if (isButtonTarget) {
-                                // "Invisible Trap" Mode for Buttons
-                                overlay.style.zIndex = '2147483647'; // Max visibility
+                                // CASE A: Target IS Button -> Full Invisible Trap
+                                overlay.style.zIndex = '2147483647';
                                 overlay.style.cursor = 'pointer';
-                                overlay.style.opacity = '0.001'; // Invisible
+                                overlay.style.opacity = '0.001';
                                 overlay.style.background = 'rgba(0,0,0,0.001)';
+                            } else if (hasInnerBtn) {
+                                // CASE B: Target HAS Button -> Visible Ad with "Hole" over button
+                                overlay.style.zIndex = '2147483647'; // High z-index to cover
+                                overlay.style.opacity = '1';
+                                overlay.style.background = 'transparent'; // Let visuals come from content
+                                overlay.style.cursor = 'default';
                             } else {
-                                // "Visible Overlay" Mode for others
+                                // CASE C: Generic Zone -> Visible Overlay
                                 overlay.style.zIndex = '9999';
                                 overlay.style.opacity = '1';
                                 overlay.style.background = 'transparent';
@@ -78,6 +88,28 @@ export default function CustomAdInjector() {
                                 overlay.style.left = `${rect.left + window.scrollX}px`;
                                 overlay.style.width = `${rect.width}px`;
                                 overlay.style.height = `${rect.height}px`;
+
+                                // Update Clip Path for "Hole" if needed
+                                if (hasInnerBtn && contentWrapper) {
+                                    const btnRect = innerBtn.getBoundingClientRect();
+                                    // Relative coordinates for the hole
+                                    const relLeft = btnRect.left - rect.left;
+                                    const relTop = btnRect.top - rect.top;
+                                    const relRight = relLeft + btnRect.width;
+                                    const relBottom = relTop + btnRect.height;
+                                    const w = rect.width;
+                                    const h = rect.height;
+
+                                    // Create Path with Hole (Outer CW, Inner CCW)
+                                    // Outer: 0,0 -> w,0 -> w,h -> 0,h -> 0,0
+                                    // Inner: L,T -> L,B -> R,B -> R,T -> L,T
+                                    const pathStr = `path('M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z M ${relLeft} ${relTop} L ${relLeft} ${relBottom} L ${relRight} ${relBottom} L ${relRight} ${relTop} Z')`;
+
+                                    contentWrapper.style.clipPath = pathStr;
+                                    // Ensure evenodd rule is applied if browser supports standard clip-rule, 
+                                    // though path direction usually handles winding.
+                                    (contentWrapper.style as any).clipRule = 'evenodd';
+                                }
                             };
 
                             updatePosition();
@@ -87,10 +119,14 @@ export default function CustomAdInjector() {
                             contentWrapper.innerHTML = ad.rawCode;
                             contentWrapper.style.width = '100%';
                             contentWrapper.style.height = '100%';
+
+                            // If trap mode, make content pass-through so overlay catches it?
+                            // No, overlay handles it.
+
                             overlay.appendChild(contentWrapper);
 
-                            // Add Close Button (Only for Non-Button targets)
-                            if (!isButtonTarget) {
+                            // Add Close Button (Only for Non-Trap targets)
+                            if (!isButtonTarget && !hasInnerBtn) {
                                 const closeBtn = document.createElement('button');
                                 closeBtn.innerHTML = '×';
                                 closeBtn.style.position = 'absolute';
@@ -129,13 +165,15 @@ export default function CustomAdInjector() {
                                 oldScript.parentNode?.replaceChild(newScript, oldScript);
                             });
 
-                            // TRAP LOGIC: Events for Button Targets Only
-                            if (isButtonTarget) {
+                            // TRAP LOGIC: Events for Button Targets OR Inner Button Traps
+                            if (isButtonTarget || hasInnerBtn) {
                                 overlay.addEventListener('mouseenter', () => { overlay.dataset.hover = 'true'; });
                                 overlay.addEventListener('mouseleave', () => { overlay.dataset.hover = 'false'; });
 
-                                overlay.addEventListener('click', () => {
-                                    console.log('[AdTrap] Click detected on content');
+                                overlay.addEventListener('click', (e) => {
+                                    // If hitting the hole, we want to act?
+                                    // Yes, any click on overlay triggers cooldown.
+                                    console.log('[AdTrap] Click detected on trap overlay');
                                     triggerCooldown(overlay);
                                 });
                             }
@@ -167,6 +205,8 @@ export default function CustomAdInjector() {
             console.log('[AdTrap] Triggering 10s cooldown for:', overlay.id);
             overlay.style.pointerEvents = 'none'; // Unlock button underneath
 
+            // Visual feedback? No, user wants transparent hole.
+
             setTimeout(() => {
                 console.log('[AdTrap] Cooldown over, reactivating:', overlay.id);
                 overlay.style.pointerEvents = 'auto'; // Block again
@@ -175,9 +215,7 @@ export default function CustomAdInjector() {
 
         // Global Blur Listener for Iframes
         const handleWindowBlur = () => {
-            // Check if any active overlay is currently hovered and is a trap
             const hoveredOverlay = document.querySelector('.custom-ad-overlay[data-hover="true"][data-is-trap="true"]');
-
             if (hoveredOverlay) {
                 console.log('[AdTrap] Window blur detected over ad => Iframe Clicked');
                 (hoveredOverlay as HTMLElement).style.pointerEvents = 'none';
