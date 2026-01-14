@@ -1,14 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { MousePointer2, X } from 'lucide-react';
+import { useAdStore } from '../store/adStore';
 
-
-interface VisualAdEditorProps {
-    isActive: boolean;
-    onClose: () => void;
-    onSelect: (selector: string) => void;
-}
-
-const VisualAdEditor: React.FC<VisualAdEditorProps> = ({ isActive, onClose, onSelect }) => {
+const VisualAdEditor: React.FC = () => {
+    const { isVisualMode, setVisualMode, setActiveSelector, setAdModalOpen } = useAdStore();
     const [hoveredElement, setHoveredElement] = useState<HTMLElement | null>(null);
 
     // Generate a unique selector for an element
@@ -45,7 +40,7 @@ const VisualAdEditor: React.FC<VisualAdEditorProps> = ({ isActive, onClose, onSe
     };
 
     useEffect(() => {
-        if (!isActive) return;
+        if (!isVisualMode) return;
 
         const handleMouseOver = (e: MouseEvent) => {
             e.stopPropagation();
@@ -57,8 +52,12 @@ const VisualAdEditor: React.FC<VisualAdEditorProps> = ({ isActive, onClose, onSe
             e.stopPropagation();
             const target = e.target as HTMLElement;
             const selector = getUniqueSelector(target);
-            onSelect(selector);
-            onClose(); // Exit mode after selection
+
+            // Global State Update
+            setActiveSelector(selector);
+            setVisualMode(false); // Turn off visual mode
+            setAdModalOpen(true); // Open the creation modal
+
         };
 
         document.addEventListener('mouseover', handleMouseOver);
@@ -68,9 +67,9 @@ const VisualAdEditor: React.FC<VisualAdEditorProps> = ({ isActive, onClose, onSe
             document.removeEventListener('mouseover', handleMouseOver);
             document.removeEventListener('click', handleClick, true);
         };
-    }, [isActive, onClose, onSelect]);
+    }, [isVisualMode, setVisualMode, setActiveSelector, setAdModalOpen]);
 
-    if (!isActive) return null;
+    if (!isVisualMode) return null;
 
     return (
         <>
@@ -99,7 +98,7 @@ const VisualAdEditor: React.FC<VisualAdEditorProps> = ({ isActive, onClose, onSe
                     <span className="font-bold">Select an element to place ad</span>
                 </div>
                 <button
-                    onClick={onClose}
+                    onClick={() => setVisualMode(false)}
                     className="p-1 hover:bg-white/10 rounded-full transition-colors text-white/60 hover:text-white"
                 >
                     <X size={20} />

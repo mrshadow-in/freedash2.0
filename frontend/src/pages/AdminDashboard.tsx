@@ -10,7 +10,6 @@ import { useTheme } from '../context/ThemeContext';
 import { Plus, Loader2 } from 'lucide-react';
 
 import WingsManager from '../components/admin/WingsManager';
-import VisualAdEditor from '../components/VisualAdEditor';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -2829,7 +2828,7 @@ function SocialTab({ settings, fetchSettings }: any) {
 
 // Ads Management Tab
 function AdsTab({ settings, fetchSettings }: any) {
-    const { isDebugMode, toggleDebugMode } = useAdStore();
+    const { isDebugMode, toggleDebugMode, setVisualMode } = useAdStore();
     const [ads, setAds] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [filterPosition, setFilterPosition] = useState('all');
@@ -2840,7 +2839,6 @@ function AdsTab({ settings, fetchSettings }: any) {
     const [showGlobalScript, setShowGlobalScript] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [showCreate, setShowCreate] = useState(false);
-    const [isVisualMode, setIsVisualMode] = useState(false);
     const [newAd, setNewAd] = useState({
         title: '',
         imageUrl: '',
@@ -3053,30 +3051,8 @@ function AdsTab({ settings, fetchSettings }: any) {
         { id: 'afk_random', label: '🎲 AFK Page - Random Position' }
     ];
 
-    const handleVisualSelect = (selector: string) => {
-        setIsVisualMode(false);
-        setNewAd({
-            ...newAd, // Keep defaults
-            position: `custom:${selector}`,
-            title: `Overlay Ad on ${selector}`,
-            type: 'script',
-            rawCode: ''
-        });
-        setShowCreate(true);
-        toast.success(`🎯 Target selected: ${selector}`);
-    };
-
-    const filteredAds = filterPosition === 'all'
-        ? ads
-        : ads.filter(ad => ad.position === filterPosition);
-
     return (
         <div className="space-y-8">
-            <VisualAdEditor
-                isActive={isVisualMode}
-                onClose={() => setIsVisualMode(false)}
-                onSelect={handleVisualSelect}
-            />
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h2 className="text-2xl font-bold bg-gradient-to-r from-red-500 to-yellow-500 bg-clip-text text-transparent">
@@ -3096,7 +3072,7 @@ function AdsTab({ settings, fetchSettings }: any) {
                         {isDebugMode ? 'Hide Positions' : 'Show Positions'}
                     </button>
                     <button
-                        onClick={() => setIsVisualMode(true)}
+                        onClick={() => setVisualMode(true)}
                         className="px-6 py-3 bg-purple-600 text-white rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-purple-500/50 hover:bg-purple-700 transition"
                     >
                         🎯 Place Ads Visually
@@ -3318,7 +3294,7 @@ function AdsTab({ settings, fetchSettings }: any) {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                    {filteredAds.map((ad) => (
+                    {filteredAds.map((ad: any) => (
                         <div key={ad.id} className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden group hover:border-purple-500/30 transition-all flex flex-col md:flex-row">
                             <div className="w-full md:w-64 h-32 md:h-auto bg-black/40 relative flex items-center justify-center overflow-hidden">
                                 <img src={ad.imageUrl} alt={ad.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />

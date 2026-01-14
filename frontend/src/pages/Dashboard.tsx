@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import { useAuthStore } from '../store/authStore';
+import { useAdStore } from '../store/adStore';
 import ServerCard from '../components/ServerCard';
 import { Server, Plus, Coins, Activity, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -146,6 +147,22 @@ const Dashboard = () => {
                     <AdZone position="sidebar-right" rotate={false} className="" />
                 </div>
             </div>
+
+            {/* Admin Controls */}
+            {user?.role === 'admin' && (
+                <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="fixed bottom-6 right-6 z-[9999]"
+                >
+                    <button
+                        onClick={() => useAdStore.getState().setVisualMode(true)}
+                        className="flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-full font-bold shadow-lg shadow-purple-600/30 transition-all hover:scale-105"
+                    >
+                        <span>🎯</span> Place Ad Visually
+                    </button>
+                </motion.div>
+            )}
 
             {/* Navigation Header */}
             <Header />
