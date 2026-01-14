@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
-import { Loader2, Cpu, Activity, HardDrive, Wifi, Maximize2, Minimize2 } from 'lucide-react';
-import { AreaChart, Area, ResponsiveContainer } from 'recharts';
+import { Loader2, Cpu, Activity, Wifi, Maximize2, Minimize2 } from 'lucide-react';
+
 
 interface ConsoleProps {
     serverId: string;
@@ -17,7 +17,7 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
     const fitAddonRef = useRef<FitAddon | null>(null);
     const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error' | 'installing'>('connecting');
     const [stats, setStats] = useState<any>(null);
-    const [statsHistory, setStatsHistory] = useState<any[]>([]);
+
     const [command, setCommand] = useState('');
 
     const sendCommand = () => {
@@ -72,15 +72,7 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
         };
     }, [serverId, serverStatus]);
 
-    // Initial empty data for charts
-    useEffect(() => {
-        const initialData = Array(20).fill(0).map((_, i) => ({
-            time: i,
-            cpu: 0,
-            memory: 0
-        }));
-        setStatsHistory(initialData);
-    }, []);
+
 
     const initWebSocket = (url: string) => {
         const ws = new WebSocket(url);
@@ -151,14 +143,7 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
                 try {
                     const statsData = JSON.parse(args[0]);
                     setStats(statsData);
-                    setStatsHistory(prev => {
-                        const newData = [...prev.slice(1), {
-                            time: new Date().toLocaleTimeString(),
-                            cpu: statsData.cpu_absolute || 0,
-                            memory: (statsData.memory_bytes || 0) / 1024 / 1024
-                        }];
-                        return newData;
-                    });
+
                 } catch (e) {
                     console.error('Failed to parse stats:', e);
                 }
