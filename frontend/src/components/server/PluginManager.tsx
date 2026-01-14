@@ -44,32 +44,32 @@ const FALLBACK_VERSIONS = [
 // Using verified icon URLs from Modrinth CDN
 const MODRINTH_POPULAR = [
     {
-        id: 'Opn7SYjf',
+        id: 'Vebnzrzj',  // CORRECT ID for LuckPerms
         name: 'LuckPerms',
         author: 'Luck',
         downloads: 45000000,
         description: 'A permissions plugin for Minecraft servers',
-        icon: 'https://cdn.modrinth.com/data/Opn7SYjf/icon.png',
+        icon: 'https://cdn.modrinth.com/data/Vebnzrzj/icon.png',
         provider: 'modrinth',
         premium: false
     },
     {
-        id: 'Lu3gAkPd',
+        id: 'H5uVvGLf',  // CORRECT ID for Vault
         name: 'Vault',
         author: 'MilkBowl',
         downloads: 25000000,
         description: 'Vault is a Permissions, Chat, & Economy API',
-        icon: 'https://cdn.modrinth.com/data/Lu3gAkPd/icon.png',
+        icon: 'https://cdn.modrinth.com/data/H5uVvGLf/icon.png',
         provider: 'modrinth',
         premium: false
     },
     {
-        id: 'fRQREgAc',
+        id: 'hXiIvTyT',  // CORRECT ID for EssentialsX
         name: 'EssentialsX',
         author: 'EssentialsX Team',
         downloads: 35000000,
         description: 'The essential plugin suite for Minecraft servers',
-        icon: 'https://cdn.modrinth.com/data/fRQREgAc/icon.png',
+        icon: 'https://cdn.modrinth.com/data/hXiIvTyT/icon.png',
         provider: 'modrinth',
         premium: false
     },
@@ -185,7 +185,7 @@ const PluginManager = ({ server }: PluginManagerProps) => {
     return (
         <div className="flex flex-col h-full bg-[#0d1117] relative">
             {/* Header */}
-            <div className="p-6 border-b border-white/5 bg-[#161b22]/95 backdrop-blur z-20 sticky top-0">
+            <div className="p-6 border-b border-white/5 bg-[#161b22]/95 backdrop-blur z-20">
                 <div className="max-w-7xl mx-auto space-y-4">
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                         <div>
@@ -196,20 +196,46 @@ const PluginManager = ({ server }: PluginManagerProps) => {
                         </div>
 
                         {/* Filters */}
-                        <div className="flex items-center gap-2 bg-[#0d1117] p-1 rounded-lg border border-white/10">
-                            <div className="px-3 py-1.5 flex items-center gap-2 bg-white/5 rounded-md">
-                                <Filter size={14} className="text-slate-400" />
-                                <select
-                                    value={selectedVersion}
-                                    onChange={e => setSelectedVersion(e.target.value)}
-                                    className="bg-transparent text-sm font-medium text-white outline-none cursor-pointer"
-                                >
-                                    {mcVersions.map((v: string) => <option key={v} value={v} className="bg-[#161b22]">{v}</option>)}
-                                </select>
+                        <div className="flex items-center gap-3 bg-[#0d1117] p-1.5 rounded-xl border border-white/10 shadow-lg">
+                            {/* Version Selector */}
+                            <div className="relative">
+                                <div className="px-4 py-2 flex items-center gap-2 bg-[#161b22] rounded-lg border border-white/10 hover:border-green-500/30 transition-all group">
+                                    <Filter size={14} className="text-green-500" />
+                                    <select
+                                        value={selectedVersion}
+                                        onChange={e => setSelectedVersion(e.target.value)}
+                                        className="bg-transparent text-sm font-semibold text-white outline-none cursor-pointer pr-8 appearance-none"
+                                        style={{
+                                            background: 'transparent',
+                                            WebkitAppearance: 'none',
+                                            MozAppearance: 'none'
+                                        }}
+                                    >
+                                        {mcVersions.map((v: string) => <option key={v} value={v} className="bg-[#161b22] text-white py-2">{v}</option>)}
+                                    </select>
+                                    {/* Custom Arrow */}
+                                    <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none group-hover:text-green-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
                             </div>
-                            <div className="w-px h-5 bg-white/10" />
-                            <button onClick={() => setProvider('modrinth')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition ${provider === 'modrinth' ? 'bg-green-600 text-white shadow-lg shadow-green-900/20' : 'text-slate-400 hover:text-white'}`}>MODRINTH</button>
-                            <button onClick={() => setProvider('spigot')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition ${provider === 'spigot' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' : 'text-slate-400 hover:text-white'}`}>SPIGOT</button>
+
+                            {/* Divider */}
+                            <div className="w-px h-6 bg-white/10" />
+
+                            {/* Provider Toggle */}
+                            <button
+                                onClick={() => setProvider('modrinth')}
+                                className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${provider === 'modrinth' ? 'bg-green-600 text-white shadow-lg shadow-green-900/30 scale-105' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                            >
+                                MODRINTH
+                            </button>
+                            <button
+                                onClick={() => setProvider('spigot')}
+                                className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${provider === 'spigot' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/30 scale-105' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                            >
+                                SPIGOT
+                            </button>
                         </div>
                     </div>
 
