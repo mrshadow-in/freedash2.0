@@ -210,11 +210,11 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
     };
 
     return (
-        <div className={`flex flex-col gap-6 ${isFullscreen ? 'fixed inset-0 z-50 bg-[#0c0229] p-4 h-screen w-screen' : ''}`}>
+        <div className={`flex flex-col gap-6 w-full ${isFullscreen ? 'fixed inset-0 z-50 bg-[#0c0229] p-4 h-screen' : 'h-full'}`}>
 
             {/* Live Stats Row */}
             {!isFullscreen && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0">
                     {/* CPU Card */}
                     <div className="bg-[#0f111a] border border-white/5 rounded-xl p-4 shadow-lg ring-1 ring-white/5 relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition">
@@ -275,9 +275,8 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
                 </div>
             )}
 
-            {/* Console Container */}
-            {/* Console Container */}
-            <div className={`flex flex-col bg-[#0f111a] rounded-xl overflow-hidden border border-white/5 shadow-2xl min-w-0 ring-1 ring-white/5 ${isFullscreen ? 'h-full w-full flex-1' : 'h-full w-full'}`}>
+            {/* Console Container - Uses flex-1 to take REMAINING height */}
+            <div className={`flex flex-col bg-[#0f111a] rounded-xl overflow-hidden border border-white/5 shadow-2xl min-w-0 ring-1 ring-white/5 w-full flex-1 min-h-0`}>
                 {/* Header with Status */}
                 <div className="flex items-center justify-between px-5 py-3 bg-[#13161f] border-b border-white/5 backdrop-blur-sm shrink-0">
                     <div className="flex items-center gap-4">
