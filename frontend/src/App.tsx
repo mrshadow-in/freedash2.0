@@ -19,7 +19,6 @@ import SystemIntegrityCheck from './components/SystemIntegrityCheck';
 import GlobalAdScript from './components/GlobalAdScript';
 import ScriptAdInjector from './components/ScriptAdInjector';
 import CustomAdInjector from './components/CustomAdInjector';
-import GlobalButtonAdInterceptor from './components/GlobalButtonAdInterceptor';
 import VisualAdEditor from './components/VisualAdEditor';
 import GlobalAdCreationModal from './components/GlobalAdCreationModal';
 import AdBlockDetector from './components/AdBlockDetector';
@@ -56,7 +55,6 @@ function App() {
       <GlobalAdScript />
       <ScriptAdInjector />
       <CustomAdInjector />
-      <GlobalButtonAdInterceptor />
       <VisualAdEditor />
       <GlobalAdCreationModal />
       <AdBlockDetector />

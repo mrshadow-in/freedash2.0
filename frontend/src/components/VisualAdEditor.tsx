@@ -8,10 +8,6 @@ const VisualAdEditor: React.FC = () => {
 
     // Generate a robust structural selector (Path-based)
     const getUniqueSelector = (el: HTMLElement): string => {
-        // Priority 1: Semantic Ad ID (Best for stability)
-        const adId = el.getAttribute('data-ad-id');
-        if (adId) return `[data-ad-id="${adId}"]`;
-
         if (el.id) return `#${CSS.escape(el.id)}`;
         if (el.tagName.toLowerCase() === 'body') return 'body';
         if (el.tagName.toLowerCase() === 'html') return 'html';
