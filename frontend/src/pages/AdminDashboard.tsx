@@ -174,6 +174,7 @@ const AdminDashboard = () => {
 
 // Settings Tab
 function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
+    const navigate = useNavigate();
     const [showTestEmailModal, setShowTestEmailModal] = useState(false);
     const [testEmailAddress, setTestEmailAddress] = useState('');
 
