@@ -14,11 +14,12 @@ const FALLBACK_VERSIONS = [
     '1.19.4', '1.19.2', '1.18.2', '1.16.5', '1.12.2'
 ];
 
+// **ACTUAL PLUGINS** for Bukkit/Spigot/Paper servers (NOT Fabric/Forge mods!)
 const MODRINTH_POPULAR = [
-    { id: '1b23avLy', name: 'Sodium', author: 'JellySquid', downloads: '20M+', description: 'Modern rendering engine for Minecraft', icon: 'https://cdn.modrinth.com/data/AANobbMI/icon.png', provider: 'modrinth', premium: false },
-    { id: 'P7dR8mSH', name: 'Fabric API', author: 'modmuss50', downloads: '50M+', description: 'Core API library for Fabric mods', icon: 'https://cdn.modrinth.com/data/P7dR8mSH/icon.png', provider: 'modrinth', premium: false },
-    { id: 'myl4987E', name: 'Iris Shaders', author: 'coderbot', downloads: '10M+', description: 'Modern shaders mod', icon: 'https://cdn.modrinth.com/data/myl4987E/icon.png', provider: 'modrinth', premium: false },
-    { id: 'qQyHxfxd', name: 'Simple Voice Chat', author: 'Henkelmax', downloads: '5M+', description: 'Proximity voice chat', icon: 'https://cdn.modrinth.com/data/9eGKb6K1/icon.png', provider: 'modrinth', premium: false },
+    { id: 'Opn7SYjf', name: 'LuckPerms', author: 'Luck', downloads: 45000000, description: 'A permissions plugin for Minecraft servers', icon: 'https://cdn.modrinth.com/data/Opn7SYjf/c9a39346e4d4e0b7e0aa0bae8a71c99bad2f4dc5_icon.png', provider: 'modrinth', premium: false },
+    { id: 'Lu3gAkPd', name: 'Vault', author: 'MilkBowl', downloads: 25000000, description: 'Vault is a Permissions, Chat, & Economy API', icon: 'https://cdn.modrinth.com/data/Lu3gAkPd/icon.png', provider: 'modrinth', premium: false },
+    { id: 'fRQREgAc', name: 'EssentialsX', author: 'EssentialsX Team', downloads: 35000000, description: 'The essential plugin suite for Minecraft servers', icon: 'https://cdn.modrinth.com/data/fRQREgAc/81a5e73c0e1d3d0cb41c15c8e2050c6ce6adbf28.png', provider: 'modrinth', premium: false },
+    { id: '1u6JkXh5', name: 'WorldEdit', author: 'sk89q', downloads: 40000000, description: 'In-game Minecraft map editor - build faster!', icon: 'https://cdn.modrinth.com/data/1u6JkXh5/icon.png', provider: 'modrinth', premium: false },
 ];
 
 const PluginManager = ({ server }: PluginManagerProps) => {
