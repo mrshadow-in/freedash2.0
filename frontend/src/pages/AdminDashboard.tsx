@@ -3123,21 +3123,24 @@ function AdsTab({ settings, fetchSettings }: any) {
                                         placeholder="Epic Network Sale"
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-400 mb-1">Type / Size</label>
-                                    <select
-                                        value={newAd.type}
-                                        onChange={e => setNewAd({ ...newAd, type: e.target.value })}
-                                        className="w-full bg-gray-900 border border-white/10 rounded-xl px-4 py-3 text-white [&>option]:bg-gray-900 [&>option]:text-white"
-                                        style={{ colorScheme: 'dark' }}
-                                    >
-                                        <option value="leaderboard" className="bg-gray-900 text-white">Leaderboard (728x90)</option>
-                                        <option value="banner" className="bg-gray-900 text-white">Banner (468x60)</option>
-                                        <option value="square" className="bg-gray-900 text-white">Square / Sidebar</option>
-                                        <option value="full-width" className="bg-gray-900 text-white">Full Width Native</option>
-                                        <option value="promo-strip" className="bg-gray-900 text-white">Promo Strip (Small)</option>
-                                    </select>
-                                </div>
+                                {/* Only show Type/Size for image-based ads, not script ads */}
+                                {!newAd.rawCode && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-400 mb-1">Type / Size</label>
+                                        <select
+                                            value={newAd.type}
+                                            onChange={e => setNewAd({ ...newAd, type: e.target.value })}
+                                            className="w-full bg-gray-900 border border-white/10 rounded-xl px-4 py-3 text-white [&>option]:bg-gray-900 [&>option]:text-white"
+                                            style={{ colorScheme: 'dark' }}
+                                        >
+                                            <option value="leaderboard" className="bg-gray-900 text-white">Leaderboard (728x90)</option>
+                                            <option value="banner" className="bg-gray-900 text-white">Banner (468x60)</option>
+                                            <option value="square" className="bg-gray-900 text-white">Square / Sidebar</option>
+                                            <option value="full-width" className="bg-gray-900 text-white">Full Width Native</option>
+                                            <option value="promo-strip" className="bg-gray-900 text-white">Promo Strip (Small)</option>
+                                        </select>
+                                    </div>
+                                )}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-400 mb-1">Position</label>
                                     <select
