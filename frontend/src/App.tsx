@@ -21,6 +21,7 @@ import ScriptAdInjector from './components/ScriptAdInjector';
 import CustomAdInjector from './components/CustomAdInjector';
 import VisualAdEditor from './components/VisualAdEditor';
 import GlobalAdCreationModal from './components/GlobalAdCreationModal';
+import GlobalAdminControls from './components/GlobalAdminControls';
 import AdBlockDetector from './components/AdBlockDetector';
 
 
@@ -57,6 +58,7 @@ function App() {
       <CustomAdInjector />
       <VisualAdEditor />
       <GlobalAdCreationModal />
+      <GlobalAdminControls />
       <AdBlockDetector />
     </Router>
   );

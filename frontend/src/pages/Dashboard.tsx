@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import { useAuthStore } from '../store/authStore';
-import { useAdStore } from '../store/adStore';
+import { useAuthStore } from '../store/authStore';
 import ServerCard from '../components/ServerCard';
 import { Server, Plus, Coins, Activity, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -148,21 +148,12 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* Admin Controls */}
-            {user?.role === 'admin' && (
-                <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="fixed bottom-6 right-6 z-[9999]"
-                >
-                    <button
-                        onClick={() => useAdStore.getState().setVisualMode(true)}
-                        className="flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-full font-bold shadow-lg shadow-purple-600/30 transition-all hover:scale-105"
-                    >
-                        <span>🎯</span> Place Ad Visually
-                    </button>
-                </motion.div>
-            )}
+            {/* Sidebar Right Ad Zone - Fixed Floating - Shows ALL ads stacked */}
+            <div className="fixed right-4 top-1/2 -translate-y-1/2 z-20 hidden 2xl:block max-w-[200px] space-y-4 pointer-events-none">
+                <div className="pointer-events-auto">
+                    <AdZone position="sidebar-right" rotate={false} className="" />
+                </div>
+            </div>
 
             {/* Navigation Header */}
             <Header />
