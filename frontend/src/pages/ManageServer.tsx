@@ -140,21 +140,25 @@ const ManageServer = () => {
 
             <Header />
 
-            <div className="relative z-10 max-w-[1600px] mx-auto px-4 sm:px-6 py-6 sm:py-10">
+            <div className={`relative z-10 mx-auto ${activeTab === 'console' ? 'w-full px-2' : 'max-w-[1600px] px-4 sm:px-6 py-6 sm:py-10'}`}>
                 <div className="flex gap-6 items-start">
-                    {/* Left Sidebar Ad */}
-                    <div className="hidden xl:block w-[300px] shrink-0 sticky top-24">
-                        <AdZone position="server-sidebar-left" className="w-full" />
-                    </div>
+                    {/* Left Sidebar Ad - Hide on Console Tab */}
+                    {activeTab !== 'console' && (
+                        <div className="hidden xl:block w-[300px] shrink-0 sticky top-24">
+                            <AdZone position="server-sidebar-left" className="w-full" />
+                        </div>
+                    )}
 
                     <div className="flex-1 min-w-0">
-                        {/* Server Header Ad Zone */}
-                        <AdZone
-                            position="server-header"
-                            className="mb-6"
-                            rotate={true}
-                            rotationInterval={45}
-                        />
+                        {/* Server Header Ad Zone - Hide on Console Tab */}
+                        {activeTab !== 'console' && (
+                            <AdZone
+                                position="server-header"
+                                className="mb-6"
+                                rotate={true}
+                                rotationInterval={45}
+                            />
+                        )}
 
                         <ServerHeader
                             server={server}
@@ -226,55 +230,57 @@ const ManageServer = () => {
                             </div>
                         </motion.div>
 
-                        {/* Resource Stats Bar */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.15 }}
-                            className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"
-                        >
-                            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 flex items-center justify-between">
-                                <div>
-                                    <div className="text-gray-400 text-xs font-bold uppercase mb-1">Memory (RAM)</div>
-                                    <div className="text-xl font-bold text-white font-mono">
-                                        {(server.ramMb && server.ramMb >= 1024) ? `${(server.ramMb / 1024).toFixed(1)} GB` : `${server.ramMb || 0} MB`}
+                        {/* Resource Stats Bar - Hide on Console Tab since it has its own */}
+                        {activeTab !== 'console' && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.15 }}
+                                className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"
+                            >
+                                <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 flex items-center justify-between">
+                                    <div>
+                                        <div className="text-gray-400 text-xs font-bold uppercase mb-1">Memory (RAM)</div>
+                                        <div className="text-xl font-bold text-white font-mono">
+                                            {(server.ramMb && server.ramMb >= 1024) ? `${(server.ramMb / 1024).toFixed(1)} GB` : `${server.ramMb || 0} MB`}
+                                        </div>
+                                    </div>
+                                    <div className="p-3 bg-blue-500/20 rounded-lg">
+                                        <svg className="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                                        </svg>
                                     </div>
                                 </div>
-                                <div className="p-3 bg-blue-500/20 rounded-lg">
-                                    <svg className="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-                                    </svg>
-                                </div>
-                            </div>
 
-                            <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 flex items-center justify-between">
-                                <div>
-                                    <div className="text-gray-400 text-xs font-bold uppercase mb-1">Storage (Disk)</div>
-                                    <div className="text-xl font-bold text-white font-mono">
-                                        {(server.diskMb && server.diskMb >= 1024) ? `${(server.diskMb / 1024).toFixed(1)} GB` : `${server.diskMb || 0} MB`}
+                                <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 flex items-center justify-between">
+                                    <div>
+                                        <div className="text-gray-400 text-xs font-bold uppercase mb-1">Storage (Disk)</div>
+                                        <div className="text-xl font-bold text-white font-mono">
+                                            {(server.diskMb && server.diskMb >= 1024) ? `${(server.diskMb / 1024).toFixed(1)} GB` : `${server.diskMb || 0} MB`}
+                                        </div>
+                                    </div>
+                                    <div className="p-3 bg-green-500/20 rounded-lg">
+                                        <svg className="w-6 h-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                                        </svg>
                                     </div>
                                 </div>
-                                <div className="p-3 bg-green-500/20 rounded-lg">
-                                    <svg className="w-6 h-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
-                                    </svg>
-                                </div>
-                            </div>
 
-                            <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 flex items-center justify-between">
-                                <div>
-                                    <div className="text-gray-400 text-xs font-bold uppercase mb-1">CPU Cores</div>
-                                    <div className="text-xl font-bold text-white font-mono">
-                                        {server.cpuCores || 1} Core{(server.cpuCores || 1) > 1 ? 's' : ''}
+                                <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 flex items-center justify-between">
+                                    <div>
+                                        <div className="text-gray-400 text-xs font-bold uppercase mb-1">CPU Cores</div>
+                                        <div className="text-xl font-bold text-white font-mono">
+                                            {server.cpuCores || 1} Core{(server.cpuCores || 1) > 1 ? 's' : ''}
+                                        </div>
+                                    </div>
+                                    <div className="p-3 bg-purple-500/20 rounded-lg">
+                                        <svg className="w-6 h-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                                        </svg>
                                     </div>
                                 </div>
-                                <div className="p-3 bg-purple-500/20 rounded-lg">
-                                    <svg className="w-6 h-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </motion.div>
+                            </motion.div>
+                        )}
 
                         {/* Tab Navigation - Only Resources and Shop */}
                         <div className="flex gap-4 border-b border-white/10 mb-8 overflow-x-auto pb-2">
@@ -382,20 +388,24 @@ const ManageServer = () => {
                             />
                         </div>
 
-                        {/* Server Footer Ad Zone */}
-                        <AdZone
-                            position="server-footer"
-                            className="mt-8 mb-4"
-                            rotate={true}
-                            rotationInterval={60}
-                        />
+                        {/* Server Footer Ad Zone - Hide on Console */}
+                        {activeTab !== 'console' && (
+                            <AdZone
+                                position="server-footer"
+                                className="mt-8 mb-4"
+                                rotate={true}
+                                rotationInterval={60}
+                            />
+                        )}
 
                     </div>
 
-                    {/* Right Sidebar Ad */}
-                    <div className="hidden xl:block w-[300px] shrink-0 sticky top-24">
-                        <AdZone position="server-sidebar-right" className="w-full" />
-                    </div>
+                    {/* Right Sidebar Ad - Hide on Console (if it was visible) */}
+                    {activeTab !== 'console' && (
+                        <div className="hidden xl:block w-[300px] shrink-0 sticky top-24">
+                            <AdZone position="server-sidebar-right" className="w-full" />
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
