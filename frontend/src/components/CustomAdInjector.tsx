@@ -34,20 +34,38 @@ export default function CustomAdInjector() {
                         if (targetEl) {
                             console.log(`[CustomAdInjector] 🎯 Found target for "${ad.title}":`, selector);
 
+                            // Detect if target is a button/interactive element
+                            const isButtonTarget = targetEl.tagName === 'BUTTON' ||
+                                targetEl.tagName === 'A' ||
+                                targetEl.getAttribute('role') === 'button' ||
+                                targetEl.closest('button') !== null ||
+                                targetEl.closest('a') !== null ||
+                                targetEl.classList.contains('btn');
+
                             // Create Overlay Container
                             const overlay = document.createElement('div');
                             overlay.id = adId;
                             overlay.className = 'custom-ad-overlay';
                             overlay.dataset.hover = 'false'; // Track hover state
+                            overlay.dataset.isTrap = isButtonTarget ? 'true' : 'false';
 
-                            // Styles for "Invisible Trap"
+                            // Base Styles
                             overlay.style.position = 'absolute';
-                            overlay.style.zIndex = '2147483647'; // Max visibility
                             overlay.style.overflow = 'hidden';
-                            overlay.style.cursor = 'pointer'; // Show pointer so user thinks it's clickable
-                            overlay.style.opacity = '0.001'; // Invisible but interactable
                             overlay.style.pointerEvents = 'auto';
-                            overlay.style.background = 'rgba(0,0,0,0.001)'; // Slight background for click capture
+
+                            if (isButtonTarget) {
+                                // "Invisible Trap" Mode for Buttons
+                                overlay.style.zIndex = '2147483647'; // Max visibility
+                                overlay.style.cursor = 'pointer';
+                                overlay.style.opacity = '0.001'; // Invisible
+                                overlay.style.background = 'rgba(0,0,0,0.001)';
+                            } else {
+                                // "Visible Overlay" Mode for others
+                                overlay.style.zIndex = '9999';
+                                overlay.style.opacity = '1';
+                                overlay.style.background = 'transparent';
+                            }
 
                             // Initial Position Sync
                             const updatePosition = () => {
@@ -71,6 +89,35 @@ export default function CustomAdInjector() {
                             contentWrapper.style.height = '100%';
                             overlay.appendChild(contentWrapper);
 
+                            // Add Close Button (Only for Non-Button targets)
+                            if (!isButtonTarget) {
+                                const closeBtn = document.createElement('button');
+                                closeBtn.innerHTML = '×';
+                                closeBtn.style.position = 'absolute';
+                                closeBtn.style.top = '-10px';
+                                closeBtn.style.right = '-10px';
+                                closeBtn.style.width = '24px';
+                                closeBtn.style.height = '24px';
+                                closeBtn.style.background = 'red';
+                                closeBtn.style.color = 'white';
+                                closeBtn.style.border = '2px solid white';
+                                closeBtn.style.borderRadius = '50%';
+                                closeBtn.style.fontSize = '16px';
+                                closeBtn.style.fontWeight = 'bold';
+                                closeBtn.style.cursor = 'pointer';
+                                closeBtn.style.display = 'flex';
+                                closeBtn.style.alignItems = 'center';
+                                closeBtn.style.justifyContent = 'center';
+                                closeBtn.style.zIndex = '2147483647';
+                                closeBtn.style.boxShadow = '0 2px 5px rgba(0,0,0,0.5)';
+
+                                closeBtn.onclick = (e) => {
+                                    e.stopPropagation();
+                                    overlay.remove();
+                                };
+                                overlay.appendChild(closeBtn);
+                            }
+
                             // Execute Scripts
                             document.body.appendChild(overlay);
 
@@ -82,15 +129,16 @@ export default function CustomAdInjector() {
                                 oldScript.parentNode?.replaceChild(newScript, oldScript);
                             });
 
-                            // Hover Tracking for Iframe Click Detection
-                            overlay.addEventListener('mouseenter', () => { overlay.dataset.hover = 'true'; });
-                            overlay.addEventListener('mouseleave', () => { overlay.dataset.hover = 'false'; });
+                            // TRAP LOGIC: Events for Button Targets Only
+                            if (isButtonTarget) {
+                                overlay.addEventListener('mouseenter', () => { overlay.dataset.hover = 'true'; });
+                                overlay.addEventListener('mouseleave', () => { overlay.dataset.hover = 'false'; });
 
-                            // Direct Click Handling (for non-iframe ads like div/a)
-                            overlay.addEventListener('click', () => {
-                                console.log('[AdTrap] Click detected on content');
-                                triggerCooldown(overlay);
-                            });
+                                overlay.addEventListener('click', () => {
+                                    console.log('[AdTrap] Click detected on content');
+                                    triggerCooldown(overlay);
+                                });
+                            }
 
                             // Keep synced
                             window.addEventListener('resize', updatePosition);
@@ -127,13 +175,11 @@ export default function CustomAdInjector() {
 
         // Global Blur Listener for Iframes
         const handleWindowBlur = () => {
-            // Check if any active overlay is currently hovered
-            const hoveredOverlay = document.querySelector('.custom-ad-overlay[data-hover="true"]');
+            // Check if any active overlay is currently hovered and is a trap
+            const hoveredOverlay = document.querySelector('.custom-ad-overlay[data-hover="true"][data-is-trap="true"]');
+
             if (hoveredOverlay) {
                 console.log('[AdTrap] Window blur detected over ad => Iframe Clicked');
-                // Trigger cooldown on the specific overlay
-                // Note: triggerCooldown is defined in closure, we can't access it here easily unless we attach it to DOM or move definition out.
-                // Re-implementing simplified logic here for robustness:
                 (hoveredOverlay as HTMLElement).style.pointerEvents = 'none';
                 setTimeout(() => {
                     (hoveredOverlay as HTMLElement).style.pointerEvents = 'auto';
