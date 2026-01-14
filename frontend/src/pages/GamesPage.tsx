@@ -45,7 +45,7 @@ const GamesPage = () => {
                 <div className="flex justify-center">
                     <Dices size={64} className={`text-purple-400 ${isRolling ? 'animate-spin' : ''}`} />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     <div>
                         <label className="text-gray-400 text-sm">Bet Amount</label>
                         <input
@@ -120,7 +120,7 @@ const GamesPage = () => {
                         $
                     </motion.div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     <div>
                         <label className="text-gray-400 text-sm">Bet Amount</label>
                         <input
@@ -247,7 +247,7 @@ const GamesPage = () => {
                     <p className="text-gray-400">Play games to earn more coins!</p>
                 </motion.div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
                     {/* Game Cards */}
                     <div
                         onClick={() => setSelectedGame('dice')}

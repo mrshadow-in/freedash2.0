@@ -525,7 +525,7 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                 <h3 className="text-xl font-bold mb-4">📧 SMTP Email Configuration</h3>
                 <p className="text-sm text-gray-400 mb-4">Configure your email server to send emails from the panel</p>
                 <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm text-gray-400 mb-2">SMTP Host</label>
                             <input
@@ -555,7 +555,7 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                         />
                         <label className="text-sm text-gray-400">Use SSL/TLS (port 465)</label>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm text-gray-400 mb-2">Username (Email)</label>
                             <input
@@ -577,7 +577,7 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                             />
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm text-gray-400 mb-2">From Email</label>
                             <input
@@ -701,7 +701,7 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
             {/* Upgrade Pricing */}
             <div className="border border-white/10 rounded-xl p-6">
                 <h3 className="text-xl font-bold mb-4">Upgrade Pricing</h3>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div>
                         <label className="block text-sm text-gray-400 mb-2">RAM (per GB)</label>
                         <input
@@ -772,7 +772,7 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                             placeholder="ptlc_..."
                         />
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
                             <label className="block text-sm text-gray-400 mb-2">Default Egg ID</label>
                             <input
@@ -1546,7 +1546,7 @@ function PlansTab({ plans, fetchPlans, loading }: any) {
 
             {showCreate && (
                 <div className="mb-6 p-6 bg-white/5 border border-white/10 rounded-xl space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm text-gray-400 mb-2">Plan Name</label>
                             <input
@@ -1599,7 +1599,7 @@ function PlansTab({ plans, fetchPlans, loading }: any) {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4 border-t border-white/10 pt-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 border-t border-white/10 pt-4">
                         <div className="col-span-3">
                             <p className="text-sm font-bold text-gray-400 mb-2">Pterodactyl Configuration</p>
                         </div>
@@ -1724,7 +1724,7 @@ function PlansTab({ plans, fetchPlans, loading }: any) {
                                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm text-gray-400 mb-1">RAM (MB)</label>
                                     <input
@@ -1762,7 +1762,7 @@ function PlansTab({ plans, fetchPlans, loading }: any) {
                                     />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-sm text-gray-400 mb-1">Egg ID</label>
                                     <input
@@ -2096,6 +2096,7 @@ function CustomizeTab({ refreshTheme }: any) {
         });
     };
 
+
     const saveTheme = async () => {
         setSaving(true);
         try {
@@ -2109,8 +2110,23 @@ function CustomizeTab({ refreshTheme }: any) {
                 gradientStart: theme.gradientStart,
                 gradientEnd: theme.gradientEnd
             });
+
+            // Immediately apply theme to current tab
+            const root = document.documentElement;
+            root.style.setProperty('--bg-color', theme.bgColor);
+            root.style.setProperty('--primary-color', theme.primaryColor);
+            root.style.setProperty('--secondary-color', theme.secondaryColor);
+            root.style.setProperty('--card-bg-color', theme.cardBgColor);
+            root.style.setProperty('--text-color', theme.textColor);
+            root.style.setProperty('--border-color', theme.borderColor);
+            root.style.setProperty('--gradient-start', theme.gradientStart);
+            root.style.setProperty('--gradient-end', theme.gradientEnd);
+
+            // Broadcast theme update to all other tabs
+            localStorage.setItem('theme-updated', Date.now().toString());
+
             await refreshTheme();
-            toast.success('Theme saved!');
+            toast.success('Theme saved and applied globally!');
         } catch (err: any) {
             console.error('Theme save error:', err);
             toast.error(err?.response?.data?.message || 'Failed to save theme');
@@ -3344,7 +3360,7 @@ function AdsTab({ settings, fetchSettings }: any) {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-[10px] font-bold uppercase tracking-wider text-gray-500">
                                     <div>
                                         <span className="block text-gray-600 mb-1">Position & Index</span>
                                         {editingId === ad.id ? (
@@ -3549,7 +3565,7 @@ function AdsTab({ settings, fetchSettings }: any) {
 
 
 
-                            <div className="grid grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-400 mb-2">Target Pages</label>
                                     <div className="space-y-2">
@@ -3610,7 +3626,7 @@ function AdsTab({ settings, fetchSettings }: any) {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-400 mb-1">Priority (Weight)</label>
                                     <input

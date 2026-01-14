@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
@@ -23,9 +24,28 @@ import VisualAdEditor from './components/VisualAdEditor';
 import GlobalAdCreationModal from './components/GlobalAdCreationModal';
 import GlobalAdminControls from './components/GlobalAdminControls';
 import AdBlockDetector from './components/AdBlockDetector';
+import { loadAndApplyTheme } from './utils/themeLoader';
 
 
 function App() {
+  // Load theme on app mount and listen for theme changes across tabs
+  useEffect(() => {
+    // Load initial theme
+    loadAndApplyTheme();
+
+    // Listen for theme updates from other tabs via localStorage
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'theme-updated') {
+        loadAndApplyTheme();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
   return (
     <Router>
       <NotificationListener />
