@@ -158,7 +158,7 @@ export default function CustomAdInjector() {
                 });
 
             } catch (error) {
-                console.error('[CustomAdInjector] Failed to fetch ads:', error);
+                console.error('[CustomAdInjector] Failed to fetch ads. Check API connection.');
             }
         };
 

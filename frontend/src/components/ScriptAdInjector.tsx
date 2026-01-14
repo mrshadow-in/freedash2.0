@@ -117,7 +117,7 @@ export default function ScriptAdInjector() {
                     }
                 });
             } catch (error) {
-                console.error('[ScriptAdInjector] ❌ Error:', error);
+                console.error('[ScriptAdInjector] Failed to fetch ads. Check API connection.');
             }
         };
 

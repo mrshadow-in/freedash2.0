@@ -25,12 +25,22 @@ api.interceptors.response.use(
     async (error) => {
         const { logout } = useAuthStore.getState();
 
+        console.error('[API Error]', {
+            message: error.message,
+            url: error.config?.url,
+            status: error.response?.status,
+            data: error.response?.data
+        });
+
         if (error.code === 'ECONNABORTED') {
             toast.error('Connection timeout. Please check your internet.');
         } else if (!error.response) {
             toast.error('Network error. Backend might be offline.');
         } else if (error.response?.status === 401 || error.response?.status === 403) {
-            toast.error('Session expired. Please login again.');
+            // Only toast if not already on login page
+            if (!window.location.pathname.includes('/login')) {
+                toast.error('Session expired. Please login again.');
+            }
             logout(); // Clear state and trigger redirect
         }
 
