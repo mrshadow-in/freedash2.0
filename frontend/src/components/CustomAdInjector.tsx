@@ -58,6 +58,34 @@ export default function CustomAdInjector() {
 
                             updatePosition();
 
+                            // Add Close Button
+                            const closeBtn = document.createElement('button');
+                            closeBtn.innerHTML = '×';
+                            closeBtn.style.position = 'absolute';
+                            closeBtn.style.top = '-10px';
+                            closeBtn.style.right = '-10px';
+                            closeBtn.style.width = '24px';
+                            closeBtn.style.height = '24px';
+                            closeBtn.style.background = 'red';
+                            closeBtn.style.color = 'white';
+                            closeBtn.style.border = '2px solid white';
+                            closeBtn.style.borderRadius = '50%';
+                            closeBtn.style.fontSize = '16px';
+                            closeBtn.style.fontWeight = 'bold';
+                            closeBtn.style.cursor = 'pointer';
+                            closeBtn.style.display = 'flex';
+                            closeBtn.style.alignItems = 'center';
+                            closeBtn.style.justifyContent = 'center';
+                            closeBtn.style.zIndex = '2147483647'; // Ensure button is on top of ad content
+                            closeBtn.style.boxShadow = '0 2px 5px rgba(0,0,0,0.5)';
+
+                            closeBtn.onclick = (e) => {
+                                e.stopPropagation();
+                                overlay.remove();
+                            };
+
+                            overlay.appendChild(closeBtn);
+
                             // Inject Raw Code
                             const contentWrapper = document.createElement('div');
                             contentWrapper.innerHTML = ad.rawCode;
