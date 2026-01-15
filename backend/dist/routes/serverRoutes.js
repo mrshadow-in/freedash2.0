@@ -53,6 +53,7 @@ router.put('/:id', serverController_1.updateServer); // Added update route
 router.delete('/:id', serverController_1.deleteServer);
 router.post('/:id/upgrade', serverController_1.upgradeServer);
 router.post('/:id/power', serverController_1.powerServer);
+router.post('/:id/accept-eula', serverController_1.acceptEula); // Manual EULA acceptance
 router.get('/:id/resources', serverController_1.getServerResources);
 router.get('/:id/usage', serverController_1.getServerUsage);
 router.get('/:id/console', serverController_1.getConsoleCredentials);
@@ -68,6 +69,7 @@ router.post('/:id/reinstall', serverController_1.reinstallServerAction);
 router.get('/:id/minecraft/properties', mcController.getServerProperties);
 router.put('/:id/minecraft/properties', mcController.updateServerProperties);
 router.get('/:id/minecraft/plugins', mcController.searchPlugins);
+router.get('/:id/minecraft/plugins/versions', mcController.getPluginVersions);
 router.post('/:id/minecraft/plugins/install', mcController.installPlugin);
 router.get('/:id/minecraft/plugins/installed', mcController.getInstalledPlugins);
 router.delete('/:id/minecraft/plugins/:filename', mcController.deletePlugin);

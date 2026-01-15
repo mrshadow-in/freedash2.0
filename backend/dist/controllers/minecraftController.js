@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getPaperVersions = exports.getMinecraftVersions = exports.changeServerVersion = exports.deletePlugin = exports.getInstalledPlugins = exports.installPlugin = exports.searchPlugins = exports.updateServerProperties = exports.getServerProperties = void 0;
+exports.getPaperVersions = exports.getMinecraftVersions = exports.changeServerVersion = exports.deletePlugin = exports.getInstalledPlugins = exports.installPlugin = exports.getPluginVersions = exports.searchPlugins = exports.updateServerProperties = exports.getServerProperties = void 0;
 const pterodactyl_1 = require("../services/pterodactyl");
 const prisma_1 = require("../prisma");
 const axios_1 = __importDefault(require("axios"));
@@ -143,16 +143,28 @@ const updateServerProperties = async (req, res) => {
 exports.updateServerProperties = updateServerProperties;
 const searchPlugins = async (req, res) => {
     try {
-        const { q, provider = 'spigot' } = req.query;
+        const { q, provider = 'spigot', version } = req.query;
         if (!q)
             return res.json([]);
         const settings = await (0, settingsService_1.getSettingsOrCreate)();
         const keys = settings.plugins || {};
         if (provider === 'modrinth') {
             // Modrinth Search - STRICT plugins only
-            // facets: ["project_type:plugin"] AND ["categories:bukkit" OR "categories:spigot" OR "categories:paper"]
-            const facets = encodeURIComponent('["project_type:plugin",["categories:bukkit","categories:spigot","categories:paper"]]');
-            const response = await axios_1.default.get(`https://api.modrinth.com/v2/search?query=${q}&limit=20&facets=[["project_type:plugin"],["categories:bukkit","categories:spigot","categories:paper"]]`);
+            const facetList = [
+                ["project_type:plugin"],
+                ["categories:bukkit", "categories:spigot", "categories:paper"]
+            ];
+            if (version && version !== 'latest') {
+                facetList.push([`versions:${version}`]);
+            }
+            const facetsString = JSON.stringify(facetList);
+            const response = await axios_1.default.get(`https://api.modrinth.com/v2/search`, {
+                params: {
+                    query: q,
+                    limit: 20,
+                    facets: facetsString
+                }
+            });
             const plugins = (response.data.hits || []).map((p) => ({
                 id: p.project_id,
                 name: p.title,
@@ -243,6 +255,43 @@ const searchPlugins = async (req, res) => {
     }
 };
 exports.searchPlugins = searchPlugins;
+const getPluginVersions = async (req, res) => {
+    try {
+        const { resourceId, provider = 'spigot', version } = req.query;
+        if (!resourceId)
+            return res.status(400).json({ message: 'Missing resourceId' });
+        if (provider === 'modrinth') {
+            // Fetch versions from Modrinth
+            // Filter by loaders: bukkit, spigot, paper
+            const loaders = JSON.stringify(["bukkit", "spigot", "paper"]);
+            const params = { loaders };
+            if (version) {
+                params.game_versions = JSON.stringify([version]);
+            }
+            const response = await axios_1.default.get(`https://api.modrinth.com/v2/project/${resourceId}/version`, { params });
+            const versions = response.data.map(v => ({
+                id: v.id,
+                name: v.name,
+                versionNumber: v.version_number,
+                gameVersions: v.game_versions,
+                loaders: v.loaders,
+                date: v.date_published,
+                downloads: v.downloads,
+                file: v.files.find((f) => f.primary) || v.files[0]
+            }));
+            res.json(versions);
+        }
+        else {
+            // Placeholder for Spigot (Spiget doesn't easily expose specific versions in standard search, usually just latest)
+            res.json([]);
+        }
+    }
+    catch (error) {
+        console.error('Error fetching plugin versions:', error);
+        res.json([]);
+    }
+};
+exports.getPluginVersions = getPluginVersions;
 const installPlugin = async (req, res) => {
     try {
         const { id } = req.params;

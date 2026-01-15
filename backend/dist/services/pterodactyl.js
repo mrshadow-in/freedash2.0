@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.uploadFileToPtero = exports.renamePteroFile = exports.updateStartupVariable = exports.getStartup = exports.pullPteroFile = exports.getPteroNodeConfiguration = exports.createPteroNode = exports.getPteroLocations = exports.getPteroNodes = exports.getPteroServerResources = exports.reinstallServer = exports.getUploadUrl = exports.createFolder = exports.deleteFile = exports.renameFile = exports.writeFileContent = exports.getFileContent = exports.listFiles = exports.getConsoleDetails = exports.powerPteroServer = exports.updatePteroServerBuild = exports.getPteroServer = exports.unsuspendPteroServer = exports.suspendPteroServer = exports.deletePteroServer = exports.createPteroServer = exports.updatePteroUserPassword = exports.createPteroUser = exports.getPteroUrl = void 0;
+exports.uploadFileToPtero = exports.renamePteroFile = exports.updateStartupVariable = exports.getStartup = exports.pullPteroFile = exports.getPteroNodeConfiguration = exports.createPteroNode = exports.getPteroLocations = exports.getPteroNodes = exports.getPteroServerResources = exports.reinstallServer = exports.getUploadUrl = exports.createFolder = exports.deleteFile = exports.renameFile = exports.writeFileContent = exports.getFileContent = exports.listFiles = exports.getConsoleDetails = exports.powerPteroServer = exports.updatePteroServerBuild = exports.getPteroServersByUserId = exports.getPteroServer = exports.unsuspendPteroServer = exports.suspendPteroServer = exports.deletePteroServer = exports.createPteroServer = exports.updatePteroUserPassword = exports.createPteroUser = exports.getPteroUrl = void 0;
 const axios_1 = __importDefault(require("axios"));
 const env_1 = require("../config/env");
 const prisma_1 = require("../prisma");
@@ -175,6 +175,17 @@ const getPteroServer = async (serverId) => {
     return response.data.attributes;
 };
 exports.getPteroServer = getPteroServer;
+const getPteroServersByUserId = async (userId) => {
+    const config = await getPteroConfig();
+    const response = await axios_1.default.get(`${config.url}/api/application/servers?filter[owner_id]=${userId}&include=allocations,node`, {
+        headers: {
+            Authorization: `Bearer ${config.key}`,
+            Accept: 'application/vnd.pterodactyl.v1+json'
+        }
+    });
+    return response.data.data.map((item) => item.attributes);
+};
+exports.getPteroServersByUserId = getPteroServersByUserId;
 const updatePteroServerBuild = async (serverId, memory, disk, cpu, allocation) => {
     const config = await getPteroConfig();
     const response = await axios_1.default.patch(`${config.url}/api/application/servers/${serverId}/build`, {

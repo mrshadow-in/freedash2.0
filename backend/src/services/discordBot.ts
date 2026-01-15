@@ -308,12 +308,91 @@ export async function startDiscordBot() {
                 // DAILY
                 if (interaction.commandName === 'daily') {
                     await interaction.deferReply();
-                    const user = await prisma.user.findUnique({ where: { discordId: interaction.user.id } });
-                    if (!user) {
-                        await interaction.editReply('❌ Link account first.');
-                    } else {
-                        await prisma.user.update({ where: { id: user.id }, data: { coins: { increment: 50 } } });
-                        await interaction.editReply('💰 Daily claimed: **50 coins**');
+
+                    try {
+                        // Check if user has linked their account
+                        const user = await prisma.user.findUnique({ where: { discordId: interaction.user.id } });
+                        if (!user) {
+                            await interaction.editReply('❌ You need to link your account first! Use `/link-account` to get started.');
+                            return;
+                        }
+
+                        // Check if user is a server booster
+                        const member = interaction.member as GuildMember;
+                        const isBoosting = member?.premiumSince !== null;
+
+                        // Get or create game stats for cooldown tracking
+                        let gameStats = await prisma.discordGameStats.findUnique({
+                            where: { discordId: interaction.user.id }
+                        });
+
+                        if (!gameStats) {
+                            gameStats = await prisma.discordGameStats.create({
+                                data: {
+                                    discordId: interaction.user.id,
+                                    dailyEarnings: 0,
+                                    lastDailyReset: new Date(),
+                                    invitesConsumed: 0,
+                                    cooldowns: {}
+                                }
+                            });
+                        }
+
+                        // Parse cooldowns
+                        const cooldowns = (gameStats.cooldowns as any) || {};
+                        const lastDailyClaim = cooldowns['daily'] ? new Date(cooldowns['daily']) : null;
+
+                        // Determine cooldown period based on boost status
+                        const cooldownHours = isBoosting ? 12 : 24; // Boosters: 12 hours, Regular: 24 hours
+                        const cooldownMs = cooldownHours * 60 * 60 * 1000;
+
+                        // Check if cooldown has passed
+                        if (lastDailyClaim) {
+                            const timeSinceClaim = Date.now() - lastDailyClaim.getTime();
+
+                            if (timeSinceClaim < cooldownMs) {
+                                const timeRemaining = cooldownMs - timeSinceClaim;
+                                const hoursLeft = Math.floor(timeRemaining / (1000 * 60 * 60));
+                                const minutesLeft = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+
+                                const boostInfo = isBoosting ? ' 🚀 (Booster: 12h cooldown)' : ' (24h cooldown)';
+
+                                await interaction.editReply(
+                                    `⏰ **Daily Cooldown Active**\n\n` +
+                                    `You can claim your next daily reward in **${hoursLeft}h ${minutesLeft}m**${boostInfo}\n\n` +
+                                    `💡 Tip: Boost the server to reduce cooldown to 12 hours!`
+                                );
+                                return;
+                            }
+                        }
+
+                        // Award the daily coins
+                        const dailyReward = 50;
+                        await prisma.user.update({
+                            where: { id: user.id },
+                            data: { coins: { increment: dailyReward } }
+                        });
+
+                        // Update cooldown tracker
+                        cooldowns['daily'] = new Date().toISOString();
+                        await prisma.discordGameStats.update({
+                            where: { discordId: interaction.user.id },
+                            data: { cooldowns: cooldowns }
+                        });
+
+                        const boostBadge = isBoosting ? ' 🚀' : '';
+                        const nextClaimInfo = isBoosting
+                            ? '\n⏰ Next claim: **12 hours** (Booster perk!)'
+                            : '\n⏰ Next claim: **24 hours**\n💡 Boost server for 12h cooldown!';
+
+                        await interaction.editReply(
+                            `💰 **Daily Reward Claimed!**${boostBadge}\n\n` +
+                            `+${dailyReward} coins added to your account!${nextClaimInfo}`
+                        );
+
+                    } catch (error) {
+                        console.error('Error in daily command:', error);
+                        await interaction.editReply('❌ An error occurred while claiming your daily reward. Please try again later.');
                     }
                     return;
                 }

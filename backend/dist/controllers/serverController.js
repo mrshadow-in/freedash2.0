@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateServer = exports.getServerResources = exports.reinstallServerAction = exports.getServerUploadUrl = exports.createServerFolder = exports.deleteServerFile = exports.renameServerFile = exports.writeFile = exports.getFile = exports.getServerFiles = exports.getConsoleCredentials = exports.getServerUsage = exports.upgradeServer = exports.getServer = exports.powerServer = exports.getUpgradePricing = exports.deleteServer = exports.getMyServers = exports.createServer = exports.getPlans = void 0;
+exports.acceptEula = exports.updateServer = exports.getServerResources = exports.reinstallServerAction = exports.getServerUploadUrl = exports.createServerFolder = exports.deleteServerFile = exports.renameServerFile = exports.writeFile = exports.getFile = exports.getServerFiles = exports.getConsoleCredentials = exports.getServerUsage = exports.upgradeServer = exports.getServer = exports.powerServer = exports.getUpgradePricing = exports.deleteServer = exports.getMyServers = exports.createServer = exports.getPlans = void 0;
 const prisma_1 = require("../prisma");
 const pterodactyl_1 = require("../services/pterodactyl");
 const zod_1 = require("zod");
@@ -98,14 +98,14 @@ const createServer = async (req, res) => {
             const settings = await tx.settings.findFirst();
             const eggId = plan.pteroEggId || settings?.pterodactyl?.defaultEggId || 15;
             const nestId = plan.pteroNestId || settings?.pterodactyl?.defaultNestId || 1;
-            const locationId = settings?.pterodactyl?.defaultLocationId || 1;
+            const locationId = plan.pteroLocationId || settings?.pterodactyl?.defaultLocationId || 1;
             // Pterodactyl Call
             let pteroServer;
             try {
                 // Ensure ptero user exists or get ID?
                 // For simplicity, we assume createPteroUser handles duplicates or we just use email
                 const pteroUser = await (0, pterodactyl_1.createPteroUser)(user.email, user.username);
-                pteroServer = await (0, pterodactyl_1.createPteroServer)(name, pteroUser.id, eggId, nestId, plan.ramMb, plan.diskMb, plan.cpuCores * 100, // Ptero uses % (100 = 1 core)
+                pteroServer = await (0, pterodactyl_1.createPteroServer)(name, pteroUser.id, eggId, nestId, plan.ramMb, plan.diskMb, plan.cpuPercent, // Use explicit % from plan
                 locationId);
             }
             catch (err) {
@@ -149,7 +149,7 @@ const createServer = async (req, res) => {
                     name: name,
                     ramMb: plan.ramMb,
                     diskMb: plan.diskMb,
-                    cpuCores: plan.cpuCores,
+                    cpuCores: Math.ceil(plan.cpuPercent / 100),
                     serverIp,
                     status: 'installing'
                 }
@@ -158,14 +158,11 @@ const createServer = async (req, res) => {
             // Import dynamically or move out? Moving out is better but variables are here.
             // We can return data to be used outside
             return { server, user, plan, settings };
+        }, {
+            maxWait: 5000, // default: 2000
+            timeout: 30000 // default: 5000
         }).then(async (result) => {
-            // === AUTO EULA ON CREATE ===
-            if (result.server && result.server.pteroIdentifier) {
-                // Clean up delay to allow server to be "ready" enough or just try? 
-                // Usually on create it might be Installing, so it might fail. 
-                // But we can try.
-                setTimeout(() => ensureEula(result.server.pteroIdentifier), 5000);
-            }
+            // EULA will be created manually when user accepts it via popup
             // Send Discord webhook notification
             const { sendServerCreatedWebhook } = await Promise.resolve().then(() => __importStar(require('../services/webhookService')));
             sendServerCreatedWebhook({
@@ -195,6 +192,86 @@ const createServer = async (req, res) => {
 exports.createServer = createServer;
 const getMyServers = async (req, res) => {
     try {
+        const userId = req.user.userId;
+        const user = await prisma_1.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        // --- PTERODACTYL SYNC LOGIC ---
+        if (user.pteroUserId) {
+            try {
+                const { getPteroServersByUserId } = await Promise.resolve().then(() => __importStar(require('../services/pterodactyl')));
+                const pteroServers = await getPteroServersByUserId(user.pteroUserId);
+                for (const pServer of pteroServers) {
+                    const existing = await prisma_1.prisma.server.findFirst({
+                        where: { pteroServerId: pServer.id }
+                    });
+                    // Parse Specs
+                    const ramMb = pServer.limits.memory === 0 ? 1024 : pServer.limits.memory; // 0 = unlimited, maybe default to 1GB to be safe for billing
+                    const diskMb = pServer.limits.disk === 0 ? 5120 : pServer.limits.disk;
+                    const cpuCores = pServer.limits.cpu === 0 ? 1 : Math.ceil(pServer.limits.cpu / 100);
+                    if (existing) {
+                        // Update specs if changed (Fixes the "976GB" issue if it was a sync error)
+                        if (existing.ramMb !== ramMb || existing.diskMb !== diskMb || existing.status !== pServer.status) {
+                            await prisma_1.prisma.server.update({
+                                where: { id: existing.id },
+                                data: {
+                                    ramMb: ramMb,
+                                    diskMb: diskMb,
+                                    cpuCores: cpuCores,
+                                    status: pServer.suspended ? 'suspended' : 'active', // simplified status
+                                    name: pServer.name // Sync name too? Maybe optional
+                                }
+                            });
+                        }
+                    }
+                    else {
+                        // Import New Server
+                        console.log(`[Sync] Importing server ${pServer.name} (${pServer.id})`);
+                        // Find a plan that fits or default
+                        let plan = await prisma_1.prisma.plan.findFirst({
+                            where: {
+                                ramMb: { gte: ramMb },
+                                diskMb: { gte: diskMb }
+                            },
+                            orderBy: { priceCoins: 'asc' }
+                        });
+                        if (!plan) {
+                            // Fallback to any plan
+                            plan = await prisma_1.prisma.plan.findFirst();
+                        }
+                        if (plan) {
+                            // Extract IP
+                            const allocations = pServer.relationships?.allocations?.data || [];
+                            const defaultAlloc = allocations.find((a) => a.attributes.is_default) || allocations[0];
+                            let serverIp = 'Pending';
+                            if (defaultAlloc) {
+                                serverIp = `${defaultAlloc.attributes.ip}:${defaultAlloc.attributes.port}`;
+                            }
+                            await prisma_1.prisma.server.create({
+                                data: {
+                                    ownerId: userId,
+                                    pteroServerId: pServer.id,
+                                    pteroIdentifier: pServer.identifier,
+                                    planId: plan.id,
+                                    name: pServer.name,
+                                    ramMb,
+                                    diskMb,
+                                    cpuCores,
+                                    serverIp,
+                                    status: pServer.suspended ? 'suspended' : 'active'
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+            catch (err) {
+                console.error('[Sync] Failed to sync with Pterodactyl:', err);
+                // Continue to just return info from DB
+            }
+        }
+        // --- END SYNC LOGIC ---
         const servers = await prisma_1.prisma.server.findMany({
             where: {
                 ownerId: req.user.userId,
@@ -202,55 +279,10 @@ const getMyServers = async (req, res) => {
             },
             include: { plan: true }
         });
-        // Sync Installing Status
-        // Sync Installing Status and Missing IP
-        const updatedServers = await Promise.all(servers.map(async (server) => {
-            // Check if we need to sync: status is installing OR ip is Pending
-            if (server.status === 'installing' || server.serverIp === 'Pending') {
-                try {
-                    const pteroData = await (0, pterodactyl_1.getPteroServer)(server.pteroServerId);
-                    // Extract latest IP
-                    // Extract latest IP
-                    const allocations = pteroData.relationships?.allocations?.data || [];
-                    const node = pteroData.relationships?.node?.attributes;
-                    const primaryAllocation = allocations.find((a) => a.attributes.is_default) || allocations[0];
-                    let ipToUse = 'Pending';
-                    let portToUse = '';
-                    if (primaryAllocation) {
-                        ipToUse = primaryAllocation.attributes.ip;
-                        portToUse = primaryAllocation.attributes.port;
-                        if (ipToUse === '0.0.0.0' && node?.fqdn) {
-                            ipToUse = node.fqdn;
-                        }
-                    }
-                    const newIp = portToUse ? `${ipToUse}:${portToUse}` : 'Pending';
-                    let newStatus = server.status;
-                    if (pteroData.status === null)
-                        newStatus = 'active';
-                    else if (pteroData.status === 'suspended')
-                        newStatus = 'suspended';
-                    // Only update if changed
-                    if (newStatus !== server.status || (newIp !== 'Pending' && newIp !== server.serverIp)) {
-                        const updated = await prisma_1.prisma.server.update({
-                            where: { id: server.id },
-                            data: {
-                                status: newStatus,
-                                serverIp: newIp
-                            },
-                            include: { plan: true }
-                        });
-                        return updated;
-                    }
-                }
-                catch (err) {
-                    console.error(`Failed to sync status for server ${server.id}`, err);
-                }
-            }
-            return server;
-        }));
-        res.json(updatedServers);
+        res.json(servers);
     }
     catch (error) {
+        console.error('Get Servers Error:', error);
         res.status(500).json({ message: 'Error fetching servers' });
     }
 };
@@ -327,11 +359,7 @@ const powerServer = async (req, res) => {
             return res.status(404).json({ message: 'Server not found' });
         if (!server.pteroIdentifier)
             return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
-        // === AUTO EULA ON START ===
-        // Only check on start or restart
-        if (signal === 'start' || signal === 'restart') {
-            await ensureEula(server.pteroIdentifier);
-        }
+        // EULA will be handled via manual acceptance popup in frontend
         await (0, pterodactyl_1.powerPteroServer)(server.pteroIdentifier, signal);
         res.json({ message: `Signal ${signal} sent` });
     }
@@ -715,3 +743,28 @@ const updateServer = async (req, res) => {
     }
 };
 exports.updateServer = updateServer;
+// Accept EULA - Manual user action only
+const acceptEula = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const server = await prisma_1.prisma.server.findFirst({
+            where: { id: id, ownerId: req.user.userId }
+        });
+        if (!server)
+            return res.status(404).json({ message: 'Server not found' });
+        if (!server.pteroIdentifier)
+            return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
+        // Create EULA file
+        await (0, pterodactyl_1.writeFileContent)(server.pteroIdentifier, 'eula.txt', 'eula=true');
+        console.log(`[EULA] User ${req.user.userId} manually accepted EULA for server ${server.name} (${server.pteroIdentifier})`);
+        res.json({ message: 'EULA accepted successfully' });
+    }
+    catch (error) {
+        console.error('Accept EULA error:', error);
+        res.status(500).json({
+            message: 'Failed to accept EULA',
+            error: error.message || 'Server might be installing or not ready yet'
+        });
+    }
+};
+exports.acceptEula = acceptEula;
