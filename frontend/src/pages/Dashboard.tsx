@@ -173,8 +173,8 @@ const Dashboard = () => {
                         className="bg-theme-card backdrop-blur-xl p-6 rounded-3xl border border-theme-border shadow-xl group hover:border-theme-primary/30 transition-all"
                     >
                         <div className="flex items-center justify-between mb-4">
-                            <div className="p-3 bg-purple-500/20 rounded-2xl group-hover:scale-110 transition-transform">
-                                <Server className="text-purple-400" size={24} />
+                            <div className="p-3 bg-theme-primary/20 rounded-2xl group-hover:scale-110 transition-transform">
+                                <Server className="text-theme-primary" size={24} />
                             </div>
                             <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Servers</div>
                         </div>
@@ -189,8 +189,8 @@ const Dashboard = () => {
                         className="bg-theme-card backdrop-blur-xl p-6 rounded-3xl border border-theme-border shadow-xl group hover:border-theme-secondary/30 transition-all"
                     >
                         <div className="flex items-center justify-between mb-4">
-                            <div className="p-3 bg-blue-500/20 rounded-2xl group-hover:scale-110 transition-transform">
-                                <Activity className="text-blue-400" size={24} />
+                            <div className="p-3 bg-theme-secondary/20 rounded-2xl group-hover:scale-110 transition-transform">
+                                <Activity className="text-theme-secondary" size={24} />
                             </div>
                             <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Global Status</div>
                         </div>
@@ -208,8 +208,8 @@ const Dashboard = () => {
                         className="bg-theme-card backdrop-blur-xl p-6 rounded-3xl border border-theme-border shadow-xl group hover:border-yellow-500/30 transition-all"
                     >
                         <div className="flex items-center justify-between mb-4">
-                            <div className="p-3 bg-yellow-500/20 rounded-2xl group-hover:scale-110 transition-transform">
-                                <Coins className="text-yellow-400" size={24} />
+                            <div className="p-3 bg-theme-primary/20 rounded-2xl group-hover:scale-110 transition-transform">
+                                <Coins className="text-theme-primary" size={24} />
                             </div>
                             <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Coins</div>
                         </div>
@@ -227,14 +227,14 @@ const Dashboard = () => {
                         className="bg-theme-card backdrop-blur-xl p-6 rounded-3xl border border-theme-border shadow-xl group hover:border-theme-secondary/30 transition-all"
                     >
                         <div className="flex items-center justify-between mb-4">
-                            <div className="p-3 bg-green-500/20 rounded-2xl group-hover:scale-110 transition-transform">
-                                <Plus className="text-green-400" size={24} />
+                            <div className="p-3 bg-theme-primary/20 rounded-2xl group-hover:scale-110 transition-transform">
+                                <Plus className="text-theme-primary" size={24} />
                             </div>
                             <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Quick Actions</div>
                         </div>
                         <button
                             onClick={() => setShowCreateModal(true)}
-                            className="w-full py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/30 rounded-xl font-bold transition"
+                            className="w-full py-2 bg-theme-primary/20 hover:bg-theme-primary/30 text-theme-primary border border-theme-primary/30 rounded-xl font-bold transition"
                         >
                             Create Server
                         </button>
@@ -259,7 +259,7 @@ const Dashboard = () => {
                     <div>
                         <h2 className="text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
                             Your Servers
-                            {isLoading && <Loader2 className="animate-spin text-purple-400" size={24} />}
+                            {isLoading && <Loader2 className="animate-spin text-theme-primary" size={24} />}
                         </h2>
                         <p className="text-gray-400 font-medium mt-1">Manage and monitor your deployments</p>
                     </div>
@@ -279,14 +279,14 @@ const Dashboard = () => {
                             </div>
 
                             <div className="col-span-full bg-white/5 border border-white/10 rounded-3xl p-12 text-center backdrop-blur-md">
-                                <div className="w-20 h-20 bg-purple-500/10 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                                    <Server className="text-purple-400" size={40} />
+                                <div className="w-20 h-20 bg-theme-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                                    <Server className="text-theme-primary" size={40} />
                                 </div>
                                 <h3 className="text-2xl font-bold text-white mb-3">No servers found</h3>
                                 <p className="text-gray-400 mb-8 max-w-md mx-auto">You haven't deployed any servers yet. Get started by creating your first world!</p>
                                 <button
                                     onClick={() => setShowCreateModal(true)}
-                                    className="px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl font-extrabold text-white shadow-xl shadow-purple-500/25 hover:opacity-90 transition-all scale-105 active:scale-100"
+                                    className="px-8 py-4 bg-theme-primary rounded-2xl font-extrabold text-white shadow-xl hover:opacity-90 transition-all scale-105 active:scale-100"
                                 >
                                     Deploy Server Now
                                 </button>
@@ -369,7 +369,7 @@ const Dashboard = () => {
                                     <input
                                         value={serverName}
                                         onChange={(e) => setServerName(e.target.value)}
-                                        className="w-full bg-black/40 border border-white/10 rounded-2xl p-5 text-white outline-none focus:border-purple-500 transition shadow-inner font-medium text-lg placeholder:text-gray-600"
+                                        className="w-full bg-black/40 border border-white/10 rounded-2xl p-5 text-white outline-none focus:border-theme-primary transition shadow-inner font-medium text-lg placeholder:text-gray-600"
                                         placeholder="My Awesome Server..."
                                     />
                                     <div className="space-y-3">
@@ -380,8 +380,8 @@ const Dashboard = () => {
                                                 whileTap={{ scale: 0.98 }}
                                                 onClick={() => setSelectedPlanId(plan.id)}
                                                 className={`border-4 p-4 rounded-lg flex justify-between items-center cursor-pointer relative overflow-hidden transition ${selectedPlanId === plan.id
-                                                    ? 'border-yellow-500 bg-gradient-to-r from-yellow-900/40 to-amber-900/40 shadow-lg shadow-yellow-500/50'
-                                                    : 'border-[#654321] bg-gradient-to-r from-[#3d2817]/60 to-[#2d1f12]/60 hover:border-yellow-700'
+                                                    ? 'border-theme-primary bg-theme-primary/20 shadow-lg'
+                                                    : 'border-theme-border bg-theme-card hover:border-theme-primary/50'
                                                     }`}
                                             >
                                                 {/* Pickaxe Icon for selected */}
@@ -417,7 +417,7 @@ const Dashboard = () => {
                                                 <div className="text-right relative flex flex-col items-end">
                                                     <div className="flex items-center gap-1">
                                                         <span className="text-yellow-400 text-xl">🪙</span>
-                                                        <span className={`font-extrabold text-2xl ${selectedPlanId === plan.id ? 'text-yellow-300' : 'text-yellow-500'}`} style={{ textShadow: '2px 2px 0 rgba(0,0,0,0.5)' }}>
+                                                        <span className={`font-extrabold text-2xl ${selectedPlanId === plan.id ? 'text-theme-primary' : 'text-theme-primary/80'}`} style={{ textShadow: '2px 2px 0 rgba(0,0,0,0.5)' }}>
                                                             {plan.priceCoins}
                                                         </span>
                                                     </div>
