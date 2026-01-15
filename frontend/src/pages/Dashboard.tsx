@@ -127,11 +127,11 @@ const Dashboard = () => {
     };
 
     return (
-        <div className="min-h-screen pb-20 relative text-white font-sans bg-[#0c0229]">
+        <div className="min-h-screen pb-20 relative text-white font-sans" style={{ backgroundColor: 'var(--bg-color)' }}>
             {/* Ambient Background Elements */}
             <div className="fixed inset-0 pointer-events-none overflow-hidden">
-                <div className="absolute top-[10%] left-[-10%] w-[40%] h-[40%] bg-purple-600/10 rounded-full blur-[120px]" />
-                <div className="absolute bottom-[10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px]" />
+                <div className="absolute top-[10%] left-[-10%] w-[40%] h-[40%] rounded-full blur-[120px]" style={{ backgroundColor: 'var(--primary-color)', opacity: 0.1 }} />
+                <div className="absolute bottom-[10%] right-[-10%] w-[40%] h-[40%] rounded-full blur-[120px]" style={{ backgroundColor: 'var(--secondary-color)', opacity: 0.1 }} />
             </div>
 
             {/* Sidebar Left Ad Zone - Fixed Floating - Shows ALL ads stacked */}
@@ -454,7 +454,7 @@ const Dashboard = () => {
                                                 createServerMutation.mutate({ name: trimmedName, planId: selectedPlanId });
                                             }}
                                             disabled={!serverName.trim() || !selectedPlanId || createServerMutation.isPending}
-                                            className="flex-[2] py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white rounded-xl text-sm font-extrabold shadow-lg shadow-purple-500/25 border border-white/10 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 relative overflow-hidden"
+                                            className="flex-[2] py-3 bg-theme-primary hover:opacity-90 text-white rounded-xl text-sm font-extrabold shadow-lg border border-theme-primary/50 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 relative overflow-hidden"
                                             style={{ textShadow: '2px 2px 0 rgba(0,0,0,0.6)' }}
                                         >
                                             {createServerMutation.isPending ? (
