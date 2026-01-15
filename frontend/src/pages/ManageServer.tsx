@@ -162,7 +162,7 @@ const ManageServer = () => {
 
             <Header />
 
-            <div className={`relative z-10 mx-auto ${activeTab === 'console' ? 'w-full h-[calc(100vh-80px)] overflow-hidden' : 'max-w-[1600px] px-4 sm:px-6 py-6 sm:py-10'}`}>
+            <div className="relative z-10 mx-auto w-full h-[calc(100vh-80px)] overflow-hidden">
 
                 {/* Main Split Layout */}
                 <div className="flex bg-[#0f111a] rounded-2xl overflow-hidden shadow-2xl h-full border border-white/5">

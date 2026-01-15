@@ -55,7 +55,7 @@ const Header = () => {
 
     return (
         <>
-            <div className="relative z-40 border-b border-white/5 bg-black/20 backdrop-blur-xl sticky top-0">
+            <div className="relative z-40 border-b border-theme-border bg-theme-bg/80 backdrop-blur-xl sticky top-0">
                 <div className="w-full px-6 h-20 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Link to="/" className="flex items-center gap-3 shrink-0">
@@ -111,7 +111,7 @@ const Header = () => {
 
                         <button
                             onClick={() => setIsLogsOpen(true)}
-                            className="hidden md:flex items-center gap-3 bg-white/5 border border-white/10 px-4 py-2 rounded-xl backdrop-blur-md hover:bg-white/10 transition cursor-pointer"
+                            className="hidden md:flex items-center gap-3 bg-theme-card border border-theme-border px-4 py-2 rounded-xl backdrop-blur-md hover:bg-theme-card/80 transition cursor-pointer"
                             title="View Transaction History"
                         >
                             <div className="bg-yellow-500/20 p-1.5 rounded-full ring-1 ring-yellow-500/30">
@@ -130,7 +130,7 @@ const Header = () => {
                                 <div className="text-xs text-purple-300 font-medium bg-purple-500/10 px-2 py-0.5 rounded-full inline-block mt-0.5 capitalize border border-purple-500/20">{user?.role}</div>
                             </div>
                             {user?.role === 'admin' && (
-                                <Link to="/admin" className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg text-sm font-bold hover:opacity-90 transition">
+                                <Link to="/admin" className="px-4 py-2 bg-theme-primary rounded-lg text-sm font-bold hover:opacity-90 transition text-white">
                                     Admin Panel
                                 </Link>
                             )}

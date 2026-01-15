@@ -101,7 +101,7 @@ const AdminDashboard = () => {
             <div className="relative z-10 bg-white/5 backdrop-blur-md border-b border-white/10">
                 <div className="container mx-auto px-6 py-4">
                     <div className="flex items-center justify-between">
-                        <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-blue-500 bg-clip-text text-transparent">
+                        <h1 className="text-2xl font-bold text-theme-text">
                             Admin Panel
                         </h1>
                         <div className="flex items-center gap-4">
@@ -124,7 +124,7 @@ const AdminDashboard = () => {
             </div>
 
             {/* Tabs */}
-            <div className="relative z-10 bg-white/5 backdrop-blur-md border-b border-white/10">
+            <div className="relative z-10 bg-theme-bg/50 backdrop-blur-md border-b border-theme-border">
                 <div className="container mx-auto px-6">
                     <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                         {['settings', 'users', 'servers', 'wings', 'plans', 'codes', 'ads', 'customize', 'bot', 'games', 'social', 'plugins'].map((tab) => (
@@ -132,8 +132,8 @@ const AdminDashboard = () => {
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
                                 className={`px-6 py-3 capitalize transition whitespace-nowrap flex-shrink-0 rounded-xl font-bold ${activeTab === tab
-                                    ? 'bg-purple-600 text-white shadow-lg'
-                                    : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
+                                    ? 'bg-theme-primary text-white shadow-lg'
+                                    : 'bg-theme-card text-gray-400 hover:text-white hover:bg-theme-card/80'
                                     }`}
                             >
                                 {tab}
@@ -149,7 +149,7 @@ const AdminDashboard = () => {
                     key={activeTab}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-6"
+                    className="bg-theme-card backdrop-blur-xl rounded-2xl border border-theme-border p-6"
                 >
                     {activeTab === 'settings' && <SettingsTab settings={settings} fetchSettings={fetchSettings} refreshTheme={refreshTheme} />}
                     {activeTab === 'users' && <UsersTab users={users} fetchUsers={fetchUsers} loading={loading} />}

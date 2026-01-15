@@ -170,7 +170,7 @@ const Dashboard = () => {
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-white/5 backdrop-blur-xl p-6 rounded-3xl border border-white/10 shadow-xl group hover:border-purple-500/30 transition-all"
+                        className="bg-theme-card backdrop-blur-xl p-6 rounded-3xl border border-theme-border shadow-xl group hover:border-theme-primary/30 transition-all"
                     >
                         <div className="flex items-center justify-between mb-4">
                             <div className="p-3 bg-purple-500/20 rounded-2xl group-hover:scale-110 transition-transform">
@@ -186,7 +186,7 @@ const Dashboard = () => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 }}
-                        className="bg-white/5 backdrop-blur-xl p-6 rounded-3xl border border-white/10 shadow-xl group hover:border-blue-500/30 transition-all"
+                        className="bg-theme-card backdrop-blur-xl p-6 rounded-3xl border border-theme-border shadow-xl group hover:border-theme-secondary/30 transition-all"
                     >
                         <div className="flex items-center justify-between mb-4">
                             <div className="p-3 bg-blue-500/20 rounded-2xl group-hover:scale-110 transition-transform">
@@ -205,7 +205,7 @@ const Dashboard = () => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.2 }}
-                        className="bg-white/5 backdrop-blur-xl p-6 rounded-3xl border border-white/10 shadow-xl group hover:border-yellow-500/30 transition-all"
+                        className="bg-theme-card backdrop-blur-xl p-6 rounded-3xl border border-theme-border shadow-xl group hover:border-yellow-500/30 transition-all"
                     >
                         <div className="flex items-center justify-between mb-4">
                             <div className="p-3 bg-yellow-500/20 rounded-2xl group-hover:scale-110 transition-transform">
@@ -224,7 +224,7 @@ const Dashboard = () => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 }}
-                        className="bg-white/5 backdrop-blur-xl p-6 rounded-3xl border border-white/10 shadow-xl group hover:border-green-500/30 transition-all"
+                        className="bg-theme-card backdrop-blur-xl p-6 rounded-3xl border border-theme-border shadow-xl group hover:border-theme-secondary/30 transition-all"
                     >
                         <div className="flex items-center justify-between mb-4">
                             <div className="p-3 bg-green-500/20 rounded-2xl group-hover:scale-110 transition-transform">
