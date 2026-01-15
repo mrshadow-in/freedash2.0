@@ -257,7 +257,7 @@ export async function startDiscordBot() {
 
                 // HELP
                 if (interaction.commandName === 'help') {
-                    await interaction.deferReply({ ephemeral: true });
+                    await interaction.deferReply({ ephemeral: false });
                     const helpMsg = `🤖 **Bot Assistance**\n\n` +
                         `**🔗 How to Connect:**\n` +
                         `1. Go to your **Dashboard > Account** page.\n` +
@@ -273,7 +273,7 @@ export async function startDiscordBot() {
 
                 // LINK ACCOUNT
                 if (interaction.commandName === 'link-account') {
-                    await interaction.deferReply({ ephemeral: true });
+                    await interaction.deferReply({ ephemeral: true }); // MUST BE PRIVATE (Security)
                     const code = generateCode('LINK');
                     linkCodes.set(code, interaction.user.id);
                     setTimeout(() => linkCodes.delete(code), 300000);
@@ -294,7 +294,7 @@ export async function startDiscordBot() {
 
                 // UNLINK ACCOUNT
                 if (interaction.commandName === 'unlink-account') {
-                    await interaction.deferReply({ ephemeral: true });
+                    await interaction.deferReply({ ephemeral: false });
                     const user = await prisma.user.findUnique({ where: { discordId: interaction.user.id } });
                     if (!user) {
                         await interaction.editReply('❌ No account found linked to this Discord ID.');
@@ -317,9 +317,9 @@ export async function startDiscordBot() {
                             return;
                         }
 
-                        // Check if user is a server booster
-                        const member = interaction.member as GuildMember;
-                        const isBoosting = member?.premiumSince !== null;
+                        // Check if user is a server booster (Force fetch for fresh status)
+                        const member = await interaction.guild?.members.fetch({ user: interaction.user.id, force: true });
+                        const isBoosting = member ? member.premiumSince !== null : false;
 
                         // Get or create game stats for cooldown tracking
                         let gameStats = await prisma.discordGameStats.findUnique({
@@ -399,7 +399,7 @@ export async function startDiscordBot() {
 
                 // MY INVITES
                 if (interaction.commandName === 'my-invites') {
-                    await interaction.deferReply({ ephemeral: true });
+                    await interaction.deferReply({ ephemeral: false });
 
                     const guild = interaction.guild;
                     if (!guild) {
@@ -632,9 +632,10 @@ export async function startDiscordBot() {
                     await interaction.deferReply({ ephemeral: true });
 
                     try {
-                        const member = interaction.member as GuildMember;
+                        // Force fetch member to ensure fresh boost status
+                        const member = await interaction.guild?.members.fetch({ user: interaction.user.id, force: true });
 
-                        if (!member.premiumSince) {
+                        if (!member || !member.premiumSince) {
                             await interaction.editReply('❌ You need to be a server booster to claim this reward!');
                             return;
                         }
@@ -663,7 +664,10 @@ export async function startDiscordBot() {
                         });
 
                         if (existingClaim) {
-                            await interaction.editReply('✅ You have already claimed your boost reward!');
+                            await interaction.editReply(
+                                '✅ **You have already claimed your Booster Reward!**\n\n' +
+                                'Note: This reward is for **becoming a booster**. It can only be claimed once per account, regardless of how many times you boost.'
+                            );
                             return;
                         }
 

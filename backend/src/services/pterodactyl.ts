@@ -56,8 +56,9 @@ export const createPteroUser = async (email: string, username: string, password?
     } catch (error: any) {
         if (error.response?.status === 422) {
             // User exists, fetch it and update password if provided
-            const users = await axios.get(
-                `${config.url}/api/application/users?filter[email]=${email}`,
+            // First try finding by email
+            let users = await axios.get(
+                `${config.url}/api/application/users?filter[email]=${encodeURIComponent(email)}`,
                 {
                     headers: {
                         Authorization: `Bearer ${config.key}`,
@@ -65,7 +66,28 @@ export const createPteroUser = async (email: string, username: string, password?
                     }
                 }
             );
-            const existingUser = (users.data as any).data[0].attributes;
+
+            let existingUserData = (users.data as any).data[0];
+
+            // If not found by email, try finding by username
+            if (!existingUserData) {
+                users = await axios.get(
+                    `${config.url}/api/application/users?filter[username]=${encodeURIComponent(username)}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${config.key}`,
+                            Accept: 'application/vnd.pterodactyl.v1+json'
+                        }
+                    }
+                );
+                existingUserData = (users.data as any).data[0];
+            }
+
+            if (!existingUserData) {
+                throw new Error('User conflict detected but could not find existing user by email or username.');
+            }
+
+            const existingUser = existingUserData.attributes;
 
             // Update password for existing user if password is provided
             if (password && existingUser.id) {
