@@ -93,6 +93,7 @@ const SystemIntegrityCheck = () => {
     return (
         <footer className="w-full py-8 mt-auto bg-[#0c0229] border-t border-white/5 relative z-50">
             <a
+                id="freedash-branding"
                 href="https://lordcloud.in"
                 target="_blank"
                 rel="noopener noreferrer"
