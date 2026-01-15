@@ -20,7 +20,7 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
     const [command, setCommand] = useState('');
     const [isAutoScroll, setIsAutoScroll] = useState(true);
     const [showEulaModal, setShowEulaModal] = useState(false);
-    const [showEulaModal, setShowEulaModal] = useState(false);
+
     const [eulaAlreadyAccepted, setEulaAlreadyAccepted] = useState(true); // Optimistic: Assume true until checked
 
     // Check if EULA is already accepted on mount
