@@ -112,8 +112,23 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
 
                     // EULA Detection (Broadened)
                     const lowerLog = cleanLog.toLowerCase();
-                    if (lowerLog.includes('eula') && (lowerLog.includes('agree') || lowerLog.includes('true') || lowerLog.includes('go to eula.txt'))) {
-                        // Prevent spamming state updates
+
+                    // Enhanced EULA Detection - catches multiple patterns
+                    const eulaPatterns = [
+                        'eula',
+                        'end user license agreement',
+                        'failed to load eula',
+                        'go to eula.txt',
+                        'agree to the eula',
+                        'eula=false',
+                        'you need to agree',
+                        'stopping server'
+                    ];
+
+                    const hasEulaKeyword = eulaPatterns.some(pattern => lowerLog.includes(pattern));
+
+                    if (hasEulaKeyword && (lowerLog.includes('eula') || lowerLog.includes('agree') || lowerLog.includes('false'))) {
+                        console.log('🔴 EULA DETECTED in log:', cleanLog);
                         setShowEulaModal(prev => !prev ? true : prev);
                     }
 
