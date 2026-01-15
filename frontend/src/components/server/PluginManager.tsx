@@ -310,80 +310,12 @@ const PluginManager = ({ server }: PluginManagerProps) => {
                                 <Cloud size={80} className="mx-auto mb-4" />
                                 <p className="text-xl font-medium">Explore the Marketplace</p>
                             </div>
-
-            {/* Content */}
-                        <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-white/10">
-                            <div className="max-w-7xl mx-auto">
-                                {/* Installed Row */}
-                                {installedPlugins.length > 0 && !searchQuery && (
-                                    <div className="mb-8">
-                                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2"><CheckCircle2 size={16} /> Installed</h3>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                            {installedPlugins.map((p: any) => (
-                                                <div key={p.name} className="bg-[#161b22] border border-white/5 rounded-xl p-3 flex items-center gap-3 group hover:border-white/10 transition">
-                                                    <div className="w-10 h-10 rounded bg-[#0d1117] flex items-center justify-center text-slate-500 font-bold border border-white/5">{p.name[0].toUpperCase()}</div>
-                                                    <div className="min-w-0 flex-1">
-                                                        <div className="font-bold text-white text-sm truncate" title={p.name}>{p.name}</div>
-                                                        <div className="text-xs text-slate-500">{(p.size / 1024).toFixed(0)} KB</div>
-                                                    </div>
-                                                    <button onClick={() => deleteMutation.mutate(p.name)} className="p-2 text-slate-600 hover:text-red-400 hover:bg-red-900/20 rounded opacity-0 group-hover:opacity-100 transition"><Trash2 size={14} /></button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Results */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                    {plugins.map(plugin => {
-                                        const installed = isInstalled(plugin.name);
-                                        return (
-                                            <div key={plugin.id} className="bg-[#161b22] border border-white/5 rounded-xl overflow-hidden group hover:border-green-500/40 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 flex flex-col">
-                                                <div className="h-28 bg-[#0d1117] relative overflow-hidden">
-                                                    <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#161b22] z-10" />
-                                                    {plugin.icon && <img src={plugin.icon} className="w-full h-full object-cover opacity-40 blur-lg scale-110 group-hover:scale-125 transition duration-700" />}
-                                                    <div className="absolute bottom-4 left-4 z-20 flex items-end gap-3">
-                                                        <img src={plugin.icon || 'https://via.placeholder.com/64'} className="w-12 h-12 rounded-lg bg-[#161b22] border-2 border-[#161b22] shadow-lg" />
-
-                                                    </div>
-                                                    <div className="absolute top-2 right-2 z-20">
-                                                        <span className="px-2 py-0.5 rounded bg-black/40 backdrop-blur border border-white/10 text-[10px] font-mono text-slate-300">
-                                                            {formatDownloads(plugin.downloads)} DL
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="p-4 pt-2 flex-1 flex flex-col">
-                                                    <h3 className="font-bold text-white text-lg leading-tight mb-1 truncate" title={plugin.name}>{plugin.name}</h3>
-                                                    <p className="text-xs text-slate-400 mb-3 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500/50" /> {plugin.author}</p>
-                                                    <p className="text-sm text-slate-400 line-clamp-2 h-10 mb-4 leading-relaxed">{plugin.description || plugin.tag}</p>
-
-                                                    <button
-                                                        // Simple Install for now, assume latest valid for version
-                                                        onClick={() => installMutation.mutate({ plugin })}
-                                                        disabled={installed || installMutation.isPending}
-                                                        className={`mt-auto w-full py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition ${installed
-                                                            ? 'bg-green-900/10 text-green-600 border border-green-900/20 cursor-default'
-                                                            : 'bg-white/5 text-white hover:bg-green-600 border border-white/5 hover:border-green-500 shadow-sm'}`}
-                                                    >
-                                                        {installMutation.isPending && installMutation.variables?.plugin.id === plugin.id ? <Loader2 className="animate-spin" size={16} /> :
-                                                            installed ? <><CheckCircle2 size={16} /> Installed</> : <><Download size={16} /> Install</>}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                                {plugins.length === 0 && !searching && (
-                                    <div className="text-center py-20 opacity-30">
-                                        <Cloud size={80} className="mx-auto mb-4" />
-                                        <p className="text-xl font-medium">Explore the Marketplace</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                        )}
                     </div>
-                    );
+                </div>
+            </div>
+        </div>
+    );
 };
 
-                    export default PluginManager;
+export default PluginManager;
