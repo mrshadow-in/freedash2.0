@@ -985,16 +985,33 @@ function UsersTab({ users, fetchUsers, loading }: any) {
         }
     };
 
+    const [searchTerm, setSearchTerm] = useState('');
+
+    // Filter users
+    const filteredUsers = users.filter((user: any) =>
+        user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     return (
         <div>
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold">User Management</h3>
-                <button
-                    onClick={() => setShowCreateUser(true)}
-                    className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg hover:opacity-90 transition"
-                >
-                    + Add User
-                </button>
+                <div className="flex gap-3">
+                    <input
+                        type="text"
+                        placeholder="Search users..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                    <button
+                        onClick={() => setShowCreateUser(true)}
+                        className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg hover:opacity-90 transition"
+                    >
+                        + Add User
+                    </button>
+                </div>
             </div>
 
             {/* Create User Modal */}
@@ -1127,7 +1144,7 @@ function UsersTab({ users, fetchUsers, loading }: any) {
                             </tr>
                         </thead>
                         <tbody>
-                            {users.map((user: any) => (
+                            {filteredUsers.map((user: any) => (
                                 <tr key={user.id} className="border-b border-white/5">
                                     <td className="p-3">{user.username}</td>
                                     <td className="p-3">{user.email}</td>
