@@ -26,13 +26,10 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
     useEffect(() => {
         const checkEulaStatus = async () => {
             try {
-                const response = await api.post(`/servers/${serverId}/files/read`, {
-                    file: 'eula.txt'
-                });
+                const response = await api.get(`/servers/${serverId}/eula-status`);
 
-                const eulaContent = response.data.content || '';
-                // Check if eula=true exists in the file
-                if (eulaContent.toLowerCase().includes('eula=true')) {
+                // Check if EULA is accepted
+                if (response.data.accepted) {
                     console.log('✅ EULA already accepted');
                     setEulaAlreadyAccepted(true);
                 } else {
@@ -40,8 +37,8 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
                     setEulaAlreadyAccepted(false);
                 }
             } catch (error) {
-                // File doesn't exist or can't be read - EULA not accepted
-                console.log('⚠️ eula.txt not found - EULA not accepted');
+                // Error checking EULA - assume not accepted
+                console.log('⚠️ Could not check EULA status');
                 setEulaAlreadyAccepted(false);
             }
         };
