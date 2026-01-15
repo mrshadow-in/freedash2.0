@@ -9,7 +9,7 @@ const SystemIntegrityCheck = () => {
     const [d1, setD1] = useState<string>('...'); // Line 1
     const [d2, setD2] = useState<string>('...'); // Line 2
 
-  
+
 
     const _s1_root = "RnJlZS1EYXNoLSAyMDI1IC0g";
 
@@ -92,9 +92,11 @@ const SystemIntegrityCheck = () => {
 
     return (
         <footer className="w-full py-8 mt-auto bg-[#0c0229] border-t border-white/5 relative z-50">
-            <div
-                id="freedash-branding"
-                className="max-w-7xl mx-auto px-4 flex flex-col items-center justify-center text-center select-none cursor-default"
+            <a
+                href="https://lordcloud.in"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="max-w-7xl mx-auto px-4 flex flex-col items-center justify-center text-center select-none cursor-pointer hover:opacity-80 transition-opacity"
                 data-testid="sys-core-footer"
             >
                 {/* Dynamically Rendered - No Plaintext in Source */}
@@ -105,7 +107,7 @@ const SystemIntegrityCheck = () => {
                 <div className="text-purple-400 text-sm font-semibold">
                     {d2}
                 </div>
-            </div>
+            </a>
         </footer>
     );
 };
