@@ -192,7 +192,7 @@ const PluginManager = ({ server }: PluginManagerProps) => {
                             <h2 className="text-xl font-bold text-white flex items-center gap-2">
                                 <Package className="text-green-500" /> Plugin Marketplace
                             </h2>
-                            <p className="text-slate-400 text-xs">Modrinth & SpigotMC Integration</p>
+                            <p className="text-slate-400 text-xs">Paper Plugins Only (Modrinth)</p>>
                         </div>
 
                         {/* Filters */}
