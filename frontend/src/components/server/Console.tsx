@@ -127,8 +127,15 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
 
                     const hasEulaKeyword = eulaPatterns.some(pattern => lowerLog.includes(pattern));
 
-                    if (hasEulaKeyword && (lowerLog.includes('eula') || lowerLog.includes('agree') || lowerLog.includes('false'))) {
-                        console.log('🔴 EULA DETECTED in log:', cleanLog);
+                    // Only show EULA modal if:
+                    // 1. Log contains EULA keywords
+                    // 2. Log specifically mentions "false" or "not agreed" (means EULA not accepted)
+                    // 3. Don't show if log says "eula=true" (already accepted)
+                    if (hasEulaKeyword &&
+                        (lowerLog.includes('eula') || lowerLog.includes('agree')) &&
+                        (lowerLog.includes('false') || lowerLog.includes('you need to agree') || lowerLog.includes('failed to load')) &&
+                        !lowerLog.includes('eula=true')) {
+                        console.log('🔴 EULA NOT ACCEPTED - Showing modal:', cleanLog);
                         setShowEulaModal(prev => !prev ? true : prev);
                     }
 
