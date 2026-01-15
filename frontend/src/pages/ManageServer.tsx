@@ -176,6 +176,41 @@ const ManageServer = () => {
                                 <div className={`w-2 h-2 rounded-full ${actualStatus === 'running' ? 'bg-green-500' : 'bg-red-500'}`} />
                                 <span className="uppercase">{actualStatus}</span>
                             </div>
+
+                            {/* Server IP Card - Boxed Version */}
+                            {server.serverIp && (
+                                <div className="mt-4 bg-[#0d1117] border border-white/10 rounded-lg p-3 hover:border-purple-500/30 transition-all group">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">Server IP</div>
+                                            <div className="text-sm font-mono text-white truncate" title={server.serverIp}>
+                                                {server.serverIp}
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(server.serverIp);
+                                                toast.success('Server IP copied to clipboard!', {
+                                                    duration: 2000,
+                                                    icon: '📋',
+                                                    style: {
+                                                        background: '#1f2937',
+                                                        color: '#fff',
+                                                        border: '1px solid rgba(255,255,255,0.1)'
+                                                    }
+                                                });
+                                            }}
+                                            className="p-2 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 rounded-lg text-purple-400 transition-all hover:scale-110 active:scale-95"
+                                            title="Copy IP"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                                                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Navigation Items */}
