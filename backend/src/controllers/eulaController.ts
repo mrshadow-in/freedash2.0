@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import axios from 'axios';
-import prisma from '../prisma';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 /**
  * Check EULA status by reading eula.txt file
@@ -21,7 +23,7 @@ export async function checkEulaStatus(req: Request, res: Response) {
         // Read eula.txt file from Pterodactyl
         try {
             const fileResponse = await axios.get(
-                `${process.env.PTERODACTYL_URL}/api/client/servers/${server.pterodactylId}/files/contents`,
+                `${process.env.PTERODACTYL_URL}/api/client/servers/${server.pteroIdentifier}/files/contents`,
                 {
                     params: { file: '/eula.txt' },
                     headers: {
@@ -32,7 +34,7 @@ export async function checkEulaStatus(req: Request, res: Response) {
                 }
             );
 
-            const eulaContent = fileResponse.data || '';
+            const eulaContent = String(fileResponse.data || '');
 
             // Check if eula=true exists in file
             const isAccepted = eulaContent.toLowerCase().includes('eula=true');
