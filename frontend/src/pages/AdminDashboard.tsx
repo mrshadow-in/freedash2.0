@@ -2445,7 +2445,8 @@ function BotTab({ settings, fetchSettings }: any) {
         enabled: false,
         inviteChannelId: '',
         boostChannelId: '',
-        gamesChannelId: ''
+        gamesChannelId: '',
+        dashboardUrl: ''
     });
 
     useEffect(() => {
@@ -2460,7 +2461,8 @@ function BotTab({ settings, fetchSettings }: any) {
                     enabled: settings.discordBot.enabled || false,
                     inviteChannelId: settings.discordBot.inviteChannelId || '',
                     boostChannelId: settings.discordBot.boostChannelId || '',
-                    gamesChannelId: settings.discordBot.gamesChannelId || ''
+                    gamesChannelId: settings.discordBot.gamesChannelId || '',
+                    dashboardUrl: settings.discordBot.dashboardUrl || ''
                 });
             }
         }
