@@ -1350,7 +1350,7 @@ function ServersTab({ servers, fetchServers, loading }: any) {
                         serverList.map((server: any) => (
                             <tr key={server.id} className="border-b border-white/5">
                                 <td className="p-3">{server.name}</td>
-                                <td className="p-3">{server.ownerId?.username || 'Unknown'}</td>
+                                <td className="p-3">{server.owner?.username || 'Unknown'}</td>
                                 <td className="p-3">
                                     <span className={`px-2 py-1 rounded text-xs ${server.status === 'active' ? 'bg-green-500/20 text-green-400' :
                                         server.status === 'suspended' || server.isSuspended ? 'bg-red-500/20 text-red-400' :
