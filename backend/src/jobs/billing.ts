@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import { prisma } from '../prisma';
-import { suspendPteroServer, unsuspendPteroServer, getPteroServerResources } from '../services/pterodactyl';
+import { suspendPteroServer, unsuspendPteroServer, getPteroServerResources, deletePteroServer } from '../services/pterodactyl';
 
 let billingTask: any | null = null;
 let isJobRunning = false;
@@ -227,6 +227,46 @@ export const processBillingCycle = async () => {
             }
         } catch (err) {
             console.error(`[Billing] Error processing server ${server.id}:`, err);
+        }
+    }
+
+    // Auto-Termination Logic (Servers suspended > 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const serversToTerminate = await prisma.server.findMany({
+        where: {
+            status: 'suspended',
+            isSuspended: true,
+            suspendedAt: { lt: sevenDaysAgo }
+        },
+        include: { owner: true }
+    });
+
+    for (const server of serversToTerminate) {
+        try {
+            console.log(`[Billing] Auto-terminating server ${server.id} (User: ${server.owner.username}) - Suspended > 7 days`);
+
+            // Delete from Pterodactyl
+            if (server.pteroServerId) {
+                try {
+                    await deletePteroServer(server.pteroServerId);
+                } catch (err: any) {
+                    if (err?.response?.status !== 404) {
+                        console.error(`[Billing] Ptero Delete Failed: ${err.message}`);
+                    }
+                }
+            }
+
+            // Delete from DB
+            await prisma.server.delete({ where: { id: server.id } });
+
+            // Notify User
+            const { sendUserNotification } = await import('../services/websocket');
+            sendUserNotification(server.ownerId, 'Server Terminated', `Your server "${server.name}" was terminated because it was suspended for more than 7 days.`, 'error');
+
+        } catch (error) {
+            console.error(`[Billing] Termination Error ${server.id}:`, error);
         }
     }
 
