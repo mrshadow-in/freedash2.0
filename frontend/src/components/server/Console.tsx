@@ -20,7 +20,8 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
     const [command, setCommand] = useState('');
     const [isAutoScroll, setIsAutoScroll] = useState(true);
     const [showEulaModal, setShowEulaModal] = useState(false);
-    const [eulaAlreadyAccepted, setEulaAlreadyAccepted] = useState(false); // Track if EULA already accepted
+    const [showEulaModal, setShowEulaModal] = useState(false);
+    const [eulaAlreadyAccepted, setEulaAlreadyAccepted] = useState(true); // Optimistic: Assume true until checked
 
     // Check if EULA is already accepted on mount
     useEffect(() => {
@@ -157,7 +158,10 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
                     // 2. Log contains EULA keywords
                     // 3. Log specifically mentions "false" or "not agreed" (means EULA not accepted)
                     // 4. Don't show if log says "eula=true" (already accepted)
-                    if (!eulaAlreadyAccepted &&
+                    // Only show EULA modal if:
+                    // 1. EULA is CONFIRMED not accepted (eulaAlreadyAccepted === false)
+                    // 2. Log contains EULA keywords
+                    if (eulaAlreadyAccepted === false &&
                         hasEulaKeyword &&
                         (lowerLog.includes('eula') || lowerLog.includes('agree')) &&
                         (lowerLog.includes('false') || lowerLog.includes('you need to agree') || lowerLog.includes('failed to load')) &&
