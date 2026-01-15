@@ -131,7 +131,8 @@ export const updateBotSettings = async (req: Request, res: Response) => {
                 guildId: '',
                 enabled: false,
                 inviteChannelId: '',
-                boostChannelId: ''
+                boostChannelId: '',
+                dashboardUrl: ''
             };
             data.discordBot = { ...currentBot, ...discordBot };
         }

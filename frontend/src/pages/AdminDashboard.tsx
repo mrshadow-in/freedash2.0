@@ -2600,13 +2600,22 @@ function BotTab({ settings, fetchSettings }: any) {
                         />
                     </div>
                     <div>
-                        <label className="block text-sm text-gray-400 mb-2">Invite Log Channel ID (Optional)</label>
                         <input
                             type="text"
                             value={discordConfig.inviteChannelId}
                             onChange={e => setDiscordConfig({ ...discordConfig, inviteChannelId: e.target.value })}
                             className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
                             placeholder="Channel ID to log invites"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-2">Dashboard URL (For Bot Embeds)</label>
+                        <input
+                            type="text"
+                            value={discordConfig.dashboardUrl || ''}
+                            onChange={e => setDiscordConfig({ ...discordConfig, dashboardUrl: e.target.value })}
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                            placeholder="https://panel.yourdomain.com"
                         />
                     </div>
                     <div>

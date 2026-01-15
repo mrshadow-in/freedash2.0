@@ -42,6 +42,7 @@ async function registerCommands(token: string, clientId: string, guildId: string
         new SlashCommandBuilder().setName('unlink-account').setDescription('Unlink your Discord account from the panel'),
         new SlashCommandBuilder().setName('daily').setDescription('Claim your daily coin reward'),
         new SlashCommandBuilder().setName('help').setDescription('How to link account & bot features'),
+        new SlashCommandBuilder().setName('free-server').setDescription('Learn how to get and keep a free server'),
     ].map(cmd => cmd.toJSON());
 
     const rest = new REST({ version: '10' }).setToken(token);
@@ -698,6 +699,46 @@ export async function startDiscordBot() {
                     } catch (error) {
                         console.error('Error in boost-reward command:', error);
                         await interaction.editReply('❌ An error occurred. Please try again later.');
+                    }
+                    return;
+                }
+
+                // FREE-SERVER
+                if (interaction.commandName === 'free-server') {
+                    await interaction.deferReply();
+
+                    try {
+                        const { getSettings } = await import('./settingsService');
+                        const settings = await getSettings();
+                        const discordBot = (settings?.discordBot as any);
+                        const dashboardUrl = discordBot?.dashboardUrl || 'https://your-dashboard-url.com';
+
+                        const embed = new EmbedBuilder()
+                            .setColor(0x00ff00)
+                            .setTitle('🚀 How to Get a Free Server')
+                            .setDescription('Follow these steps to start your free server journey!')
+                            .addFields(
+                                {
+                                    name: '📜 Server Rules (RAM Billing)',
+                                    value: '• We use a **Pay-As-You-Go** system based on RAM usage.\n• Coins are deducted automatically while your server is running.\n• If you run out of coins, your server will be **suspended** (Data is safe!).\n• Earn more coins to resume your server instantly.'
+                                },
+                                {
+                                    name: '💰 How to Earn Coins',
+                                    value: '1. **Boost the Server**: Get BIG coin rewards!\n2. **Invite Friends**: Use `/invite-reward-list` to see rewards.\n3. **Daily Rewards**: Use `/daily` every 24h (12h for boosters).\n4. **AFK Page**: Earn coins by keeping the AFK page open on the dashboard.\n5. **Play Games**: Play minigames on the dashboard.'
+                                },
+                                {
+                                    name: '🔗 Get Started',
+                                    value: `[**Click Here to Visit Dashboard**](${dashboardUrl})\n*Link your Discord account in Settings > Account to sync coins!*`
+                                }
+                            )
+                            .setFooter({ text: 'Start your free server today!' })
+                            .setTimestamp();
+
+                        await interaction.editReply({ embeds: [embed] });
+
+                    } catch (error) {
+                        console.error('Error in free-server command:', error);
+                        await interaction.editReply('❌ An error occurred.');
                     }
                     return;
                 }
