@@ -20,6 +20,34 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
     const [command, setCommand] = useState('');
     const [isAutoScroll, setIsAutoScroll] = useState(true);
     const [showEulaModal, setShowEulaModal] = useState(false);
+    const [eulaAlreadyAccepted, setEulaAlreadyAccepted] = useState(false); // Track if EULA already accepted
+
+    // Check if EULA is already accepted on mount
+    useEffect(() => {
+        const checkEulaStatus = async () => {
+            try {
+                const response = await api.post(`/servers/${serverId}/files/read`, {
+                    file: 'eula.txt'
+                });
+
+                const eulaContent = response.data.content || '';
+                // Check if eula=true exists in the file
+                if (eulaContent.toLowerCase().includes('eula=true')) {
+                    console.log('✅ EULA already accepted');
+                    setEulaAlreadyAccepted(true);
+                } else {
+                    console.log('⚠️ EULA not accepted yet');
+                    setEulaAlreadyAccepted(false);
+                }
+            } catch (error) {
+                // File doesn't exist or can't be read - EULA not accepted
+                console.log('⚠️ eula.txt not found - EULA not accepted');
+                setEulaAlreadyAccepted(false);
+            }
+        };
+
+        checkEulaStatus();
+    }, [serverId]);
 
     const sendCommand = () => {
         if (!command.trim()) return;
@@ -128,10 +156,12 @@ const Console = ({ serverId, serverStatus }: ConsoleProps) => {
                     const hasEulaKeyword = eulaPatterns.some(pattern => lowerLog.includes(pattern));
 
                     // Only show EULA modal if:
-                    // 1. Log contains EULA keywords
-                    // 2. Log specifically mentions "false" or "not agreed" (means EULA not accepted)
-                    // 3. Don't show if log says "eula=true" (already accepted)
-                    if (hasEulaKeyword &&
+                    // 1. EULA is NOT already accepted (checked from file)
+                    // 2. Log contains EULA keywords
+                    // 3. Log specifically mentions "false" or "not agreed" (means EULA not accepted)
+                    // 4. Don't show if log says "eula=true" (already accepted)
+                    if (!eulaAlreadyAccepted &&
+                        hasEulaKeyword &&
                         (lowerLog.includes('eula') || lowerLog.includes('agree')) &&
                         (lowerLog.includes('false') || lowerLog.includes('you need to agree') || lowerLog.includes('failed to load')) &&
                         !lowerLog.includes('eula=true')) {
