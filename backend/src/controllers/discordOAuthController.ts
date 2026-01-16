@@ -95,7 +95,7 @@ export const handleCallback = async (req: Request, res: Response) => {
             }
         );
 
-        const { access_token } = tokenResponse.data;
+        const { access_token } = tokenResponse.data as { access_token: string };
 
         // Fetch Discord user info
         const userResponse = await axios.get('https://discord.com/api/users/@me', {
@@ -104,7 +104,12 @@ export const handleCallback = async (req: Request, res: Response) => {
             },
         });
 
-        const discordUser = userResponse.data;
+        const discordUser = userResponse.data as {
+            id: string;
+            username: string;
+            email?: string;
+            avatar?: string;
+        };
 
         // Check if user exists with this Discord ID
         let user = await prisma.user.findUnique({

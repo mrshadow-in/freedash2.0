@@ -24,6 +24,7 @@ import VisualAdEditor from './components/VisualAdEditor';
 import GlobalAdCreationModal from './components/GlobalAdCreationModal';
 import GlobalAdminControls from './components/GlobalAdminControls';
 import AdBlockDetector from './components/AdBlockDetector';
+import DiscordCallback from './pages/DiscordCallback';
 import { loadAndApplyTheme } from './utils/themeLoader';
 
 
@@ -70,6 +71,7 @@ function App() {
         <Route path="/games" element={<PrivateRoute><GamesPage /></PrivateRoute>} />
         <Route path="/afk" element={<PrivateRoute><AFKPage /></PrivateRoute>} />
         <Route path="/auth/discord/success" element={<DiscordSuccess />} />
+        <Route path="/auth/discord/callback" element={<DiscordCallback />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <SystemIntegrityCheck />
