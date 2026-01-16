@@ -18,7 +18,7 @@
 ### ✨ Key Highlights
 
 - 🎮 **One-Click Server Creation** - Deploy Minecraft servers in seconds
-- 🔌 **Plugin Marketplace** - Install 1000+ plugins from Modrinth & Spigot
+- 🔌 **Plugin Marketplace** - Install from Spigot, Modrinth, Hangar, Polymart & CurseForge
 - 💰 **Gamified Economy** - Earn coins through games, AFK zone, and Discord rewards
 - 🎨 **Live Theme Customization** - 8 customizable colors with 6 beautiful presets
 - 📱 **Fully Responsive** - Perfect on mobile, tablet, and desktop
@@ -38,7 +38,7 @@
 - ✅ **Live Console** with real-time log streaming
 - ✅ **Power Controls** (Start, Stop, Restart, Kill)
 - ✅ **File Manager** (Upload, Edit, Delete files)
-- ✅ **Plugin Manager** - Search and install from Modrinth & Spigot
+- ✅ **Plugin Manager** - 5 providers: Spigot, Modrinth, Hangar, Polymart, CurseForge
 - ✅ **Version Switcher** - Paper & Spigot versions
 - ✅ **Properties Editor** - Visual server.properties configuration
 - ✅ **Resource Upgrades** - Add RAM, CPU, Disk on-demand
@@ -235,8 +235,8 @@ DISCORD_BOT_TOKEN="your-discord-bot-token"
 *FreeDash console showing server stats, power controls, and live terminal output*
 
 ### Plugin Marketplace
-![Plugins](./docs/images/plugins.png)
-*Browse and install 1000+ plugins from Modrinth and Spigot*
+![Plugins](./docs/images/plugin-manager.png)
+*Search and install plugins from Spigot, Modrinth, Hangar, Polymart & CurseForge - with version selection and multi-provider support*
 
 ---
 
