@@ -153,9 +153,10 @@ export const searchPlugins = async (req: Request, res: Response) => {
             const facetsString = JSON.stringify(facetList);
             const response = await axios.get(`https://api.modrinth.com/v2/search`, {
                 params: {
-                    query: q || '',
+                    query: q || '',  // Empty query returns all, sorted by relevance/downloads
                     limit: 20,
-                    facets: facetsString
+                    facets: facetsString,
+                    index: 'downloads' // Sort by downloads (most popular first)
                 }
             });
 

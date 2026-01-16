@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+a; import { useState, useEffect } from 'react';
 import { Search, Download, Loader2, Trash2, Package, CheckCircle2, Cloud, Filter, ExternalLink, Star, Calendar } from 'lucide-react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import api from '../../api/client';
@@ -22,6 +22,7 @@ const PluginManager = ({ server }: PluginManagerProps) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [plugins, setPlugins] = useState<any[]>([]);
     const [searching, setSearching] = useState(false);
+    const [provider, setProvider] = useState<string>('modrinth');
     const [category, setCategory] = useState<'plugin' | 'mod' | 'modpack'>('plugin');
     const [selectedVersion, setSelectedVersion] = useState<string>('1.21.1');
     const [pluginVersions, setPluginVersions] = useState<Record<string, any[]>>({});
@@ -60,20 +61,32 @@ const PluginManager = ({ server }: PluginManagerProps) => {
 
         setSearching(true);
         try {
-            const { data } = await api.get(`/servers/${server.id}/minecraft/plugins`, {
-                params: { q: searchQuery, provider: 'modrinth', category, version: selectedVersion }
-            });
+            // If no search query, get popular plugins sorted by downloads
+            const params: any = {
+                provider,
+                category,
+                version: selectedVersion
+            };
+
+            // Add search query if exists
+            if (searchQuery.trim()) {
+                params.q = searchQuery;
+            }
+
+            const { data } = await api.get(`/servers/${server.id}/minecraft/plugins`, { params });
             setPlugins(Array.isArray(data) ? data : []);
         } catch (error) {
+            console.error('Plugin search error:', error);
             toast.error('Failed to search plugins');
         } finally {
             setSearching(false);
         }
     };
 
+    // Load plugins on mount and when filters change
     useEffect(() => {
         handleSearchPlugins();
-    }, [selectedVersion, category]);
+    }, [selectedVersion, category, provider]);
 
     // Load Versions for a plugin
     const loadVersions = async (pluginId: string) => {
@@ -85,7 +98,7 @@ const PluginManager = ({ server }: PluginManagerProps) => {
             const { data } = await api.get(`/servers/${server.id}/minecraft/plugins/versions`, {
                 params: {
                     resourceId: pluginId,
-                    provider: 'modrinth',
+                    provider,
                     loaders,
                     version: selectedVersion
                 }
@@ -105,7 +118,7 @@ const PluginManager = ({ server }: PluginManagerProps) => {
                 resourceId: plugin.id,
                 fileName: `${plugin.name}.jar`,
                 version: selectedVersion,
-                provider: 'modrinth',
+                provider,
                 versionId
             });
         },
@@ -175,7 +188,9 @@ const PluginManager = ({ server }: PluginManagerProps) => {
                             <h2 className="text-xl font-bold text-white flex items-center gap-2">
                                 <Package className="text-purple-500" /> Plugin Marketplace
                             </h2>
-                            <p className="text-slate-400 text-xs">Powered by Modrinth</p>
+                            <p className="text-slate-400 text-xs">
+                                Powered by {provider.charAt(0).toUpperCase() + provider.slice(1)}
+                            </p>
                         </div>
 
                         {/* Search & Filters */}
@@ -196,6 +211,22 @@ const PluginManager = ({ server }: PluginManagerProps) => {
 
                             {/* Filters */}
                             <div className="flex items-center gap-3">
+                                {/* Provider Selection */}
+                                <div className="relative">
+                                    <select
+                                        value={provider}
+                                        onChange={e => setProvider(e.target.value)}
+                                        className="bg-[#0d1117] border border-white/10 rounded-lg px-4 py-3 text-white font-medium focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition appearance-none pr-10 cursor-pointer"
+                                    >
+                                        <option value="modrinth">Modrinth</option>
+                                        <option value="spigot">Spigot</option>
+                                        <option value="hangar">Hangar (Paper)</option>
+                                        <option value="polymart">Polymart</option>
+                                        <option value="curseforge">CurseForge</option>
+                                    </select>
+                                    <Package className="absolute right-3 top-3.5 pointer-events-none text-slate-400" size={16} />
+                                </div>
+
                                 {/* Category */}
                                 <div className="relative">
                                     <select
@@ -333,8 +364,8 @@ const PluginManager = ({ server }: PluginManagerProps) => {
                                             onClick={() => installMutation.mutate({ plugin, versionId: selectedVersionId })}
                                             disabled={installed || installMutation.isPending}
                                             className={`mt-auto w-full py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition ${installed
-                                                    ? 'bg-green-900/10 text-green-600 border border-green-900/20 cursor-default'
-                                                    : 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white shadow-lg shadow-purple-900/20 hover:scale-105 active:scale-95'
+                                                ? 'bg-green-900/10 text-green-600 border border-green-900/20 cursor-default'
+                                                : 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white shadow-lg shadow-purple-900/20 hover:scale-105 active:scale-95'
                                                 }`}
                                         >
                                             {installMutation.isPending && installMutation.variables?.plugin.id === plugin.id ?
