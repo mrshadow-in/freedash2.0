@@ -341,23 +341,29 @@ const PluginManager = ({ server }: PluginManagerProps) => {
                                             </span>
                                         </div>
 
-                                        {/* Version Dropdown */}
-                                        <select
-                                            id={`version-${plugin.id}`}
-                                            value={selectedVersionId || ''}
-                                            onChange={e => setSelectedPluginVersions(prev => ({ ...prev, [plugin.id]: e.target.value }))}
-                                            onFocus={() => loadVersions(plugin.id)}
-                                            disabled={loadingVersions[plugin.id] || installed}
-                                            className="w-full bg-[#0d1117] border border-white/10 rounded-lg px-3 py-2 text-white text-sm mb-3 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            <option value="">Select Version</option>
-                                            {loadingVersions[plugin.id] && <option>Loading versions...</option>}
-                                            {versions.map((v: any) => (
-                                                <option key={v.id} value={v.id}>
-                                                    v{v.versionNumber} | {v.loaders.join(', ')} | MC {v.gameVersions[0]}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        {/* Version Dropdown - Only show for Modrinth */}
+                                        {provider === 'modrinth' ? (
+                                            <select
+                                                id={`version-${plugin.id}`}
+                                                value={selectedVersionId || ''}
+                                                onChange={e => setSelectedPluginVersions(prev => ({ ...prev, [plugin.id]: e.target.value }))}
+                                                onFocus={() => loadVersions(plugin.id)}
+                                                disabled={loadingVersions[plugin.id] || installed}
+                                                className="w-full bg-[#0d1117] border border-white/10 rounded-lg px-3 py-2 text-white text-sm mb-3 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                <option value="">Select Version</option>
+                                                {loadingVersions[plugin.id] && <option>Loading versions...</option>}
+                                                {versions.map((v: any) => (
+                                                    <option key={v.id} value={v.id}>
+                                                        v{v.versionNumber} | {v.loaders.join(', ')} | MC {v.gameVersions[0]}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <div className="w-full bg-[#0d1117]/50 border border-white/5 rounded-lg px-3 py-2 text-slate-500 text-xs mb-3 italic">
+                                                Latest version will be installed
+                                            </div>
+                                        )}
 
                                         {/* Install Button */}
                                         <button

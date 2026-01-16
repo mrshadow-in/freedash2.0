@@ -176,45 +176,56 @@ export const searchPlugins = async (req: Request, res: Response) => {
             }));
             res.json(plugins);
         } else if (provider === 'hangar') {
-            const response = await axios.get(`https://hangar.papermc.io/api/v1/projects?q=${q}&limit=20&offset=0`);
+            const response = await axios.get(`https://hangar.papermc.io/api/v1/projects?q=${q || ''}&limit=20&offset=0`);
             const plugins = ((response.data as any).result || []).map((p: any) => ({
-                id: p.namespace.slug, // Use slug as ID for Hangar
+                id: p.namespace?.slug || p.name, // Use slug as ID for Hangar
+                slug: p.namespace?.slug || p.name,
                 name: p.name,
-                tag: p.description,
-                likes: p.stats.stars,
-                downloads: p.stats.downloads,
-                icon: p.avatarUrl,
+                description: p.description || 'No description available',
+                downloads: p.stats?.downloads || 0,
+                follows: p.stats?.stars || 0, // ⭐ Stars
+                icon: p.avatarUrl || null,
+                dateModified: p.lastUpdated || new Date().toISOString(),
                 provider: 'hangar',
-                testedVersions: [] // Hangar structure is complex
+                versions: [], // Hangar structure is complex
+                categories: p.category ? [p.category] : [],
+                projectType: 'plugin' // Hangar is plugins only
             }));
             res.json(plugins);
 
         } else if (provider === 'polymart') {
             // Polymart Search
-            const response = await axios.get(`https://api.polymart.org/v1/search?query=${q}&limit=20&start=0`);
+            const response = await axios.get(`https://api.polymart.org/v1/search?query=${q || ''}&limit=20&start=0`);
             const plugins = ((response.data as any).response?.result || []).map((p: any) => ({
                 id: p.id,
+                slug: p.id.toString(),
                 name: p.title,
-                tag: p.subtitle,
-                likes: p.stars,
-                downloads: p.downloads,
+                description: p.subtitle || 'No description available',
+                downloads: p.downloads || 0,
+                follows: p.stars || 0,
                 icon: p.url_icon, // Polymart icon
+                dateModified: p.updateDate || new Date().toISOString(),
                 provider: 'polymart',
-                testedVersions: []
+                versions: [],
+                categories: [],
+                projectType: 'plugin'
             }));
             res.json(plugins);
 
         } else if (provider === 'curseforge') {
             // CurseForge Search - STRICT Bukkit Plugins (Class ID 5)
             const apiKey = keys.curseforge_api_key;
-            if (!apiKey) return res.json([]); // Return empty if no key
+            if (!apiKey) {
+                console.log('[CurseForge] API key not configured');
+                return res.json([]); // Return empty if no key
+            }
 
             const response = await axios.get(`https://api.curseforge.com/v1/mods/search`, {
                 headers: { 'x-api-key': apiKey },
                 params: {
                     gameId: 432, // Minecraft
                     classId: 5,  // Bukkit Plugins (CRITICAL: Excludes Mods/Modpacks)
-                    searchFilter: q,
+                    searchFilter: q || '',
                     pageSize: 20,
                     sortOrder: 'desc'
                 }
@@ -222,28 +233,36 @@ export const searchPlugins = async (req: Request, res: Response) => {
 
             const plugins = ((response.data as any).data || []).map((p: any) => ({
                 id: p.id,
+                slug: p.slug,
                 name: p.name,
-                tag: p.summary,
-                likes: p.thumbsUpCount || 0,
-                downloads: p.downloadCount,
-                icon: p.logo?.thumbnailUrl,
+                description: p.summary || 'No description available',
+                downloads: p.downloadCount || 0,
+                follows: p.thumbsUpCount || 0,
+                icon: p.logo?.thumbnailUrl || null,
+                dateModified: p.dateModified || new Date().toISOString(),
                 provider: 'curseforge',
-                testedVersions: []
+                versions: [],
+                categories: [],
+                projectType: 'plugin'
             }));
             res.json(plugins);
 
         } else {
             // Spigot Search (Default)
-            const response = await axios.get(`https://api.spiget.org/v2/search/resources/${q}?size=20&sort=-likes`);
+            const response = await axios.get(`https://api.spiget.org/v2/search/resources/${q || 'plugin'}?size=20&sort=-downloads`);
             const plugins = (response.data as any).map((p: any) => ({
                 id: p.id,
+                slug: p.id.toString(),
                 name: p.name,
-                tag: p.tag,
-                likes: p.likes,
-                downloads: p.downloads,
+                description: p.tag || 'No description available',
+                downloads: p.downloads || 0,
+                follows: p.likes || 0,
                 icon: p.icon?.url ? `https://www.spigotmc.org/${p.icon.url}` : null,
+                dateModified: p.updateDate ? new Date(p.updateDate * 1000).toISOString() : new Date().toISOString(),
                 provider: 'spigot',
-                testedVersions: p.testedVersions
+                versions: p.testedVersions || [],
+                categories: [],
+                projectType: 'plugin'
             }));
             res.json(plugins);
         }
