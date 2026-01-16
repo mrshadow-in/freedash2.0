@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Power, RotateCw, Square, Skull, ExternalLink, ShoppingBag, Ghost, Trash2 } from 'lucide-react';
+import { Power, RotateCw, Square, Skull, ExternalLink, ShoppingBag, Ghost, Trash2, Clock } from 'lucide-react';
 
 interface ServerHeaderProps {
     server: any;
@@ -16,6 +16,7 @@ interface ServerHeaderProps {
 
 const ServerHeader = ({ server, powerState, onPowerAction, isPowerPending, onOpenShop, onDelete, panelUrl = '', panelAccessEnabled = true, userRole = 'user' }: ServerHeaderProps) => {
     const [activeSignal, setActiveSignal] = useState<string | null>(null);
+    const [uptime, setUptime] = useState<string>('');
     const isPanelLocked = !panelAccessEnabled && userRole !== 'admin';
 
     const handlePower = (signal: string) => {
@@ -23,6 +24,35 @@ const ServerHeader = ({ server, powerState, onPowerAction, isPowerPending, onOpe
         onPowerAction(signal);
         setTimeout(() => setActiveSignal(null), 2000);
     };
+
+    // Calculate uptime
+    useEffect(() => {
+        const calculateUptime = () => {
+            if (powerState === 'running' && server.createdAt) {
+                const now = new Date().getTime();
+                const created = new Date(server.createdAt).getTime();
+                const diff = now - created;
+
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+                if (days > 0) {
+                    setUptime(`${days}d ${hours}h`);
+                } else if (hours > 0) {
+                    setUptime(`${hours}h ${minutes}m`);
+                } else {
+                    setUptime(`${minutes}m`);
+                }
+            } else {
+                setUptime('Offline');
+            }
+        };
+
+        calculateUptime();
+        const interval = setInterval(calculateUptime, 60000); // Update every minute
+        return () => clearInterval(interval);
+    }, [powerState, server.createdAt]);
 
     const getStatusInfo = () => {
         const status = powerState || server.status?.toLowerCase() || 'unknown';
@@ -192,6 +222,13 @@ const ServerHeader = ({ server, powerState, onPowerAction, isPowerPending, onOpe
                                 {label}
                             </motion.button>
                         ))}
+
+                        {/* Uptime Display */}
+                        <div className="px-4 py-2 bg-blue-500/20 border border-blue-500/30 text-blue-300 rounded-xl font-bold flex items-center gap-2 text-sm">
+                            <Clock size={16} />
+                            <span className="hidden sm:inline">Uptime:</span>
+                            <span className="font-mono">{uptime}</span>
+                        </div>
                     </div>
                 </div>
             </div>
