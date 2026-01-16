@@ -125,19 +125,27 @@ export const updateServerProperties = async (req: AuthRequest, res: Response) =>
 
 export const searchPlugins = async (req: Request, res: Response) => {
     try {
-        const { q, provider = 'spigot', version } = req.query;
-        if (!q) return res.json([]);
+        const { q, provider = 'modrinth', category = 'plugin', version } = req.query;
 
         const settings = await getSettingsOrCreate();
         const keys = (settings.plugins as any) || {};
 
         if (provider === 'modrinth') {
-            // Modrinth Search - STRICT plugins only
-            const facetList = [
-                ["project_type:plugin"],
-                ["categories:bukkit", "categories:spigot", "categories:paper"]
-            ];
+            // Modrinth Search with Category Support
+            const facetList: string[][] = [];
 
+            // Category filter
+            if (category === 'plugin') {
+                facetList.push(["project_type:plugin"]);
+                facetList.push(["categories:bukkit", "categories:paper", "categories:spigot"]);
+            } else if (category === 'mod') {
+                facetList.push(["project_type:mod"]);
+                facetList.push(["categories:fabric", "categories:forge", "categories:quilt"]);
+            } else if (category === 'modpack') {
+                facetList.push(["project_type:modpack"]);
+            }
+
+            // Version filter
             if (version && version !== 'latest') {
                 facetList.push([`versions:${version}`]);
             }
@@ -145,7 +153,7 @@ export const searchPlugins = async (req: Request, res: Response) => {
             const facetsString = JSON.stringify(facetList);
             const response = await axios.get(`https://api.modrinth.com/v2/search`, {
                 params: {
-                    query: q,
+                    query: q || '',
                     limit: 20,
                     facets: facetsString
                 }
@@ -153,13 +161,17 @@ export const searchPlugins = async (req: Request, res: Response) => {
 
             const plugins = ((response.data as any).hits || []).map((p: any) => ({
                 id: p.project_id,
+                slug: p.slug,
                 name: p.title,
-                tag: p.description,
-                likes: p.follows,
+                description: p.description,
                 downloads: p.downloads,
+                follows: p.follows, // ⭐ Stars
                 icon: p.icon_url,
+                dateModified: p.date_modified, // 🕒 Last updated
                 provider: 'modrinth',
-                testedVersions: p.versions
+                versions: p.versions,
+                categories: p.categories,
+                projectType: p.project_type // "plugin", "mod", "modpack"
             }));
             res.json(plugins);
         } else if (provider === 'hangar') {
@@ -242,15 +254,20 @@ export const searchPlugins = async (req: Request, res: Response) => {
 
 export const getPluginVersions = async (req: Request, res: Response) => {
     try {
-        const { resourceId, provider = 'spigot', version } = req.query;
+        const { resourceId, provider = 'modrinth', version, loaders } = req.query;
         if (!resourceId) return res.status(400).json({ message: 'Missing resourceId' });
 
         if (provider === 'modrinth') {
-            // Fetch versions from Modrinth
-            // Filter by loaders: bukkit, spigot, paper
-            const loaders = JSON.stringify(["bukkit", "spigot", "paper"]);
-            const params: any = { loaders };
-            if (version) {
+            // Fetch versions from Modrinth with filtering
+            const params: any = {};
+
+            // Filter by loaders (bukkit, paper, spigot, fabric, forge, etc.)
+            if (loaders) {
+                params.loaders = loaders; // Already JSON string from frontend
+            }
+
+            // Filter by game version
+            if (version && version !== 'latest') {
                 params.game_versions = JSON.stringify([version]);
             }
 
@@ -262,7 +279,7 @@ export const getPluginVersions = async (req: Request, res: Response) => {
                 versionNumber: v.version_number,
                 gameVersions: v.game_versions,
                 loaders: v.loaders,
-                date: v.date_published,
+                datePublished: v.date_published,
                 downloads: v.downloads,
                 file: v.files.find((f: any) => f.primary) || v.files[0]
             }));
@@ -281,7 +298,7 @@ export const getPluginVersions = async (req: Request, res: Response) => {
 export const installPlugin = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const { resourceId, provider = 'spigot', fileName } = req.body;
+        const { resourceId, provider = 'modrinth', fileName, versionId } = req.body;
 
         const server = await prisma.server.findUnique({ where: { id } });
         if (!server || !server.pteroIdentifier) {
@@ -297,12 +314,27 @@ export const installPlugin = async (req: AuthRequest, res: Response) => {
         const keys = (settings.plugins as any) || {};
 
         if (provider === 'modrinth') {
-            const verRes = await axios.get(`https://api.modrinth.com/v2/project/${resourceId}/version`);
-            const versions = verRes.data as any[];
-            if (!versions || versions.length === 0) return res.status(404).json({ message: 'No versions found' });
-            const latestVersion = versions[0];
-            const file = latestVersion.files.find((f: any) => f.primary) || latestVersion.files[0];
-            await pullPteroFile(server.pteroIdentifier, file.url, '/plugins');
+            let downloadUrl: string;
+
+            if (versionId) {
+                // Install specific version
+                console.log(`[Plugin Install] Installing specific version: ${versionId}`);
+                const versionRes = await axios.get(`https://api.modrinth.com/v2/version/${versionId}`);
+                const versionData = versionRes.data as any;
+                const file = versionData.files.find((f: any) => f.primary) || versionData.files[0];
+                downloadUrl = file.url;
+            } else {
+                // Install latest version
+                console.log(`[Plugin Install] Installing latest version of ${resourceId}`);
+                const verRes = await axios.get(`https://api.modrinth.com/v2/project/${resourceId}/version`);
+                const versions = verRes.data as any[];
+                if (!versions || versions.length === 0) return res.status(404).json({ message: 'No versions found' });
+                const latestVersion = versions[0];
+                const file = latestVersion.files.find((f: any) => f.primary) || latestVersion.files[0];
+                downloadUrl = file.url;
+            }
+
+            await pullPteroFile(server.pteroIdentifier, downloadUrl, '/plugins');
 
         } else if (provider === 'hangar') {
             // Hangar Install
