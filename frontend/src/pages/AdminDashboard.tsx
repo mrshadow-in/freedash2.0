@@ -211,6 +211,7 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
         billingInterval: 1,
         coinsPerGbHour: 0,
         coinsPerGbMinute: 0,
+        costPerMinuteFlat: 0,
         billingAutoSuspend: false,
 
         billingAutoResume: false,
@@ -253,6 +254,7 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                 billingInterval: settings.billing?.interval || 1,
                 coinsPerGbHour: settings.billing?.coinsPerGbHour || 0,
                 coinsPerGbMinute: settings.billing?.coinsPerGbMinute || 0,
+                costPerMinuteFlat: settings.billing?.costPerMinuteFlat || 0,
                 billingAutoSuspend: settings.billing?.autoSuspend ?? false,
                 billingAutoResume: settings.billing?.autoResume ?? false,
                 panelAccessEnabled: settings.security?.enablePanelAccess ?? true,
@@ -314,6 +316,7 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                     interval: formData.billingInterval,
                     coinsPerGbHour: formData.coinsPerGbHour,
                     coinsPerGbMinute: formData.coinsPerGbMinute,
+                    costPerMinuteFlat: formData.costPerMinuteFlat,
                     autoSuspend: formData.billingAutoSuspend,
                     autoResume: formData.billingAutoResume
 
