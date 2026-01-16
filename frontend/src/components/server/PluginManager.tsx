@@ -22,7 +22,7 @@ const PluginManager = ({ server }: PluginManagerProps) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [plugins, setPlugins] = useState<any[]>([]);
     const [searching, setSearching] = useState(false);
-    const [provider, setProvider] = useState<string>('modrinth');
+    const [provider, setProvider] = useState<string>('spigot');
     const [category, setCategory] = useState<'plugin' | 'mod' | 'modpack'>('plugin');
     const [selectedVersion, setSelectedVersion] = useState<string>('1.21.1');
     const [pluginVersions, setPluginVersions] = useState<Record<string, any[]>>({});
@@ -218,8 +218,8 @@ const PluginManager = ({ server }: PluginManagerProps) => {
                                         onChange={e => setProvider(e.target.value)}
                                         className="bg-[#0d1117] border border-white/10 rounded-lg px-4 py-3 text-white font-medium focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition appearance-none pr-10 cursor-pointer"
                                     >
-                                        <option value="modrinth">Modrinth</option>
                                         <option value="spigot">Spigot</option>
+                                        <option value="modrinth">Modrinth</option>
                                         <option value="hangar">Hangar (Paper)</option>
                                         <option value="polymart">Polymart</option>
                                         <option value="curseforge">CurseForge</option>

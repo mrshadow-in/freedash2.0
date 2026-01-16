@@ -4,7 +4,8 @@ import api from '../../api/client';
 import {
     Folder, Edit, Trash2,
     Upload, ChevronRight,
-    RefreshCw, FolderPlus, File as FileIcon
+    RefreshCw, FolderPlus, File as FileIcon,
+    CheckSquare, Square
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
@@ -21,6 +22,8 @@ const FileManager = ({ serverId }: FileManagerProps) => {
     const [editingFile, setEditingFile] = useState<string | null>(null);
     const [showCreateFolder, setShowCreateFolder] = useState(false);
     const [newFolderName, setNewFolderName] = useState('');
+    const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+    const [selectAll, setSelectAll] = useState(false);
 
     // Fetch Files
     const { data: files, isLoading, error } = useQuery({
@@ -48,16 +51,19 @@ const FileManager = ({ serverId }: FileManagerProps) => {
         onError: () => toast.error('Failed to create folder')
     });
 
-    // Delete File/Folder
+    // Delete File/Folder (Single or Bulk)
     const deleteMutation = useMutation({
-        mutationFn: async (name: string) => {
+        mutationFn: async (names: string | string[]) => {
+            const filesList = Array.isArray(names) ? names : [names];
             return api.post(`/servers/${serverId}/files/delete`, {
                 root: directory,
-                files: [name]
+                files: filesList
             });
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['files', serverId, directory] });
+            setSelectedFiles(new Set());
+            setSelectAll(false);
             toast.success('Deleted successfully');
         },
         onError: () => toast.error('Failed to delete')
@@ -164,6 +170,19 @@ const FileManager = ({ serverId }: FileManagerProps) => {
 
                 {/* Actions */}
                 <div className="flex items-center gap-2">
+                    {selectedFiles.size > 0 && (
+                        <button
+                            onClick={() => {
+                                if (confirm(`Delete ${selectedFiles.size} selected file(s)?`)) {
+                                    deleteMutation.mutate(Array.from(selectedFiles));
+                                }
+                            }}
+                            className="px-3 py-2 bg-red-600/20 border border-red-600/50 text-red-400 rounded-lg hover:bg-red-600/30 transition flex items-center gap-2 text-sm font-medium"
+                        >
+                            <Trash2 size={16} />
+                            Delete {selectedFiles.size} Selected
+                        </button>
+                    )}
                     <button
                         onClick={() => setShowCreateFolder(true)}
                         className="p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition tooltip"
@@ -189,6 +208,23 @@ const FileManager = ({ serverId }: FileManagerProps) => {
                 <table className="w-full text-left border-collapse">
                     <thead className="bg-[#161b22] text-xs font-bold text-gray-500 uppercase sticky top-0 z-10">
                         <tr>
+                            <th className="px-3 py-3 w-10">
+                                <button
+                                    onClick={() => {
+                                        if (selectAll) {
+                                            setSelectedFiles(new Set());
+                                            setSelectAll(false);
+                                        } else {
+                                            const allFileNames = files?.map((f: any) => f.attributes.name) || [];
+                                            setSelectedFiles(new Set(allFileNames));
+                                            setSelectAll(true);
+                                        }
+                                    }}
+                                    className="text-gray-400 hover:text-white transition"
+                                >
+                                    {selectAll ? <CheckSquare size={16} /> : <Square size={16} />}
+                                </button>
+                            </th>
                             <th className="px-6 py-3">Name</th>
                             <th className="px-6 py-3 w-32">Size</th>
                             <th className="px-6 py-3 w-48">Modified</th>
@@ -205,6 +241,7 @@ const FileManager = ({ serverId }: FileManagerProps) => {
                                 }}
                                 className="hover:bg-white/5 cursor-pointer transition select-none"
                             >
+                                <td colSpan={1}></td>
                                 <td className="px-6 py-3 flex items-center gap-3">
                                     <Folder size={18} className="text-yellow-500" />
                                     <span className="font-mono text-yellow-500">..</span>
@@ -223,8 +260,32 @@ const FileManager = ({ serverId }: FileManagerProps) => {
                             files?.map((file: any) => (
                                 <tr
                                     key={file.attributes.name}
-                                    className="hover:bg-white/5 transition group"
+                                    className={`hover:bg-white/5 transition group ${selectedFiles.has(file.attributes.name) ? 'bg-purple-900/20' : ''
+                                        }`}
                                 >
+                                    <td className="px-3 py-3 text-center">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const newSelected = new Set(selectedFiles);
+                                                if (selectedFiles.has(file.attributes.name)) {
+                                                    newSelected.delete(file.attributes.name);
+                                                    setSelectAll(false);
+                                                } else {
+                                                    newSelected.add(file.attributes.name);
+                                                    if (newSelected.size === files?.length) setSelectAll(true);
+                                                }
+                                                setSelectedFiles(newSelected);
+                                            }}
+                                            className="text-gray-400 hover:text-white transition"
+                                        >
+                                            {selectedFiles.has(file.attributes.name) ? (
+                                                <CheckSquare size={16} className="text-purple-400" />
+                                            ) : (
+                                                <Square size={16} />
+                                            )}
+                                        </button>
+                                    </td>
                                     <td className="px-6 py-3">
                                         <div
                                             className="flex items-center gap-3 cursor-pointer"
