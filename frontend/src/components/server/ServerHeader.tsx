@@ -17,7 +17,8 @@ interface ServerHeaderProps {
 
 const ServerHeader = ({ server, powerState, onPowerAction, isPowerPending, onOpenShop, onDelete, panelUrl = '', panelAccessEnabled = true, userRole = 'user', pteroUptime = 0 }: ServerHeaderProps) => {
     const [activeSignal, setActiveSignal] = useState<string | null>(null);
-    const [uptime, setUptime] = useState<string>('Offline');
+    const [uptimeString, setUptimeString] = useState<string>('Offline');
+    const [localUptime, setLocalUptime] = useState<number>(0);
     const isPanelLocked = !panelAccessEnabled && userRole !== 'admin';
 
     const handlePower = (signal: string) => {
@@ -26,10 +27,32 @@ const ServerHeader = ({ server, powerState, onPowerAction, isPowerPending, onOpe
         setTimeout(() => setActiveSignal(null), 2000);
     };
 
-    // Format uptime from Pterodactyl (milliseconds)
+    // Sync local state with prop when it updates (and acts as validation)
     useEffect(() => {
-        if (powerState === 'running' && pteroUptime > 0) {
-            const seconds = Math.floor(pteroUptime / 1000);
+        if (pteroUptime > 0) {
+            setLocalUptime(pteroUptime);
+        } else if (powerState !== 'running') {
+            setLocalUptime(0);
+        }
+    }, [pteroUptime, powerState]);
+
+    // Local ticker to make it smooth (increments every second)
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+
+        if (powerState === 'running') {
+            interval = setInterval(() => {
+                setLocalUptime(prev => prev + 1000);
+            }, 1000);
+        }
+
+        return () => clearInterval(interval);
+    }, [powerState]);
+
+    // Format the milliseconds into a readable string
+    useEffect(() => {
+        if (powerState === 'running' && localUptime > 0) {
+            const seconds = Math.floor(localUptime / 1000);
             const minutes = Math.floor(seconds / 60);
             const hours = Math.floor(minutes / 60);
             const days = Math.floor(hours / 24);
@@ -39,18 +62,18 @@ const ServerHeader = ({ server, powerState, onPowerAction, isPowerPending, onOpe
             const h = hours % 24;
 
             if (days > 0) {
-                setUptime(`${days}d ${h}h ${m}m`);
+                setUptimeString(`${days}d ${h}h ${m}m ${s}s`);
             } else if (hours > 0) {
-                setUptime(`${h}h ${m}m`);
+                setUptimeString(`${h}h ${m}m ${s}s`);
             } else if (minutes > 0) {
-                setUptime(`${m}m ${s}s`);
+                setUptimeString(`${m}m ${s}s`);
             } else {
-                setUptime(`${s}s`);
+                setUptimeString(`${s}s`);
             }
         } else {
-            setUptime('Offline');
+            setUptimeString('Offline');
         }
-    }, [powerState, pteroUptime]);
+    }, [localUptime, powerState]);
 
     const getStatusInfo = () => {
         const status = powerState || server.status?.toLowerCase() || 'unknown';
@@ -225,7 +248,7 @@ const ServerHeader = ({ server, powerState, onPowerAction, isPowerPending, onOpe
                         <div className="px-4 py-2 bg-blue-500/20 border border-blue-500/30 text-blue-300 rounded-xl font-bold flex items-center gap-2 text-sm">
                             <Clock size={16} />
                             <span className="hidden sm:inline">Uptime:</span>
-                            <span className="font-mono">{uptime}</span>
+                            <span className="font-mono">{uptimeString}</span>
                         </div>
                     </div>
                 </div>
