@@ -12,12 +12,12 @@ interface ServerHeaderProps {
     panelUrl?: string;
     panelAccessEnabled?: boolean;
     userRole?: string;
+    pteroUptime?: number; // Uptime in milliseconds from Pterodactyl
 }
 
-const ServerHeader = ({ server, powerState, onPowerAction, isPowerPending, onOpenShop, onDelete, panelUrl = '', panelAccessEnabled = true, userRole = 'user' }: ServerHeaderProps) => {
+const ServerHeader = ({ server, powerState, onPowerAction, isPowerPending, onOpenShop, onDelete, panelUrl = '', panelAccessEnabled = true, userRole = 'user', pteroUptime = 0 }: ServerHeaderProps) => {
     const [activeSignal, setActiveSignal] = useState<string | null>(null);
-    const [uptime, setUptime] = useState<string>('');
-    const [startTime, setStartTime] = useState<number | null>(null);
+    const [uptime, setUptime] = useState<string>('Offline');
     const isPanelLocked = !panelAccessEnabled && userRole !== 'admin';
 
     const handlePower = (signal: string) => {
@@ -26,48 +26,31 @@ const ServerHeader = ({ server, powerState, onPowerAction, isPowerPending, onOpe
         setTimeout(() => setActiveSignal(null), 2000);
     };
 
-    // Track when server starts/stops
+    // Format uptime from Pterodactyl (milliseconds)
     useEffect(() => {
-        if (powerState === 'running' && !startTime) {
-            // Server just started, record current time
-            setStartTime(Date.now());
-        } else if (powerState !== 'running' && startTime) {
-            // Server stopped, reset start time
-            setStartTime(null);
+        if (powerState === 'running' && pteroUptime > 0) {
+            const seconds = Math.floor(pteroUptime / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+
+            const s = seconds % 60;
+            const m = minutes % 60;
+            const h = hours % 24;
+
+            if (days > 0) {
+                setUptime(`${days}d ${h}h ${m}m`);
+            } else if (hours > 0) {
+                setUptime(`${h}h ${m}m`);
+            } else if (minutes > 0) {
+                setUptime(`${m}m ${s}s`);
+            } else {
+                setUptime(`${s}s`);
+            }
+        } else {
             setUptime('Offline');
         }
-    }, [powerState, startTime]);
-
-    // Calculate uptime every second
-    useEffect(() => {
-        const calculateUptime = () => {
-            if (powerState === 'running' && startTime) {
-                const now = Date.now();
-                const diff = now - startTime;
-
-                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-                if (days > 0) {
-                    setUptime(`${days}d ${hours}h ${minutes}m ${seconds}s`);
-                } else if (hours > 0) {
-                    setUptime(`${hours}h ${minutes}m ${seconds}s`);
-                } else if (minutes > 0) {
-                    setUptime(`${minutes}m ${seconds}s`);
-                } else {
-                    setUptime(`${seconds}s`);
-                }
-            } else if (powerState !== 'running') {
-                setUptime('Offline');
-            }
-        };
-
-        calculateUptime();
-        const interval = setInterval(calculateUptime, 1000); // Update every second
-        return () => clearInterval(interval);
-    }, [powerState, startTime]);
+    }, [powerState, pteroUptime]);
 
     const getStatusInfo = () => {
         const status = powerState || server.status?.toLowerCase() || 'unknown';
