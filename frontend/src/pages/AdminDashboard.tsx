@@ -2449,6 +2449,13 @@ function BotTab({ settings, fetchSettings }: any) {
         dashboardUrl: ''
     });
 
+    const [discordOAuth, setDiscordOAuth] = useState({
+        clientId: '',
+        clientSecret: '',
+        redirectUri: '',
+        enabled: false
+    });
+
     useEffect(() => {
         if (settings) {
             setApiKey(settings.botApiKey || '');
@@ -2467,6 +2474,7 @@ function BotTab({ settings, fetchSettings }: any) {
             }
         }
         fetchBotStatus();
+        fetchDiscordOAuth();
     }, [settings]);
 
     const fetchBotStatus = async () => {
@@ -2539,6 +2547,24 @@ function BotTab({ settings, fetchSettings }: any) {
             fetchBotStatus();
         } catch (error) {
             toast.error(`Failed to ${action} bot`);
+        }
+    };
+
+    const fetchDiscordOAuth = async () => {
+        try {
+            const res = await api.get('/admin/settings/discord-oauth');
+            setDiscordOAuth(res.data);
+        } catch (error) {
+            console.error('Failed to fetch Discord OAuth settings');
+        }
+    };
+
+    const saveDiscordOAuth = async () => {
+        try {
+            await api.put('/admin/settings/discord-oauth', discordOAuth);
+            toast.success('Discord OAuth settings saved!');
+        } catch (error) {
+            toast.error('Failed to save Discord OAuth settings');
         }
     };
 
@@ -2762,6 +2788,76 @@ function BotTab({ settings, fetchSettings }: any) {
                         </div>
                     ))}
                     {boostRewards.length === 0 && <p className="text-gray-500 text-center py-4">No boost rewards configured.</p>}
+                </div>
+            </div>
+
+            {/* Discord OAuth Login Section */}
+            <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold">🔐 Discord OAuth Login</h3>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={discordOAuth.enabled}
+                            onChange={e => setDiscordOAuth({ ...discordOAuth, enabled: e.target.checked })}
+                            className="w-5 h-5"
+                        />
+                        <span className="text-sm font-medium">Enable Discord Login</span>
+                    </label>
+                </div>
+
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-2">Discord Client ID</label>
+                        <input
+                            type="text"
+                            value={discordOAuth.clientId}
+                            onChange={e => setDiscordOAuth({ ...discordOAuth, clientId: e.target.value })}
+                            placeholder="Your Discord Application Client ID"
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-2">Discord Client Secret</label>
+                        <input
+                            type="password"
+                            value={discordOAuth.clientSecret}
+                            onChange={e => setDiscordOAuth({ ...discordOAuth, clientSecret: e.target.value })}
+                            placeholder="Your Discord Application Client Secret"
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-2">Redirect URI</label>
+                        <input
+                            type="text"
+                            value={discordOAuth.redirectUri}
+                            onChange={e => setDiscordOAuth({ ...discordOAuth, redirectUri: e.target.value })}
+                            placeholder="https://yourdomain.com/auth/discord/callback"
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Must match the redirect URI in your Discord Application settings</p>
+                    </div>
+
+                    <button
+                        onClick={saveDiscordOAuth}
+                        className="px-6 py-2 bg-[#5865F2] hover:bg-[#4752C4] rounded-lg transition font-medium"
+                    >
+                        💾 Save Discord OAuth Settings
+                    </button>
+
+                    <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                        <p className="text-sm text-blue-300 font-medium mb-2">📝 Setup Instructions:</p>
+                        <ol className="text-xs text-gray-400 space-y-1 list-decimal list-inside">
+                            <li>Create app at <a href="https://discord.com/developers/applications" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Discord Developer Portal</a></li>
+                            <li>Go to OAuth2 → Add redirect URI (use the URL above)</li>
+                            <li>Copy Client ID and Client Secret</li>
+                            <li>Paste values here and enable</li>
+                            <li>Users can now login with Discord on the login page!</li>
+                        </ol>
+                    </div>
                 </div>
             </div>
 
