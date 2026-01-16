@@ -224,16 +224,16 @@ DISCORD_BOT_TOKEN="your-discord-bot-token"
 ## 📸 Screenshots
 
 ### Dashboard
-![Dashboard](https://via.placeholder.com/800x500/1a1a2e/ffffff?text=User+Dashboard)
+![Dashboard](./docs/images/dashboard.png)
+*Beautiful dashboard showing server stats, coins balance, and quick actions*
 
 ### Live Console
-![Console](https://via.placeholder.com/800x500/1a1a2e/ffffff?text=Live+Server+Console)
+![Console](./docs/images/console.png)
+*Real-time server console with live logs, statistics, and command execution*
 
 ### Plugin Marketplace
-![Plugins](https://via.placeholder.com/800x500/1a1a2e/ffffff?text=Plugin+Marketplace)
-
-### Admin Panel
-![Admin](https://via.placeholder.com/800x500/1a1a2e/ffffff?text=Admin+Panel)
+![Plugins](./docs/images/plugins.png)
+*Browse and install 1000+ plugins from Modrinth and Spigot*
 
 ---
 
