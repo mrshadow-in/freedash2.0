@@ -44,7 +44,7 @@ const DiscordCallback = () => {
         };
 
         handleCallback();
-    }, [searchParams, navigate, setToken, setUser]);
+    }, [searchParams, navigate, setUser]);
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-[#0c0229]">
