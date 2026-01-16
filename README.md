@@ -147,7 +147,7 @@
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/freedash2.0.git
+git clone https://github.com/mrshadow-in/freedash2.0.git
 cd freedash2.0
 
 # Install backend dependencies
@@ -231,6 +231,9 @@ DISCORD_BOT_TOKEN="your-discord-bot-token"
 ![Console](./docs/images/console.png)
 *Real-time server console with live logs, statistics, and command execution*
 
+![Console Interface](./docs/images/console-interface.png)
+*FreeDash console showing server stats, power controls, and live terminal output*
+
 ### Plugin Marketplace
 ![Plugins](./docs/images/plugins.png)
 *Browse and install 1000+ plugins from Modrinth and Spigot*
@@ -307,7 +310,7 @@ If you find this project helpful, consider:
 
 ## 📧 Contact
 
-- **GitHub Issues**: [Report bugs or request features](https://github.com/yourusername/freedash2.0/issues)
+- **GitHub Issues**: [Report bugs or request features](https://github.com/mrshadow-in/freedash2.0/issues)
 - **Discord**: [Join our community](https://discord.gg/your-invite)
 - **Email**: support@yourdomain.com
 
@@ -324,9 +327,9 @@ If you find this project helpful, consider:
 
 ## 📊 Project Stats
 
-![GitHub stars](https://img.shields.io/github/stars/yourusername/freedash2.0?style=social)
-![GitHub forks](https://img.shields.io/github/forks/yourusername/freedash2.0?style=social)
-![GitHub watchers](https://img.shields.io/github/watchers/yourusername/freedash2.0?style=social)
+![GitHub stars](https://img.shields.io/github/stars/mrshadow-in/freedash2.0?style=social)
+![GitHub forks](https://img.shields.io/github/forks/mrshadow-in/freedash2.0?style=social)
+![GitHub watchers](https://img.shields.io/github/watchers/mrshadow-in/freedash2.0?style=social)
 
 ---
 
