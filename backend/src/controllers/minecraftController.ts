@@ -305,8 +305,111 @@ export const getPluginVersions = async (req: Request, res: Response) => {
             }));
 
             res.json(versions);
+
+        } else if (provider === 'hangar') {
+            // Hangar versions API
+            const response = await axios.get(`https://hangar.papermc.io/api/v1/projects/${resourceId}/versions?limit=25&offset=0`);
+            const allVersions = (response.data as any).result || [];
+
+            // Filter by MC version if provided
+            const filteredVersions = version && version !== 'latest'
+                ? allVersions.filter((v: any) => v.platformDependencies?.PAPER?.includes(version))
+                : allVersions;
+
+            const versions = filteredVersions.map((v: any) => ({
+                id: v.name,
+                name: v.name,
+                versionNumber: v.name,
+                gameVersions: v.platformDependencies?.PAPER || [],
+                loaders: ['paper', 'spigot', 'bukkit'],
+                datePublished: v.createdAt,
+                downloads: v.stats?.downloads || 0,
+                file: { url: v.downloads?.PAPER?.downloadUrl || '' }
+            }));
+
+            res.json(versions);
+
+        } else if (provider === 'spigot') {
+            // Spigot - Get resource versions
+            const response = await axios.get(`https://api.spiget.org/v2/resources/${resourceId}/versions?size=25&sort=-releaseDate`);
+            const allVersions = response.data as any[];
+
+            const versions = allVersions.map((v: any) => ({
+                id: v.id,
+                name: v.name,
+                versionNumber: v.name,
+                gameVersions: [], // Spigot doesn't provide MC versions per release
+                loaders: ['bukkit', 'spigot', 'paper'],
+                datePublished: new Date(v.releaseDate * 1000).toISOString(),
+                downloads: 0,
+                file: { url: `https://api.spiget.org/v2/resources/${resourceId}/versions/${v.id}/download` }
+            }));
+
+            res.json(versions);
+
+        } else if (provider === 'polymart') {
+            // Polymart - Get resource versions
+            try {
+                const response = await axios.post('https://api.polymart.org/v1/getResourceInfoSimple', {
+                    resource_id: resourceId
+                });
+                const resourceInfo = (response.data as any).response?.resource;
+
+                if (resourceInfo && resourceInfo.updates) {
+                    const versions = resourceInfo.updates.slice(0, 25).map((v: any) => ({
+                        id: v.version_id || v.title,
+                        name: v.title,
+                        versionNumber: v.title,
+                        gameVersions: [],
+                        loaders: ['bukkit', 'spigot', 'paper'],
+                        datePublished: new Date(v.date * 1000).toISOString(),
+                        downloads: 0,
+                        file: { url: '' }
+                    }));
+                    res.json(versions);
+                } else {
+                    res.json([]);
+                }
+            } catch (error) {
+                res.json([]);
+            }
+
+        } else if (provider === 'curseforge') {
+            // CurseForge - Get mod files
+            const settings = await getSettingsOrCreate();
+            const keys = (settings.plugins as any) || {};
+            const apiKey = keys.curseforge_api_key;
+
+            if (!apiKey) {
+                return res.json([]);
+            }
+
+            const response = await axios.get(`https://api.curseforge.com/v1/mods/${resourceId}/files`, {
+                headers: { 'x-api-key': apiKey },
+                params: { pageSize: 25 }
+            });
+
+            const allFiles = (response.data as any).data || [];
+
+            // Filter by MC version if provided
+            const filteredFiles = version && version !== 'latest'
+                ? allFiles.filter((f: any) => f.gameVersions?.includes(version))
+                : allFiles;
+
+            const versions = filteredFiles.map((v: any) => ({
+                id: v.id,
+                name: v.displayName,
+                versionNumber: v.displayName,
+                gameVersions: v.gameVersions || [],
+                loaders: v.loaders || ['bukkit'],
+                datePublished: v.fileDate,
+                downloads: v.downloadCount || 0,
+                file: { url: v.downloadUrl }
+            }));
+
+            res.json(versions);
         } else {
-            // Placeholder for Spigot (Spiget doesn't easily expose specific versions in standard search, usually just latest)
+            // Placeholder for other providers
             res.json([]);
         }
     } catch (error) {
