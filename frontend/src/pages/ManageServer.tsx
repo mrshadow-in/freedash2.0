@@ -301,6 +301,7 @@ const ManageServer = () => {
                                             panelUrl={settings?.pterodactylUrl || ''}
                                             panelAccessEnabled={settings?.security?.enablePanelAccess ?? true}
                                             userRole={user?.role || 'user'}
+                                            pteroUptime={resources?.resources?.uptime || 0}
                                         />
                                     </div>
                                 )}
