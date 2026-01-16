@@ -334,7 +334,7 @@ If you find this project helpful, consider:
 ---
 
 <p align="center">
-  <b>Made with ❤️ for the Minecraft community</b>
+  <b>Made By Lord__Suraj for the Minecraft community</b>
   <br>
   <sub>Start hosting. Start earning. Start gaming. 🚀</sub>
 </p>
