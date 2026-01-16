@@ -38,7 +38,7 @@ const ServerHeader = ({ server, powerState, onPowerAction, isPowerPending, onOpe
 
     // Local ticker to make it smooth (increments every second)
     useEffect(() => {
-        let interval: NodeJS.Timeout;
+        let interval: any;
 
         if (powerState === 'running') {
             interval = setInterval(() => {
