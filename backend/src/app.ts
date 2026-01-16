@@ -38,7 +38,7 @@ app.use('/static', express.static('public'));
 app.use('/api/auth', authRoutes);
 app.get('/api/auth/discord', discordLogin);
 app.get('/api/auth/discord/callback', discordCallback);
-app.use('/api/auth/oauth', discordOAuthRoutes); // New OAuth routes
+app.use('/api/auth/oauth', discordOAuthRoutes); // Discord OAuth routes
 app.use('/api/servers', serverRoutes);
 app.use('/api/admin', adminRoutes);
 
