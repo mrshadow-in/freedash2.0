@@ -1160,3 +1160,47 @@ export const updateGlobalAdScript = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Failed to update ad script' });
     }
 };
+
+// Update Discord OAuth settings
+export const updateDiscordOAuth = async (req: Request, res: Response) => {
+    try {
+        const { clientId, clientSecret, redirectUri, enabled } = req.body;
+        const currentSettings = await getSettingsOrCreate();
+
+        const currentOAuth = (currentSettings.discordOAuth as any) || {};
+        const discordOAuth = {
+            clientId: clientId ?? currentOAuth.clientId,
+            clientSecret: clientSecret ?? currentOAuth.clientSecret,
+            redirectUri: redirectUri ?? currentOAuth.redirectUri,
+            enabled: enabled ?? currentOAuth.enabled,
+        };
+
+        const settings = await prisma.settings.update({
+            where: { id: currentSettings.id },
+            data: { discordOAuth }
+        });
+
+        await invalidateSettingsCache();
+        res.json({ message: 'Discord OAuth settings updated', settings });
+    } catch (error) {
+        console.error('Update Discord OAuth error:', error);
+        res.status(500).json({ message: 'Failed to update Discord OAuth settings' });
+    }
+};
+
+// Get Discord OAuth settings
+export const getDiscordOAuth = async (req: Request, res: Response) => {
+    try {
+        const settings = await getSettingsOrCreate();
+        const discordOAuth = (settings.discordOAuth as any) || {
+            clientId: '',
+            clientSecret: '',
+            redirectUri: '',
+            enabled: false,
+        };
+        res.json(discordOAuth);
+    } catch (error) {
+        console.error('Get Discord OAuth error:', error);
+        res.status(500).json({ message: 'Failed to get Discord OAuth settings' });
+    }
+};

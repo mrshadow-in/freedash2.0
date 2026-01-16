@@ -38,6 +38,8 @@ model User {
   coins          Float     @default(0)
   role           Role      @default(user)
   discordId      String?   @unique
+  discordUsername String?
+  discordAvatar  String?
   pteroUserId    Int?
   isBanned       Boolean   @default(false)
   bannedAt       DateTime?
