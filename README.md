@@ -311,8 +311,8 @@ If you find this project helpful, consider:
 ## 📧 Contact
 
 - **GitHub Issues**: [Report bugs or request features](https://github.com/mrshadow-in/freedash2.0/issues)
-- **Discord**: [Join our community](https://discord.gg/your-invite)
-- **Email**: support@yourdomain.com
+- **Discord**: [Join our community](https://discord.com/invite/dXutCRyg)
+- **Email**: support@lordcloud.in
 
 ---
 
