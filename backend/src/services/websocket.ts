@@ -27,17 +27,34 @@ export const initWebSocketServer = (server: Server) => {
             const token = url.searchParams.get('token');
             const serverId = url.searchParams.get('serverId');
 
-            if (!token || !serverId) { ws.close(1008, 'Missing parameters'); return; }
+            if (!token || !serverId) {
+                console.log('[WS Console] Missing parameters - token:', !!token, 'serverId:', serverId);
+                ws.close(1008, 'Missing parameters');
+                return;
+            }
 
+            console.log('[WS Console] Attempting to verify JWT token...');
             const decoded: any = jwt.verify(token, ENV.JWT_SECRET);
-            ws.userId = decoded.userId;
+            const userId = decoded.userId || decoded.id; // Support both fields
+            console.log('[WS Console] Token verified. userId:', userId);
+            ws.userId = userId;
 
+            console.log('[WS Console] Fetching server:', serverId);
             const serverEntity = await prisma.server.findUnique({
                 where: { id: serverId },
                 include: { owner: true }
             });
 
-            if (!serverEntity || (serverEntity.ownerId !== decoded.userId && (await prisma.user.findUnique({ where: { id: decoded.userId } }))?.role !== 'admin')) {
+            if (!serverEntity) {
+                console.log('[WS Console] Server not found:', serverId);
+                ws.close(1008, 'Server not found');
+                return;
+            }
+
+            console.log('[WS Console] Server found:', serverEntity.name, 'Owner:', serverEntity.ownerId);
+
+            if (serverEntity.ownerId !== userId && (await prisma.user.findUnique({ where: { id: userId } }))?.role !== 'admin') {
+                console.log('[WS Console] Unauthorized - User:', userId, 'is not owner of server');
                 ws.close(1008, 'Unauthorized');
                 return;
             }
@@ -85,7 +102,7 @@ export const initWebSocketServer = (server: Server) => {
             if (!token) { ws.close(1008, 'Missing token'); return; }
 
             const decoded: any = jwt.verify(token, ENV.JWT_SECRET);
-            const userId = decoded.userId;
+            const userId = decoded.id; // JWT token uses 'id', not 'userId'
             ws.userId = userId;
 
             // Register Socket
