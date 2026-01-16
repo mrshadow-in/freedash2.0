@@ -190,9 +190,12 @@ export const createServer = async (req: AuthRequest, res: Response) => {
             // Send email notification
             // ... email logic ...
 
-            // Send Real-time Notification
+            // Send Real-time Notification (only if user created it themselves)
             const { sendUserNotification } = await import('../services/websocket');
-            sendUserNotification(result.user.id, 'Server Created', `Your server "${name}" has been successfully created!`, 'success');
+            // Only notify user if they created the server themselves (not admin creating for them)
+            if (userId === result.user.id) {
+                sendUserNotification(result.user.id, 'Server Created', `Your server "${name}" has been successfully created!`, 'success');
+            }
 
             res.status(201).json({ message: 'Server created', server: result.server });
         });
@@ -355,9 +358,12 @@ export const deleteServer = async (req: AuthRequest, res: Response) => {
             reason: userRole === 'admin' ? 'Admin Action' : 'User Action'
         }).catch(console.error);
 
-        // Send Real-time Notification
+        // Send Real-time Notification (only if user deleted it themselves)
         const { sendUserNotification } = await import('../services/websocket');
-        sendUserNotification(userId, 'Server Deleted', `Your server "${server.name}" has been deleted.`, 'info');
+        // Only notify if the user deleted their own server (not admin deleting for them)
+        if (userId === server.ownerId) {
+            sendUserNotification(userId, 'Server Deleted', `Your server "${server.name}" has been deleted.`, 'info');
+        }
 
         res.json({ message: 'Server deleted successfully' });
     } catch (error) {
@@ -525,10 +531,12 @@ export const upgradeServer = async (req: AuthRequest, res: Response) => {
             return server;
         });
 
-        // Send Real-time Notification
+        // Send Real-time Notification (only if user upgraded it themselves)
         const { sendUserNotification } = await import('../services/websocket');
-        // 'result' contains the server object returned from transaction
-        sendUserNotification(userId, 'Server Upgraded', `Your server "${result.name}" has been upgraded (RAM: ${ramMb}MB, Disk: ${diskMb}MB).`, 'success');
+        // Only notify if the user upgraded their own server (not admin upgrading for them)
+        if (userId === result.ownerId) {
+            sendUserNotification(userId, 'Server Upgraded', `Your server "${result.name}" has been upgraded (RAM: ${ramMb}MB, Disk: ${diskMb}MB).`, 'success');
+        }
 
         res.json({ message: 'Upgrade successful' });
 
