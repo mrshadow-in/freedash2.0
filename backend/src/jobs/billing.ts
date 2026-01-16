@@ -64,7 +64,11 @@ export const processBillingCycle = async () => {
     const settings = await getSettings();
     const config = (settings.billing as any) || {};
 
-    // Check for Per-Minute Pricing first, fallback to Hourly/60
+    // Billing Mode Priority: Flat Rate > Per-GB-Minute > Per-GB-Hour/60
+    const flatRatePerMinute = parseFloat(config.costPerMinuteFlat || '0');
+    const usesFlatRate = flatRatePerMinute > 0;
+
+    // Check for Per-Minute Pricing, fallback to Hourly/60
     let ratePerGbMinute = parseFloat(config.coinsPerGbMinute || '0');
     if (ratePerGbMinute <= 0 && config.coinsPerGbHour) {
         ratePerGbMinute = parseFloat(config.coinsPerGbHour) / 60;
@@ -73,9 +77,10 @@ export const processBillingCycle = async () => {
     const autoSuspend = config.autoSuspend ?? false;
     const autoResume = config.autoResume ?? false;
 
-    if (ratePerGbMinute <= 0) return; // No cost configured
+    // No billing configured
+    if (!usesFlatRate && ratePerGbMinute <= 0) return;
 
-    // console.log(`[Billing] Starting cycle. Rate: ${ratePerGbMinute}/GB/min`);
+    console.log(`[Billing] Starting cycle. Mode: ${usesFlatRate ? 'Flat Rate' : 'Per-GB'}, Rate: ${usesFlatRate ? flatRatePerMinute + '/min' : ratePerGbMinute + '/GB/min'}`);
 
     // Fetch Active & Running Servers
     // We check ALL non-suspended/deleted servers, then verify ONLINE status via Pterodactyl
@@ -93,7 +98,9 @@ export const processBillingCycle = async () => {
 
     for (const server of servers) {
         try {
-            // Skip if user banned or special case (maybe admins are free? optional)
+            // Skip suspended servers
+            if (server.isSuspended) continue; // Use existing isSuspended field
+
             // Skip if user banned or special case
             if (server.owner.isBanned) continue;
             if (!server.pteroIdentifier) continue;
@@ -162,8 +169,16 @@ export const processBillingCycle = async () => {
             }
 
             // 2. CALCULATION
-            const ramGb = server.ramMb / 1024;
-            const chargeAmount = ramGb * ratePerGbMinute * interval;
+            let chargeAmount: number;
+
+            if (usesFlatRate) {
+                // FLAT RATE: Same charge for all servers regardless of RAM
+                chargeAmount = flatRatePerMinute * interval;
+            } else {
+                // PER-GB RATE: Multiply by RAM allocation
+                const ramGb = server.ramMb / 1024;
+                chargeAmount = ramGb * ratePerGbMinute * interval;
+            }
 
             if (server.owner.coins >= chargeAmount) {
                 // Deduct Coins
@@ -181,8 +196,9 @@ export const processBillingCycle = async () => {
                             balanceAfter: server.owner.coins - chargeAmount,
                             metadata: {
                                 serverId: server.id,
-                                ramGb,
-                                rate: ratePerGbMinute,
+                                ramGb: server.ramMb / 1024,
+                                rate: usesFlatRate ? flatRatePerMinute : ratePerGbMinute,
+                                billingMode: usesFlatRate ? 'flat' : 'per-gb',
                                 timestamp
                             }
                         }

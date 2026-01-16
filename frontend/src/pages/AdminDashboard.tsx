@@ -460,6 +460,29 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
                         </div>
                     </div>
 
+                    {/* Flat Rate Per-Minute Option */}
+                    <div className="border border-purple-500/30 rounded-lg p-4 bg-purple-900/10">
+                        <label className="block text-sm font-medium text-purple-400 mb-2">
+                            ⚡ Cost / Minute (Flat Rate) - Priority Mode
+                        </label>
+                        <input
+                            type="number"
+                            step="0.01"
+                            value={formData.costPerMinuteFlat || ''}
+                            onChange={(e) => setFormData({ ...formData, costPerMinuteFlat: parseFloat(e.target.value) || 0 })}
+                            className="w-full bg-white/5 border border-purple-500/30 rounded-lg px-4 py-2 text-white focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20"
+                            placeholder="1"
+                        />
+                        <p className="text-xs text-gray-400 mt-2">
+                            Fixed cost per minute for <strong>ANY</strong> server size. When set, this <strong>overrides</strong> per-GB pricing.
+                        </p>
+                        {formData.costPerMinuteFlat > 0 && (
+                            <div className="mt-2 p-2 bg-purple-900/30 border border-purple-500/30 rounded text-xs text-purple-300">
+                                ✅ Flat rate active: All servers charged <strong>{formData.costPerMinuteFlat} coins/minute</strong> regardless of RAM
+                            </div>
+                        )}
+                    </div>
+
                     <div className="flex gap-4">
                         <div className="flex items-center gap-2">
                             <input
