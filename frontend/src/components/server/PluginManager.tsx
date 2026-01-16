@@ -355,7 +355,7 @@ const PluginManager = ({ server }: PluginManagerProps) => {
                                                 {loadingVersions[plugin.id] && <option>Loading versions...</option>}
                                                 {versions.map((v: any) => (
                                                     <option key={v.id} value={v.id}>
-                                                        v{v.versionNumber} | {v.loaders.join(', ')} | MC {v.gameVersions[0]}
+                                                        {v.name || v.versionNumber}
                                                     </option>
                                                 ))}
                                             </select>
