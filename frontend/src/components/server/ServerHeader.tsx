@@ -17,6 +17,7 @@ interface ServerHeaderProps {
 const ServerHeader = ({ server, powerState, onPowerAction, isPowerPending, onOpenShop, onDelete, panelUrl = '', panelAccessEnabled = true, userRole = 'user' }: ServerHeaderProps) => {
     const [activeSignal, setActiveSignal] = useState<string | null>(null);
     const [uptime, setUptime] = useState<string>('');
+    const [startTime, setStartTime] = useState<number | null>(null);
     const isPanelLocked = !panelAccessEnabled && userRole !== 'admin';
 
     const handlePower = (signal: string) => {
@@ -25,34 +26,48 @@ const ServerHeader = ({ server, powerState, onPowerAction, isPowerPending, onOpe
         setTimeout(() => setActiveSignal(null), 2000);
     };
 
-    // Calculate uptime
+    // Track when server starts/stops
+    useEffect(() => {
+        if (powerState === 'running' && !startTime) {
+            // Server just started, record current time
+            setStartTime(Date.now());
+        } else if (powerState !== 'running' && startTime) {
+            // Server stopped, reset start time
+            setStartTime(null);
+            setUptime('Offline');
+        }
+    }, [powerState, startTime]);
+
+    // Calculate uptime every second
     useEffect(() => {
         const calculateUptime = () => {
-            if (powerState === 'running' && server.createdAt) {
-                const now = new Date().getTime();
-                const created = new Date(server.createdAt).getTime();
-                const diff = now - created;
+            if (powerState === 'running' && startTime) {
+                const now = Date.now();
+                const diff = now - startTime;
 
                 const days = Math.floor(diff / (1000 * 60 * 60 * 24));
                 const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                 const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
                 if (days > 0) {
-                    setUptime(`${days}d ${hours}h`);
+                    setUptime(`${days}d ${hours}h ${minutes}m ${seconds}s`);
                 } else if (hours > 0) {
-                    setUptime(`${hours}h ${minutes}m`);
+                    setUptime(`${hours}h ${minutes}m ${seconds}s`);
+                } else if (minutes > 0) {
+                    setUptime(`${minutes}m ${seconds}s`);
                 } else {
-                    setUptime(`${minutes}m`);
+                    setUptime(`${seconds}s`);
                 }
-            } else {
+            } else if (powerState !== 'running') {
                 setUptime('Offline');
             }
         };
 
         calculateUptime();
-        const interval = setInterval(calculateUptime, 60000); // Update every minute
+        const interval = setInterval(calculateUptime, 1000); // Update every second
         return () => clearInterval(interval);
-    }, [powerState, server.createdAt]);
+    }, [powerState, startTime]);
 
     const getStatusInfo = () => {
         const status = powerState || server.status?.toLowerCase() || 'unknown';
