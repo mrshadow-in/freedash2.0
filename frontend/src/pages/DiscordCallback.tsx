@@ -13,19 +13,26 @@ const DiscordCallback = () => {
     const [error, setError] = useState('');
 
     useEffect(() => {
+        const code = searchParams.get('code');
+        const state = searchParams.get('state');
+
+        if (!code || !state) {
+            setStatus('error');
+            setError('Invalid Discord callback');
+            setTimeout(() => navigate('/login'), 3000);
+            return;
+        }
+
         const handleCallback = async () => {
-            const code = searchParams.get('code');
-            const state = searchParams.get('state');
-
-            if (!code || !state) {
-                setStatus('error');
-                setError('Invalid Discord callback');
-                setTimeout(() => navigate('/login'), 3000);
-                return;
-            }
-
             try {
+                console.log('Discord OAuth: Exchanging code for token...', { code: code.substring(0, 10) + '...', state: state.substring(0, 10) + '...' });
                 const res = await api.get(`/auth/oauth/discord/callback?code=${code}&state=${state}`);
+
+                console.log('Discord OAuth: Received response', { hasToken: !!res.data.token, hasUser: !!res.data.user });
+
+                if (!res.data.token || !res.data.user) {
+                    throw new Error('Invalid response from server');
+                }
 
                 // Store auth data in localStorage
                 localStorage.setItem('accessToken', res.data.token);
@@ -34,17 +41,20 @@ const DiscordCallback = () => {
                 // Update store
                 setUser(res.data.user);
 
+                console.log('Discord OAuth: Login successful, redirecting...');
                 setStatus('success');
                 setTimeout(() => navigate('/'), 1500);
             } catch (err: any) {
+                console.error('Discord OAuth Error:', err);
+                console.error('Error details:', err.response?.data);
                 setStatus('error');
-                setError(err.response?.data?.message || 'Authentication failed');
+                setError(err.response?.data?.message || err.message || 'Authentication failed');
                 setTimeout(() => navigate('/login'), 3000);
             }
         };
 
         handleCallback();
-    }, [searchParams, navigate, setUser]);
+    }, [searchParams, navigate, setUser]); // Listen to searchParams so it retries with new code
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-[#0c0229]">
