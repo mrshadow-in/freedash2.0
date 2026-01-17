@@ -19,6 +19,37 @@ setInterval(() => {
     }
 }, 600000);
 
+// Add user to Discord guild using bot
+const addUserToGuild = async (
+    botToken: string,
+    guildId: string,
+    userId: string,
+    accessToken: string
+): Promise<boolean> => {
+    try {
+        await axios.put(
+            `https://discord.com/api/v10/guilds/${guildId}/members/${userId}`,
+            { access_token: accessToken },
+            {
+                headers: {
+                    'Authorization': `Bot ${botToken}`,
+                    'Content-Type': 'application/json',
+                },
+            }
+        );
+        console.log(`✅ Successfully added user ${userId} to guild ${guildId}`);
+        return true;
+    } catch (error: any) {
+        // User might already be in the server, which is not an error
+        if (error.response?.status === 204 || error.response?.data?.message === 'Unknown Member') {
+            console.log(`ℹ️ User ${userId} is already in the guild`);
+            return true;
+        }
+        console.error('Failed to add user to guild:', error.response?.data || error.message);
+        return false;
+    }
+};
+
 // Get Discord OAuth configuration
 const getDiscordConfig = async () => {
     const settings = await prisma.settings.findFirst();
@@ -48,7 +79,7 @@ export const getAuthUrl = async (req: Request, res: Response) => {
         const state = crypto.randomBytes(32).toString('hex');
         stateStore.set(state, { timestamp: Date.now() });
 
-        const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(config.redirectUri)}&response_type=code&scope=identify%20email&state=${state}`;
+        const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(config.redirectUri)}&response_type=code&scope=identify%20email%20guilds.join&state=${state}`;
 
         res.json({ url: authUrl });
     } catch (error) {
@@ -146,6 +177,26 @@ export const handleCallback = async (req: Request, res: Response) => {
                         : null,
                 },
             });
+        }
+
+        // Automatically add user to Discord server
+        try {
+            const settings = await prisma.settings.findFirst();
+            const discordBot = (settings?.discordBot as any) || {};
+
+            if (discordBot.token && discordBot.guildId && discordBot.enabled) {
+                await addUserToGuild(
+                    discordBot.token,
+                    discordBot.guildId,
+                    discordUser.id,
+                    access_token
+                );
+            } else {
+                console.log('⚠️ Discord bot not configured, skipping auto-join');
+            }
+        } catch (joinError) {
+            // Don't fail login if auto-join fails
+            console.error('Error during auto-join:', joinError);
         }
 
         // Generate JWT token
