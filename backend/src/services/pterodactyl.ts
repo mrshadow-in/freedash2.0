@@ -242,8 +242,9 @@ export const getPteroServer = async (serverId: number) => {
 export const getPteroServersByUserId = async (userId: number) => {
     const config = await getPteroConfig();
 
+    // Fetch all servers without filter (filter[owner_id] causes 400 error)
     const response = await axios.get(
-        `${config.url}/api/application/servers?filter[owner_id]=${userId}&include=allocations,node`,
+        `${config.url}/api/application/servers?include=allocations,node`,
         {
             headers: {
                 Authorization: `Bearer ${config.key}`,
@@ -251,7 +252,11 @@ export const getPteroServersByUserId = async (userId: number) => {
             }
         }
     );
-    return (response.data as any).data.map((item: any) => item.attributes);
+
+    // Filter manually by user ID
+    return (response.data as any).data
+        .filter((item: any) => item.attributes.user === userId)
+        .map((item: any) => item.attributes);
 };
 
 export const updatePteroServerBuild = async (
