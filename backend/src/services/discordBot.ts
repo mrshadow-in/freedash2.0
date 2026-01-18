@@ -11,6 +11,11 @@ let client: Client | null = null;
 let inviteCache = new Map<string, Map<string, number>>(); // guildId -> (inviterId -> uses)
 const linkCodes = new Map<string, string>();
 
+// Concurrency control
+let activeCommands = 0;
+const MAX_CONCURRENT_COMMANDS = 100; // Adjust based on VPS capacity
+const COMMAND_TIMEOUT_MS = 15000; // 15 seconds timeout per command
+
 // Generate random code
 const generateCode = (prefix: string = 'REWARD') => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -249,13 +254,39 @@ export async function startDiscordBot() {
             }
         });
 
-        // Slash commands
+        // Slash commands with concurrency control
         client.on(Events.InteractionCreate, async (interaction) => {
             if (!interaction.isChatInputCommand()) return;
 
-            try {
-                console.log(`[Bot] Received command: ${interaction.commandName} from ${interaction.user.tag}`);
+            // Check global concurrency limit
+            if (activeCommands >= MAX_CONCURRENT_COMMANDS) {
+                try {
+                    await interaction.reply({
+                        content: '⚠️ **Bot is currently processing too many requests.**\n\nPlease try again in a few moments. We appreciate your patience!',
+                        ephemeral: true
+                    });
+                } catch (e) {
+                    console.error('Failed to send overload message:', e);
+                }
+                return;
+            }
 
+            // Increment active command counter
+            activeCommands++;
+            console.log(`[Bot] Received command: ${interaction.commandName} from ${interaction.user.tag} | Active: ${activeCommands}/${MAX_CONCURRENT_COMMANDS}`);
+
+            // Set timeout to prevent hanging commands
+            const timeoutId = setTimeout(async () => {
+                try {
+                    if (interaction.deferred && !interaction.replied) {
+                        await interaction.editReply('⏱️ **Command timed out.** Please try again.');
+                    }
+                } catch (e) {
+                    console.error('Timeout handler error:', e);
+                }
+            }, COMMAND_TIMEOUT_MS);
+
+            try {
                 // HELP
                 if (interaction.commandName === 'help') {
                     await interaction.deferReply({ ephemeral: false });
@@ -269,6 +300,7 @@ export async function startDiscordBot() {
                         `• **Invites**: Earn rewards by inviting members!\n` +
                         `• **Boost**: Server boosters get special rewards!`;
                     await interaction.editReply(helpMsg);
+                    clearTimeout(timeoutId);
                     return;
                 }
 
@@ -290,6 +322,7 @@ export async function startDiscordBot() {
                         )
                         .setFooter({ text: 'Code expires in 5 minutes' });
                     await interaction.editReply({ embeds: [linkEmbed] });
+                    clearTimeout(timeoutId);
                     return;
                 }
 
@@ -303,6 +336,7 @@ export async function startDiscordBot() {
                         await prisma.user.update({ where: { id: user.id }, data: { discordId: null } });
                         await interaction.editReply('✅ **Unlink Successful!**');
                     }
+                    clearTimeout(timeoutId);
                     return;
                 }
 
@@ -315,6 +349,7 @@ export async function startDiscordBot() {
                         const user = await prisma.user.findUnique({ where: { discordId: interaction.user.id } });
                         if (!user) {
                             await interaction.editReply('❌ You need to link your account first! Use `/link-account` to get started.');
+                            clearTimeout(timeoutId);
                             return;
                         }
 
@@ -363,6 +398,7 @@ export async function startDiscordBot() {
                                     `You can claim your next daily reward in **${hoursLeft}h ${minutesLeft}m**${boostInfo}\n\n` +
                                     `💡 Tip: Boost the server to reduce cooldown to 12 hours!`
                                 );
+                                clearTimeout(timeoutId);
                                 return;
                             }
                         }
@@ -395,6 +431,7 @@ export async function startDiscordBot() {
                         console.error('Error in daily command:', error);
                         await interaction.editReply('❌ An error occurred while claiming your daily reward. Please try again later.');
                     }
+                    clearTimeout(timeoutId);
                     return;
                 }
 
@@ -405,6 +442,7 @@ export async function startDiscordBot() {
                     const guild = interaction.guild;
                     if (!guild) {
                         await interaction.editReply('❌ This command must be used in a server.');
+                        clearTimeout(timeoutId);
                         return;
                     }
 
@@ -417,6 +455,7 @@ export async function startDiscordBot() {
                         .setTimestamp();
 
                     await interaction.editReply({ embeds: [embed] });
+                    clearTimeout(timeoutId);
                     return;
                 }
 
@@ -427,6 +466,7 @@ export async function startDiscordBot() {
                     const guild = interaction.guild;
                     if (!guild) {
                         await interaction.editReply('❌ This command must be used in a server.');
+                        clearTimeout(timeoutId);
                         return;
                     }
 
@@ -458,6 +498,7 @@ export async function startDiscordBot() {
                         .setTimestamp();
 
                     await interaction.editReply({ embeds: [embed] });
+                    clearTimeout(timeoutId);
                     return;
                 }
 
@@ -490,6 +531,7 @@ export async function startDiscordBot() {
 
                         if (validRewards.length === 0) {
                             await interaction.editReply('❌ No invite rewards configured. Ask admin to add rewards!');
+                            clearTimeout(timeoutId);
                             return;
                         }
 
@@ -512,6 +554,7 @@ export async function startDiscordBot() {
                         console.error('Error in invite-reward-list command:', error);
                         await interaction.editReply('❌ An error occurred.');
                     }
+                    clearTimeout(timeoutId);
                     return;
                 }
 
@@ -523,6 +566,7 @@ export async function startDiscordBot() {
                         const guild = interaction.guild;
                         if (!guild) {
                             await interaction.editReply('❌ This command must be used in a server.');
+                            clearTimeout(timeoutId);
                             return;
                         }
 
@@ -553,6 +597,7 @@ export async function startDiscordBot() {
 
                         if (validRewards.length === 0) {
                             await interaction.editReply('❌ No valid invite rewards configured. Ask admin to add rewards in the Admin Panel.');
+                            clearTimeout(timeoutId);
                             return;
                         }
 
@@ -593,6 +638,7 @@ export async function startDiscordBot() {
                             } else {
                                 await interaction.editReply(`✅ You've claimed all available rewards! You have **${inviteCount}** invites.`);
                             }
+                            clearTimeout(timeoutId);
                             return;
                         }
 
@@ -625,6 +671,7 @@ export async function startDiscordBot() {
                         console.error('Error in invite-code command:', error);
                         await interaction.editReply('❌ An error occurred. Please try again later.');
                     }
+                    clearTimeout(timeoutId);
                     return;
                 }
 
@@ -638,6 +685,7 @@ export async function startDiscordBot() {
 
                         if (!member || !member.premiumSince) {
                             await interaction.editReply('❌ You need to be a server booster to claim this reward!');
+                            clearTimeout(timeoutId);
                             return;
                         }
 
@@ -651,6 +699,7 @@ export async function startDiscordBot() {
 
                         if (isNaN(coins) || coins <= 0) {
                             await interaction.editReply('❌ No boost reward configured.');
+                            clearTimeout(timeoutId);
                             return;
                         }
 
@@ -669,6 +718,7 @@ export async function startDiscordBot() {
                                 '✅ **You have already claimed your Booster Reward!**\n\n' +
                                 'Note: This reward is for **becoming a booster**. It can only be claimed once per account, regardless of how many times you boost.'
                             );
+                            clearTimeout(timeoutId);
                             return;
                         }
 
@@ -700,6 +750,7 @@ export async function startDiscordBot() {
                         console.error('Error in boost-reward command:', error);
                         await interaction.editReply('❌ An error occurred. Please try again later.');
                     }
+                    clearTimeout(timeoutId);
                     return;
                 }
 
@@ -740,11 +791,13 @@ export async function startDiscordBot() {
                         console.error('Error in free-server command:', error);
                         await interaction.editReply('❌ An error occurred.');
                     }
+                    clearTimeout(timeoutId);
                     return;
                 }
 
             } catch (err) {
                 console.error('FATAL Interaction Error:', err);
+                clearTimeout(timeoutId);
                 try {
                     if (interaction.deferred || interaction.replied) {
                         await interaction.followUp({ content: '❌ System Error occurred.', ephemeral: true });
@@ -752,15 +805,29 @@ export async function startDiscordBot() {
                         await interaction.reply({ content: '❌ System Error occurred.', ephemeral: true });
                     }
                 } catch (ignore) { }
+            } finally {
+                // Always decrement counter
+                activeCommands--;
+                console.log(`[Bot] Command completed: ${interaction.commandName} | Active: ${activeCommands}/${MAX_CONCURRENT_COMMANDS}`);
             }
         });
 
+        // Performance monitoring - log stats every 30 seconds
+        setInterval(() => {
+            console.log(`[Bot Stats] Active Commands: ${activeCommands}/${MAX_CONCURRENT_COMMANDS} | Uptime: ${Math.floor(process.uptime())}s`);
+        }, 30000);
+
         // Login
         await client.login(discordBot.token);
+    }
+});
+
+// Login
+await client.login(discordBot.token);
 
     } catch (error) {
-        console.error('❌ Failed to start Discord bot:', error);
-    }
+    console.error('❌ Failed to start Discord bot:', error);
+}
 }
 
 // Stop Discord Bot
