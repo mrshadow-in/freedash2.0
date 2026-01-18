@@ -819,15 +819,10 @@ export async function startDiscordBot() {
 
         // Login
         await client.login(discordBot.token);
-    }
-});
-
-// Login
-await client.login(discordBot.token);
 
     } catch (error) {
-    console.error('❌ Failed to start Discord bot:', error);
-}
+        console.error('❌ Failed to start Discord bot:', error);
+    }
 }
 
 // Stop Discord Bot
