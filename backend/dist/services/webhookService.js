@@ -6,25 +6,40 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendServerSuspendedWebhook = exports.sendServerDeletedWebhook = exports.sendServerCreatedWebhook = exports.sendDiscordWebhook = void 0;
 const axios_1 = __importDefault(require("axios"));
 const settingsService_1 = require("./settingsService");
+const requestQueue_1 = require("../utils/requestQueue");
 const sendDiscordWebhook = async (embed) => {
     try {
-        const settings = await (0, settingsService_1.getSettings)(); // Changed to use getSettings()
+        const settings = await (0, settingsService_1.getSettings)();
         const discordWebhooks = settings?.discordWebhooks || [];
         if (!discordWebhooks || discordWebhooks.length === 0) {
-            console.log('No webhooks configured');
+            console.log('[Webhook] No webhooks configured');
             return;
         }
         const payload = {
             embeds: [embed]
         };
-        // Send to all webhooks (fire and forget)
-        const promises = discordWebhooks.map(url => axios_1.default.post(url, payload).catch(err => {
-            console.error('Webhook failed:', err.message);
-        }));
+        // Send to all webhooks with queue and retry
+        const promises = discordWebhooks.map(async (url, index) => {
+            try {
+                await (0, requestQueue_1.queueRequest)(`discord-webhook-${index}`, async () => {
+                    await axios_1.default.post(url, payload, {
+                        timeout: 5000, // 5s timeout for webhooks
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    console.log(`[Webhook] Sent successfully to webhook ${index + 1}`);
+                }, { maxRetries: 2, timeout: 5000 } // Only 2 retries for webhooks
+                );
+            }
+            catch (err) {
+                console.error(`[Webhook] Failed to send to webhook ${index + 1}:`, err.message);
+            }
+        });
         await Promise.allSettled(promises);
     }
     catch (error) {
-        console.error('Failed to send webhook:', error);
+        console.error('[Webhook] Failed to send webhook:', error);
     }
 };
 exports.sendDiscordWebhook = sendDiscordWebhook;

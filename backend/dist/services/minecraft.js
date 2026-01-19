@@ -3,41 +3,63 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getPaperVersions = exports.getMinecraftVersions = void 0;
+exports.getPaperVersions = exports.getServerJarUrl = exports.getLatestMinecraftVersion = exports.getMinecraftVersions = void 0;
 const axios_1 = __importDefault(require("axios"));
-// Cache for versions
-let cachedVersions = null;
-let cacheTime = 0;
-const CACHE_DURATION = 3600000; // 1 hour
+const PteroCache_1 = require("./PteroCache");
+/**
+ * Fetch Minecraft versions from Mojang API (cached 5 min)
+ */
 const getMinecraftVersions = async () => {
-    // Return cached versions if still valid
-    if (cachedVersions && Date.now() - cacheTime < CACHE_DURATION) {
-        return cachedVersions;
-    }
-    try {
-        const response = await axios_1.default.get('https://launchermeta.mojang.com/mc/game/version_manifest.json');
-        // Filter for release versions only and get last 20
-        const releaseVersions = response.data.versions
-            .filter(v => v.type === 'release')
-            .map(v => v.id)
-            .slice(0, 20); // Get latest 20 versions
-        cachedVersions = releaseVersions;
-        cacheTime = Date.now();
-        return releaseVersions;
-    }
-    catch (error) {
-        console.error('Failed to fetch Minecraft versions:', error);
-        // Fallback to hardcoded versions if API fails
-        return [
-            '1.21.4', '1.21.3', '1.21.1', '1.21',
-            '1.20.6', '1.20.4', '1.20.2', '1.20.1',
-            '1.19.4', '1.19.3', '1.19.2', '1.19.1',
-            '1.18.2', '1.18.1', '1.17.1', '1.16.5',
-            '1.15.2', '1.14.4', '1.13.2', '1.12.2'
-        ];
-    }
+    return await PteroCache_1.PteroCache.getCached('minecraft:versions', 300, // 5min cache
+    async () => {
+        const response = await axios_1.default.get('https://launchermeta.mojang.com/mc/game/version_manifest.json', { timeout: 10000 });
+        return response.data.versions;
+    });
 };
 exports.getMinecraftVersions = getMinecraftVersions;
+/**
+ * Fetch latest Minecraft version (cached 5 min)
+ */
+const getLatestMinecraftVersion = async () => {
+    return await PteroCache_1.PteroCache.getCached('minecraft:latest', 300, // 5min cache
+    async () => {
+        const response = await axios_1.default.get('https://launchermeta.mojang.com/mc/game/version_manifest.json', { timeout: 10000 });
+        return response.data.latest.release;
+    });
+};
+exports.getLatestMinecraftVersion = getLatestMinecraftVersion;
+/**
+ * Fetch server jar download URL for a version (cached 1 hour)
+ */
+const getServerJarUrl = async (version) => {
+    return await PteroCache_1.PteroCache.getCached(`minecraft:jar:${version}`, 3600, // 1 hour cache (server jars don't change)
+    async () => {
+        try {
+            // Get version manifest
+            const response = await axios_1.default.get('https://launchermeta.mojang.com/mc/game/version_manifest.json', { timeout: 10000 });
+            const versionData = response.data.versions.find(v => v.id === version);
+            if (!versionData) {
+                throw new Error(`Version ${version} not found`);
+            }
+            // Get version details
+            const detailsResponse = await axios_1.default.get(versionData.url, { timeout: 10000 });
+            const serverDownload = detailsResponse.data.downloads?.server;
+            if (!serverDownload) {
+                throw new Error(`Server jar not available for version ${version}`);
+            }
+            return {
+                version,
+                url: serverDownload.url,
+                sha1: serverDownload.sha1
+            };
+        }
+        catch (error) {
+            console.error(`[Minecraft] Failed to fetch jar for ${version}:`, error.message);
+            throw error;
+        }
+    });
+};
+exports.getServerJarUrl = getServerJarUrl;
 const getPaperVersions = async (minecraftVersion) => {
     try {
         if (minecraftVersion) {

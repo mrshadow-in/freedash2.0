@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getSettings } from './settingsService';
+import { queueRequest } from '../utils/requestQueue';
 
 interface WebhookEmbed {
     title: string;
@@ -12,11 +13,11 @@ interface WebhookEmbed {
 
 export const sendDiscordWebhook = async (embed: WebhookEmbed): Promise<void> => {
     try {
-        const settings = await getSettings(); // Changed to use getSettings()
+        const settings = await getSettings();
         const discordWebhooks: string[] = (settings?.discordWebhooks as any) || [];
 
         if (!discordWebhooks || discordWebhooks.length === 0) {
-            console.log('No webhooks configured');
+            console.log('[Webhook] No webhooks configured');
             return;
         }
 
@@ -24,16 +25,30 @@ export const sendDiscordWebhook = async (embed: WebhookEmbed): Promise<void> => 
             embeds: [embed]
         };
 
-        // Send to all webhooks (fire and forget)
-        const promises = discordWebhooks.map(url =>
-            axios.post(url, payload).catch(err => {
-                console.error('Webhook failed:', err.message);
-            })
-        );
+        // Send to all webhooks with queue and retry
+        const promises = discordWebhooks.map(async (url, index) => {
+            try {
+                await queueRequest(
+                    `discord-webhook-${index}`,
+                    async () => {
+                        await axios.post(url, payload, {
+                            timeout: 5000, // 5s timeout for webhooks
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        console.log(`[Webhook] Sent successfully to webhook ${index + 1}`);
+                    },
+                    { maxRetries: 2, timeout: 5000 } // Only 2 retries for webhooks
+                );
+            } catch (err: any) {
+                console.error(`[Webhook] Failed to send to webhook ${index + 1}:`, err.message);
+            }
+        });
 
         await Promise.allSettled(promises);
     } catch (error) {
-        console.error('Failed to send webhook:', error);
+        console.error('[Webhook] Failed to send webhook:', error);
     }
 };
 

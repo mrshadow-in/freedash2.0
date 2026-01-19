@@ -1,10 +1,10 @@
 import axios from 'axios';
+import { PteroCache } from './PteroCache';
 
 interface MinecraftVersion {
     id: string;
-    type: 'release' | 'snapshot';
+    type: string;
     url: string;
-    time: string;
     releaseTime: string;
 }
 
@@ -16,44 +16,88 @@ interface VersionManifest {
     versions: MinecraftVersion[];
 }
 
-// Cache for versions
-let cachedVersions: string[] | null = null;
-let cacheTime: number = 0;
-const CACHE_DURATION = 3600000; // 1 hour
+interface ServerJarInfo {
+    version: string;
+    url: string;
+    sha1?: string;
+}
 
-export const getMinecraftVersions = async (): Promise<string[]> => {
-    // Return cached versions if still valid
-    if (cachedVersions && Date.now() - cacheTime < CACHE_DURATION) {
-        return cachedVersions;
-    }
+/**
+ * Fetch Minecraft versions from Mojang API (cached 5 min)
+ */
+export const getMinecraftVersions = async (): Promise<MinecraftVersion[]> => {
+    return await PteroCache.getCached(
+        'minecraft:versions',
+        300, // 5min cache
+        async () => {
+            const response = await axios.get<VersionManifest>(
+                'https://launchermeta.mojang.com/mc/game/version_manifest.json',
+                { timeout: 10000 }
+            );
+            return response.data.versions;
+        }
+    );
+};
 
-    try {
-        const response = await axios.get<VersionManifest>(
-            'https://launchermeta.mojang.com/mc/game/version_manifest.json'
-        );
+/**
+ * Fetch latest Minecraft version (cached 5 min)
+ */
+export const getLatestMinecraftVersion = async (): Promise<string> => {
+    return await PteroCache.getCached(
+        'minecraft:latest',
+        300, // 5min cache
+        async () => {
+            const response = await axios.get<VersionManifest>(
+                'https://launchermeta.mojang.com/mc/game/version_manifest.json',
+                { timeout: 10000 }
+            );
+            return response.data.latest.release;
+        }
+    );
+};
 
-        // Filter for release versions only and get last 20
-        const releaseVersions = response.data.versions
-            .filter(v => v.type === 'release')
-            .map(v => v.id)
-            .slice(0, 20); // Get latest 20 versions
+/**
+ * Fetch server jar download URL for a version (cached 1 hour)
+ */
+export const getServerJarUrl = async (version: string): Promise<ServerJarInfo> => {
+    return await PteroCache.getCached(
+        `minecraft:jar:${version}`,
+        3600, // 1 hour cache (server jars don't change)
+        async () => {
+            try {
+                // Get version manifest
+                const response = await axios.get<VersionManifest>(
+                    'https://launchermeta.mojang.com/mc/game/version_manifest.json',
+                    { timeout: 10000 }
+                );
+                const versionData = response.data.versions.find(v => v.id === version);
 
-        cachedVersions = releaseVersions;
-        cacheTime = Date.now();
+                if (!versionData) {
+                    throw new Error(`Version ${version} not found`);
+                }
 
-        return releaseVersions;
-    } catch (error) {
-        console.error('Failed to fetch Minecraft versions:', error);
+                // Get version details
+                const detailsResponse = await axios.get(
+                    versionData.url,
+                    { timeout: 10000 }
+                );
 
-        // Fallback to hardcoded versions if API fails
-        return [
-            '1.21.4', '1.21.3', '1.21.1', '1.21',
-            '1.20.6', '1.20.4', '1.20.2', '1.20.1',
-            '1.19.4', '1.19.3', '1.19.2', '1.19.1',
-            '1.18.2', '1.18.1', '1.17.1', '1.16.5',
-            '1.15.2', '1.14.4', '1.13.2', '1.12.2'
-        ];
-    }
+                const serverDownload = (detailsResponse.data as any).downloads?.server;
+                if (!serverDownload) {
+                    throw new Error(`Server jar not available for version ${version}`);
+                }
+
+                return {
+                    version,
+                    url: serverDownload.url,
+                    sha1: serverDownload.sha1
+                };
+            } catch (error: any) {
+                console.error(`[Minecraft] Failed to fetch jar for ${version}:`, error.message);
+                throw error;
+            }
+        }
+    );
 };
 
 export const getPaperVersions = async (minecraftVersion?: string): Promise<string[]> => {
