@@ -11,6 +11,9 @@ async function getPteroConfig() {
         const settings = await prisma.settings.findFirst();
         const pterodactyl = (settings?.pterodactyl as any);
         if (pterodactyl?.apiUrl && pterodactyl?.apiKey) {
+            // Debug: Log which key type is being used (only first 8 chars for security)
+            const keyPrefix = pterodactyl.apiKey?.substring(0, 8) || 'none';
+            console.log(`[PteroConfig] Using DB settings. API Key starts with: ${keyPrefix}`);
             return {
                 url: pterodactyl.apiUrl,
                 key: pterodactyl.apiKey,
@@ -22,6 +25,7 @@ async function getPteroConfig() {
     }
 
     // Fallback to env
+    console.log('[PteroConfig] Using ENV fallback');
     return {
         url: ENV.PTERODACTYL_URL,
         key: ENV.PTERODACTYL_API_KEY,
