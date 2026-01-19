@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateGlobalAdScript = exports.updateSecuritySettings = exports.updateBillingSettings = exports.updateSocialMedia = exports.updateUser = exports.updateUserRole = exports.createUserByAdmin = exports.updatePlan = exports.deletePlan = exports.createPlan = exports.updateRedeemCode = exports.deleteRedeemCode = exports.createRedeemCode = exports.getAllCodes = exports.deleteServerAdmin = exports.unsuspendServer = exports.suspendServer = exports.getAllServers = exports.deleteUser = exports.unbanUser = exports.banUser = exports.editUserCoins = exports.unlinkDiscord = exports.getAllUsers = exports.removeWebhook = exports.addWebhook = exports.testPterodactylConnection = exports.updatePterodactylSettings = exports.updatePluginSettings = exports.updateUpgradePricing = exports.updateAFKSettings = exports.sendTestEmail = exports.testSmtpConnection = exports.toggleBot = exports.getBotStatus = exports.regenerateBotKey = exports.updateGameSettings = exports.updateBotSettings = exports.updateSmtpSettings = exports.updateThemeSettings = exports.updatePanelSettings = exports.getSettings = void 0;
+exports.getDiscordOAuth = exports.updateDiscordOAuth = exports.updateGlobalAdScript = exports.updateSecuritySettings = exports.updateBillingSettings = exports.updateSocialMedia = exports.updateUser = exports.updateUserRole = exports.createUserByAdmin = exports.updatePlan = exports.deletePlan = exports.createPlan = exports.updateRedeemCode = exports.deleteRedeemCode = exports.createRedeemCode = exports.getAllCodes = exports.deleteServerAdmin = exports.unsuspendServer = exports.suspendServer = exports.getAllServers = exports.deleteUser = exports.unbanUser = exports.banUser = exports.editUserCoins = exports.unlinkDiscord = exports.getAllUsers = exports.removeWebhook = exports.addWebhook = exports.testPterodactylConnection = exports.updatePterodactylSettings = exports.updatePluginSettings = exports.updateUpgradePricing = exports.updateAFKSettings = exports.sendTestEmail = exports.testSmtpConnection = exports.toggleBot = exports.getBotStatus = exports.regenerateBotKey = exports.updateGameSettings = exports.updateBotSettings = exports.updateSmtpSettings = exports.updateThemeSettings = exports.updatePanelSettings = exports.getSettings = void 0;
 const prisma_1 = require("../prisma");
 const pterodactyl_1 = require("../services/pterodactyl");
 const bcrypt_1 = __importDefault(require("bcrypt"));
@@ -161,7 +161,8 @@ const updateBotSettings = async (req, res) => {
                 guildId: '',
                 enabled: false,
                 inviteChannelId: '',
-                boostChannelId: ''
+                boostChannelId: '',
+                dashboardUrl: ''
             };
             data.discordBot = { ...currentBot, ...discordBot };
         }
@@ -1056,7 +1057,7 @@ exports.updateSocialMedia = updateSocialMedia;
 // Update Billing Settings
 const updateBillingSettings = async (req, res) => {
     try {
-        const { enabled, interval, coinsPerGbHour, coinsPerGbMinute, autoSuspend, autoResume } = req.body;
+        const { enabled, interval, coinsPerGbHour, coinsPerGbMinute, costPerMinuteFlat, autoSuspend, autoResume } = req.body;
         const currentSettings = await (0, settingsService_1.getSettingsOrCreate)();
         const settings = await prisma_1.prisma.settings.update({
             where: { id: currentSettings.id },
@@ -1066,6 +1067,7 @@ const updateBillingSettings = async (req, res) => {
                     interval: parseInt(interval) || 1,
                     coinsPerGbHour: coinsPerGbHour, // Kept for legacy/fallback
                     coinsPerGbMinute: coinsPerGbMinute, // New field
+                    costPerMinuteFlat: costPerMinuteFlat, // Flat rate priority field
                     autoSuspend: autoSuspend ?? false,
                     autoResume: autoResume ?? false
                 }
@@ -1128,3 +1130,46 @@ const updateGlobalAdScript = async (req, res) => {
     }
 };
 exports.updateGlobalAdScript = updateGlobalAdScript;
+// Update Discord OAuth settings
+const updateDiscordOAuth = async (req, res) => {
+    try {
+        const { clientId, clientSecret, redirectUri, enabled } = req.body;
+        const currentSettings = await (0, settingsService_1.getSettingsOrCreate)();
+        const currentOAuth = currentSettings.discordOAuth || {};
+        const discordOAuth = {
+            clientId: clientId ?? currentOAuth.clientId,
+            clientSecret: clientSecret ?? currentOAuth.clientSecret,
+            redirectUri: redirectUri ?? currentOAuth.redirectUri,
+            enabled: enabled ?? currentOAuth.enabled,
+        };
+        const settings = await prisma_1.prisma.settings.update({
+            where: { id: currentSettings.id },
+            data: { discordOAuth }
+        });
+        await (0, settingsService_1.invalidateSettingsCache)();
+        res.json({ message: 'Discord OAuth settings updated', settings });
+    }
+    catch (error) {
+        console.error('Update Discord OAuth error:', error);
+        res.status(500).json({ message: 'Failed to update Discord OAuth settings' });
+    }
+};
+exports.updateDiscordOAuth = updateDiscordOAuth;
+// Get Discord OAuth settings
+const getDiscordOAuth = async (req, res) => {
+    try {
+        const settings = await (0, settingsService_1.getSettingsOrCreate)();
+        const discordOAuth = settings.discordOAuth || {
+            clientId: '',
+            clientSecret: '',
+            redirectUri: '',
+            enabled: false,
+        };
+        res.json(discordOAuth);
+    }
+    catch (error) {
+        console.error('Get Discord OAuth error:', error);
+        res.status(500).json({ message: 'Failed to get Discord OAuth settings' });
+    }
+};
+exports.getDiscordOAuth = getDiscordOAuth;

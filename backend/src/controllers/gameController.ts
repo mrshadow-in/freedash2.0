@@ -89,7 +89,7 @@ export const playCoinFlip = async (req: AuthRequest, res: Response) => {
             // Transaction approach:
             // 1. Deduct bet immediately?
             // Let's do it in one transaction for atomicity.
-            await prisma.$transaction(async (tx) => {
+            await prisma.$transaction(async (tx: any) => {
                 await tx.user.update({ where: { id: userId }, data: { coins: { increment: (betAmount * 0.9) } } }); // Profit
                 await tx.transaction.create({
                     data: { userId, type: 'credit', amount: betAmount * 0.9, description: `Won Coin Flip`, balanceAfter: user.coins + (betAmount * 0.9) }

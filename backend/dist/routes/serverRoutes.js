@@ -36,6 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const auth_1 = require("../middleware/auth");
 const serverController_1 = require("../controllers/serverController");
+const eulaController_1 = require("../controllers/eulaController"); // Added EULA check import
 const shopController_1 = require("../controllers/shopController");
 const mcController = __importStar(require("../controllers/minecraftController"));
 const startupController = __importStar(require("../controllers/startupController"));
@@ -53,6 +54,7 @@ router.put('/:id', serverController_1.updateServer); // Added update route
 router.delete('/:id', serverController_1.deleteServer);
 router.post('/:id/upgrade', serverController_1.upgradeServer);
 router.post('/:id/power', serverController_1.powerServer);
+router.get('/:id/eula-status', eulaController_1.checkEulaStatus); // Check EULA status
 router.post('/:id/accept-eula', serverController_1.acceptEula); // Manual EULA acceptance
 router.get('/:id/resources', serverController_1.getServerResources);
 router.get('/:id/usage', serverController_1.getServerUsage);

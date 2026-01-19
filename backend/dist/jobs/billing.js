@@ -95,16 +95,20 @@ exports.restartBillingJob = restartBillingJob;
 const processBillingCycle = async () => {
     const settings = await getSettings();
     const config = settings.billing || {};
-    // Check for Per-Minute Pricing first, fallback to Hourly/60
+    // Billing Mode Priority: Flat Rate > Per-GB-Minute > Per-GB-Hour/60
+    const flatRatePerMinute = parseFloat(config.costPerMinuteFlat || '0');
+    const usesFlatRate = flatRatePerMinute > 0;
+    // Check for Per-Minute Pricing, fallback to Hourly/60
     let ratePerGbMinute = parseFloat(config.coinsPerGbMinute || '0');
     if (ratePerGbMinute <= 0 && config.coinsPerGbHour) {
         ratePerGbMinute = parseFloat(config.coinsPerGbHour) / 60;
     }
     const autoSuspend = config.autoSuspend ?? false;
     const autoResume = config.autoResume ?? false;
-    if (ratePerGbMinute <= 0)
-        return; // No cost configured
-    // console.log(`[Billing] Starting cycle. Rate: ${ratePerGbMinute}/GB/min`);
+    // No billing configured
+    if (!usesFlatRate && ratePerGbMinute <= 0)
+        return;
+    console.log(`[Billing] Starting cycle. Mode: ${usesFlatRate ? 'Flat Rate' : 'Per-GB'}, Rate: ${usesFlatRate ? flatRatePerMinute + '/min' : ratePerGbMinute + '/GB/min'}`);
     // Fetch Active & Running Servers
     // We check ALL non-suspended/deleted servers, then verify ONLINE status via Pterodactyl
     const servers = await prisma_1.prisma.server.findMany({
@@ -119,7 +123,9 @@ const processBillingCycle = async () => {
     const interval = parseInt(config.interval || '1');
     for (const server of servers) {
         try {
-            // Skip if user banned or special case (maybe admins are free? optional)
+            // Skip suspended servers
+            if (server.isSuspended)
+                continue; // Use existing isSuspended field
             // Skip if user banned or special case
             if (server.owner.isBanned)
                 continue;
@@ -183,8 +189,16 @@ const processBillingCycle = async () => {
                 continue;
             }
             // 2. CALCULATION
-            const ramGb = server.ramMb / 1024;
-            const chargeAmount = ramGb * ratePerGbMinute * interval;
+            let chargeAmount;
+            if (usesFlatRate) {
+                // FLAT RATE: Same charge for all servers regardless of RAM
+                chargeAmount = flatRatePerMinute * interval;
+            }
+            else {
+                // PER-GB RATE: Multiply by RAM allocation
+                const ramGb = server.ramMb / 1024;
+                chargeAmount = ramGb * ratePerGbMinute * interval;
+            }
             if (server.owner.coins >= chargeAmount) {
                 // Deduct Coins
                 await prisma_1.prisma.$transaction([
@@ -201,8 +215,9 @@ const processBillingCycle = async () => {
                             balanceAfter: server.owner.coins - chargeAmount,
                             metadata: {
                                 serverId: server.id,
-                                ramGb,
-                                rate: ratePerGbMinute,
+                                ramGb: server.ramMb / 1024,
+                                rate: usesFlatRate ? flatRatePerMinute : ratePerGbMinute,
+                                billingMode: usesFlatRate ? 'flat' : 'per-gb',
                                 timestamp
                             }
                         }
@@ -246,6 +261,41 @@ const processBillingCycle = async () => {
         }
         catch (err) {
             console.error(`[Billing] Error processing server ${server.id}:`, err);
+        }
+    }
+    // Auto-Termination Logic (Servers suspended > 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const serversToTerminate = await prisma_1.prisma.server.findMany({
+        where: {
+            status: 'suspended',
+            isSuspended: true,
+            suspendedAt: { lt: sevenDaysAgo }
+        },
+        include: { owner: true }
+    });
+    for (const server of serversToTerminate) {
+        try {
+            console.log(`[Billing] Auto-terminating server ${server.id} (User: ${server.owner.username}) - Suspended > 7 days`);
+            // Delete from Pterodactyl
+            if (server.pteroServerId) {
+                try {
+                    await (0, pterodactyl_1.deletePteroServer)(server.pteroServerId);
+                }
+                catch (err) {
+                    if (err?.response?.status !== 404) {
+                        console.error(`[Billing] Ptero Delete Failed: ${err.message}`);
+                    }
+                }
+            }
+            // Delete from DB
+            await prisma_1.prisma.server.delete({ where: { id: server.id } });
+            // Notify User
+            const { sendUserNotification } = await Promise.resolve().then(() => __importStar(require('../services/websocket')));
+            sendUserNotification(server.ownerId, 'Server Terminated', `Your server "${server.name}" was terminated because it was suspended for more than 7 days.`, 'error');
+        }
+        catch (error) {
+            console.error(`[Billing] Termination Error ${server.id}:`, error);
         }
     }
     // Auto-Resume Logic

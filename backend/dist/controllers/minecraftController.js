@@ -143,108 +143,139 @@ const updateServerProperties = async (req, res) => {
 exports.updateServerProperties = updateServerProperties;
 const searchPlugins = async (req, res) => {
     try {
-        const { q, provider = 'spigot', version } = req.query;
-        if (!q)
-            return res.json([]);
+        const { q, provider = 'modrinth', category = 'plugin', version } = req.query;
         const settings = await (0, settingsService_1.getSettingsOrCreate)();
         const keys = settings.plugins || {};
         if (provider === 'modrinth') {
-            // Modrinth Search - STRICT plugins only
-            const facetList = [
-                ["project_type:plugin"],
-                ["categories:bukkit", "categories:spigot", "categories:paper"]
-            ];
+            // Modrinth Search with Category Support
+            const facetList = [];
+            // Category filter
+            if (category === 'plugin') {
+                facetList.push(["project_type:plugin"]);
+                facetList.push(["categories:bukkit", "categories:paper", "categories:spigot"]);
+            }
+            else if (category === 'mod') {
+                facetList.push(["project_type:mod"]);
+                facetList.push(["categories:fabric", "categories:forge", "categories:quilt"]);
+            }
+            else if (category === 'modpack') {
+                facetList.push(["project_type:modpack"]);
+            }
+            // Version filter
             if (version && version !== 'latest') {
                 facetList.push([`versions:${version}`]);
             }
             const facetsString = JSON.stringify(facetList);
             const response = await axios_1.default.get(`https://api.modrinth.com/v2/search`, {
                 params: {
-                    query: q,
+                    query: q || '', // Empty query returns all, sorted by relevance/downloads
                     limit: 20,
-                    facets: facetsString
+                    facets: facetsString,
+                    index: 'downloads' // Sort by downloads (most popular first)
                 }
             });
             const plugins = (response.data.hits || []).map((p) => ({
                 id: p.project_id,
+                slug: p.slug,
                 name: p.title,
-                tag: p.description,
-                likes: p.follows,
+                description: p.description,
                 downloads: p.downloads,
+                follows: p.follows, // ⭐ Stars
                 icon: p.icon_url,
+                dateModified: p.date_modified, // 🕒 Last updated
                 provider: 'modrinth',
-                testedVersions: p.versions
+                versions: p.versions,
+                categories: p.categories,
+                projectType: p.project_type // "plugin", "mod", "modpack"
             }));
             res.json(plugins);
         }
         else if (provider === 'hangar') {
-            const response = await axios_1.default.get(`https://hangar.papermc.io/api/v1/projects?q=${q}&limit=20&offset=0`);
+            const response = await axios_1.default.get(`https://hangar.papermc.io/api/v1/projects?q=${q || ''}&limit=20&offset=0`);
             const plugins = (response.data.result || []).map((p) => ({
-                id: p.namespace.slug, // Use slug as ID for Hangar
+                id: p.namespace?.slug || p.name, // Use slug as ID for Hangar
+                slug: p.namespace?.slug || p.name,
                 name: p.name,
-                tag: p.description,
-                likes: p.stats.stars,
-                downloads: p.stats.downloads,
-                icon: p.avatarUrl,
+                description: p.description || 'No description available',
+                downloads: p.stats?.downloads || 0,
+                follows: p.stats?.stars || 0, // ⭐ Stars
+                icon: p.avatarUrl || null,
+                dateModified: p.lastUpdated || new Date().toISOString(),
                 provider: 'hangar',
-                testedVersions: [] // Hangar structure is complex
+                versions: [], // Hangar structure is complex
+                categories: p.category ? [p.category] : [],
+                projectType: 'plugin' // Hangar is plugins only
             }));
             res.json(plugins);
         }
         else if (provider === 'polymart') {
             // Polymart Search
-            const response = await axios_1.default.get(`https://api.polymart.org/v1/search?query=${q}&limit=20&start=0`);
+            const response = await axios_1.default.get(`https://api.polymart.org/v1/search?query=${q || ''}&limit=20&start=0`);
             const plugins = (response.data.response?.result || []).map((p) => ({
                 id: p.id,
+                slug: p.id.toString(),
                 name: p.title,
-                tag: p.subtitle,
-                likes: p.stars,
-                downloads: p.downloads,
+                description: p.subtitle || 'No description available',
+                downloads: p.downloads || 0,
+                follows: p.stars || 0,
                 icon: p.url_icon, // Polymart icon
+                dateModified: p.updateDate || new Date().toISOString(),
                 provider: 'polymart',
-                testedVersions: []
+                versions: [],
+                categories: [],
+                projectType: 'plugin'
             }));
             res.json(plugins);
         }
         else if (provider === 'curseforge') {
             // CurseForge Search - STRICT Bukkit Plugins (Class ID 5)
             const apiKey = keys.curseforge_api_key;
-            if (!apiKey)
+            if (!apiKey) {
+                console.log('[CurseForge] API key not configured');
                 return res.json([]); // Return empty if no key
+            }
             const response = await axios_1.default.get(`https://api.curseforge.com/v1/mods/search`, {
                 headers: { 'x-api-key': apiKey },
                 params: {
                     gameId: 432, // Minecraft
                     classId: 5, // Bukkit Plugins (CRITICAL: Excludes Mods/Modpacks)
-                    searchFilter: q,
+                    searchFilter: q || '',
                     pageSize: 20,
                     sortOrder: 'desc'
                 }
             });
             const plugins = (response.data.data || []).map((p) => ({
                 id: p.id,
+                slug: p.slug,
                 name: p.name,
-                tag: p.summary,
-                likes: p.thumbsUpCount || 0,
-                downloads: p.downloadCount,
-                icon: p.logo?.thumbnailUrl,
+                description: p.summary || 'No description available',
+                downloads: p.downloadCount || 0,
+                follows: p.thumbsUpCount || 0,
+                icon: p.logo?.thumbnailUrl || null,
+                dateModified: p.dateModified || new Date().toISOString(),
                 provider: 'curseforge',
-                testedVersions: []
+                versions: [],
+                categories: [],
+                projectType: 'plugin'
             }));
             res.json(plugins);
         }
         else {
             // Spigot Search (Default)
-            const response = await axios_1.default.get(`https://api.spiget.org/v2/search/resources/${q}?size=20&sort=-likes`);
+            const response = await axios_1.default.get(`https://api.spiget.org/v2/search/resources/${q || 'plugin'}?size=20&sort=-downloads`);
             const plugins = response.data.map((p) => ({
                 id: p.id,
+                slug: p.id.toString(),
                 name: p.name,
-                tag: p.tag,
-                likes: p.likes,
-                downloads: p.downloads,
+                description: p.tag || 'No description available',
+                downloads: p.downloads || 0,
+                follows: p.likes || 0,
                 icon: p.icon?.url ? `https://www.spigotmc.org/${p.icon.url}` : null,
+                dateModified: p.updateDate ? new Date(p.updateDate * 1000).toISOString() : new Date().toISOString(),
                 provider: 'spigot',
-                testedVersions: p.testedVersions
+                versions: p.testedVersions || [],
+                categories: [],
+                projectType: 'plugin'
             }));
             res.json(plugins);
         }
@@ -257,15 +288,18 @@ const searchPlugins = async (req, res) => {
 exports.searchPlugins = searchPlugins;
 const getPluginVersions = async (req, res) => {
     try {
-        const { resourceId, provider = 'spigot', version } = req.query;
+        const { resourceId, provider = 'modrinth', version, loaders } = req.query;
         if (!resourceId)
             return res.status(400).json({ message: 'Missing resourceId' });
         if (provider === 'modrinth') {
-            // Fetch versions from Modrinth
-            // Filter by loaders: bukkit, spigot, paper
-            const loaders = JSON.stringify(["bukkit", "spigot", "paper"]);
-            const params = { loaders };
-            if (version) {
+            // Fetch versions from Modrinth with filtering
+            const params = {};
+            // Filter by loaders (bukkit, paper, spigot, fabric, forge, etc.)
+            if (loaders) {
+                params.loaders = loaders; // Already JSON string from frontend
+            }
+            // Filter by game version
+            if (version && version !== 'latest') {
                 params.game_versions = JSON.stringify([version]);
             }
             const response = await axios_1.default.get(`https://api.modrinth.com/v2/project/${resourceId}/version`, { params });
@@ -275,14 +309,107 @@ const getPluginVersions = async (req, res) => {
                 versionNumber: v.version_number,
                 gameVersions: v.game_versions,
                 loaders: v.loaders,
-                date: v.date_published,
+                datePublished: v.date_published,
                 downloads: v.downloads,
                 file: v.files.find((f) => f.primary) || v.files[0]
             }));
             res.json(versions);
         }
+        else if (provider === 'hangar') {
+            // Hangar versions API
+            const response = await axios_1.default.get(`https://hangar.papermc.io/api/v1/projects/${resourceId}/versions?limit=25&offset=0`);
+            const allVersions = response.data.result || [];
+            // Filter by MC version if provided
+            const filteredVersions = version && version !== 'latest'
+                ? allVersions.filter((v) => v.platformDependencies?.PAPER?.includes(version))
+                : allVersions;
+            const versions = filteredVersions.map((v) => ({
+                id: v.name,
+                name: v.name,
+                versionNumber: v.name,
+                gameVersions: v.platformDependencies?.PAPER || [],
+                loaders: ['paper', 'spigot', 'bukkit'],
+                datePublished: v.createdAt,
+                downloads: v.stats?.downloads || 0,
+                file: { url: v.downloads?.PAPER?.downloadUrl || '' }
+            }));
+            res.json(versions);
+        }
+        else if (provider === 'spigot') {
+            // Spigot - Get resource versions
+            const response = await axios_1.default.get(`https://api.spiget.org/v2/resources/${resourceId}/versions?size=25&sort=-releaseDate`);
+            const allVersions = response.data;
+            const versions = allVersions.map((v) => ({
+                id: v.id,
+                name: v.name,
+                versionNumber: v.name,
+                gameVersions: [], // Spigot doesn't provide MC versions per release
+                loaders: ['bukkit', 'spigot', 'paper'],
+                datePublished: new Date(v.releaseDate * 1000).toISOString(),
+                downloads: 0,
+                file: { url: `https://api.spiget.org/v2/resources/${resourceId}/versions/${v.id}/download` }
+            }));
+            res.json(versions);
+        }
+        else if (provider === 'polymart') {
+            // Polymart - Get resource versions
+            try {
+                const response = await axios_1.default.post('https://api.polymart.org/v1/getResourceInfoSimple', {
+                    resource_id: resourceId
+                });
+                const resourceInfo = response.data.response?.resource;
+                if (resourceInfo && resourceInfo.updates) {
+                    const versions = resourceInfo.updates.slice(0, 25).map((v) => ({
+                        id: v.version_id || v.title,
+                        name: v.title,
+                        versionNumber: v.title,
+                        gameVersions: [],
+                        loaders: ['bukkit', 'spigot', 'paper'],
+                        datePublished: new Date(v.date * 1000).toISOString(),
+                        downloads: 0,
+                        file: { url: '' }
+                    }));
+                    res.json(versions);
+                }
+                else {
+                    res.json([]);
+                }
+            }
+            catch (error) {
+                res.json([]);
+            }
+        }
+        else if (provider === 'curseforge') {
+            // CurseForge - Get mod files
+            const settings = await (0, settingsService_1.getSettingsOrCreate)();
+            const keys = settings.plugins || {};
+            const apiKey = keys.curseforge_api_key;
+            if (!apiKey) {
+                return res.json([]);
+            }
+            const response = await axios_1.default.get(`https://api.curseforge.com/v1/mods/${resourceId}/files`, {
+                headers: { 'x-api-key': apiKey },
+                params: { pageSize: 25 }
+            });
+            const allFiles = response.data.data || [];
+            // Filter by MC version if provided
+            const filteredFiles = version && version !== 'latest'
+                ? allFiles.filter((f) => f.gameVersions?.includes(version))
+                : allFiles;
+            const versions = filteredFiles.map((v) => ({
+                id: v.id,
+                name: v.displayName,
+                versionNumber: v.displayName,
+                gameVersions: v.gameVersions || [],
+                loaders: v.loaders || ['bukkit'],
+                datePublished: v.fileDate,
+                downloads: v.downloadCount || 0,
+                file: { url: v.downloadUrl }
+            }));
+            res.json(versions);
+        }
         else {
-            // Placeholder for Spigot (Spiget doesn't easily expose specific versions in standard search, usually just latest)
+            // Placeholder for other providers
             res.json([]);
         }
     }
@@ -295,7 +422,7 @@ exports.getPluginVersions = getPluginVersions;
 const installPlugin = async (req, res) => {
     try {
         const { id } = req.params;
-        const { resourceId, provider = 'spigot', fileName } = req.body;
+        const { resourceId, provider = 'modrinth', fileName, versionId } = req.body;
         const server = await prisma_1.prisma.server.findUnique({ where: { id } });
         if (!server || !server.pteroIdentifier) {
             return res.status(404).json({ message: 'Server not found' });
@@ -308,13 +435,27 @@ const installPlugin = async (req, res) => {
         const settings = await (0, settingsService_1.getSettingsOrCreate)();
         const keys = settings.plugins || {};
         if (provider === 'modrinth') {
-            const verRes = await axios_1.default.get(`https://api.modrinth.com/v2/project/${resourceId}/version`);
-            const versions = verRes.data;
-            if (!versions || versions.length === 0)
-                return res.status(404).json({ message: 'No versions found' });
-            const latestVersion = versions[0];
-            const file = latestVersion.files.find((f) => f.primary) || latestVersion.files[0];
-            await (0, pterodactyl_1.pullPteroFile)(server.pteroIdentifier, file.url, '/plugins');
+            let downloadUrl;
+            if (versionId) {
+                // Install specific version
+                console.log(`[Plugin Install] Installing specific version: ${versionId}`);
+                const versionRes = await axios_1.default.get(`https://api.modrinth.com/v2/version/${versionId}`);
+                const versionData = versionRes.data;
+                const file = versionData.files.find((f) => f.primary) || versionData.files[0];
+                downloadUrl = file.url;
+            }
+            else {
+                // Install latest version
+                console.log(`[Plugin Install] Installing latest version of ${resourceId}`);
+                const verRes = await axios_1.default.get(`https://api.modrinth.com/v2/project/${resourceId}/version`);
+                const versions = verRes.data;
+                if (!versions || versions.length === 0)
+                    return res.status(404).json({ message: 'No versions found' });
+                const latestVersion = versions[0];
+                const file = latestVersion.files.find((f) => f.primary) || latestVersion.files[0];
+                downloadUrl = file.url;
+            }
+            await (0, pterodactyl_1.pullPteroFile)(server.pteroIdentifier, downloadUrl, '/plugins');
         }
         else if (provider === 'hangar') {
             // Hangar Install

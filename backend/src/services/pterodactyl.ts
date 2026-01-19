@@ -1,6 +1,9 @@
 import axios from 'axios';
 import { ENV } from '../config/env';
 import { prisma } from '../prisma';
+import { PteroCache } from './PteroCache';
+import { queueRequest } from '../utils/requestQueue';
+import redis from '../redis';
 
 // Get Pterodactyl settings from database or fallback to env
 async function getPteroConfig() {
@@ -177,6 +180,9 @@ export const createPteroServer = async (
             }
         }
     );
+    // Invalidate user's server list cache
+    await PteroCache.invalidate(`servers:user:${userId}`);
+
     // Return full response with relationships
     return response.data;
 };
@@ -193,6 +199,10 @@ export const deletePteroServer = async (serverId: number) => {
             }
         }
     );
+
+    // Invalidate server and user server list cache
+    await PteroCache.invalidate(`server:${serverId}`);
+    await PteroCache.invalidate(`servers:user:*`);
 };
 
 export const suspendPteroServer = async (serverId: number) => {
@@ -208,6 +218,9 @@ export const suspendPteroServer = async (serverId: number) => {
             }
         }
     );
+
+    // Invalidate server cache
+    await PteroCache.invalidate(`server:${serverId}`);
 };
 
 export const unsuspendPteroServer = async (serverId: number) => {
@@ -223,35 +236,60 @@ export const unsuspendPteroServer = async (serverId: number) => {
             }
         }
     );
+
+    // Invalidate server cache
+    await PteroCache.invalidate(`server:${serverId}`);
 };
 export const getPteroServer = async (serverId: number) => {
-    const config = await getPteroConfig();
-
-    const response = await axios.get(
-        `${config.url}/api/application/servers/${serverId}?include=allocations,node`,
-        {
-            headers: {
-                Authorization: `Bearer ${config.key}`,
-                Accept: 'application/vnd.pterodactyl.v1+json'
-            }
+    return await PteroCache.getCached(
+        `server:${serverId}`,
+        30, // 30s cache
+        async () => {
+            const config = await getPteroConfig();
+            return await queueRequest(
+                `getPteroServer:${serverId}`,
+                async () => {
+                    const response = await axios.get(
+                        `${config.url}/api/application/servers/${serverId}?include=allocations,node`,
+                        {
+                            headers: {
+                                Authorization: `Bearer ${config.key}`,
+                                Accept: 'application/vnd.pterodactyl.v1+json'
+                            },
+                            timeout: 15000
+                        }
+                    );
+                    return (response.data as any).attributes;
+                }
+            );
         }
     );
-    return (response.data as any).attributes;
 };
 
 export const getPteroServersByUserId = async (userId: number) => {
-    const config = await getPteroConfig();
-
-    const response = await axios.get(
-        `${config.url}/api/application/servers?filter[owner_id]=${userId}&include=allocations,node`,
-        {
-            headers: {
-                Authorization: `Bearer ${config.key}`,
-                Accept: 'application/vnd.pterodactyl.v1+json'
-            }
+    return await PteroCache.getCached(
+        `servers:user:${userId}`,
+        20, // 20s cache
+        async () => {
+            const config = await getPteroConfig();
+            return await queueRequest(
+                `getPteroServersByUserId:${userId}`,
+                async () => {
+                    const response = await axios.get(
+                        `${config.url}/api/application/servers?filter[owner_id]=${userId}&include=allocations,node`,
+                        {
+                            headers: {
+                                Authorization: `Bearer ${config.key}`,
+                                Accept: 'application/vnd.pterodactyl.v1+json'
+                            },
+                            timeout: 15000
+                        }
+                    );
+                    return (response.data as any).data.map((item: any) => item.attributes);
+                }
+            );
         }
     );
-    return (response.data as any).data.map((item: any) => item.attributes);
 };
 
 export const updatePteroServerBuild = async (
@@ -285,6 +323,10 @@ export const updatePteroServerBuild = async (
             }
         }
     );
+
+    // Invalidate server cache after build update
+    await PteroCache.invalidate(`server:${serverId}`);
+
     return (response.data as any).attributes;
 };
 
@@ -334,19 +376,31 @@ export const getConsoleDetails = async (identifier: string) => {
 
 // File Manager Functions
 export const listFiles = async (identifier: string, directory: string = '') => {
-    const config = await getPteroConfig();
-    const token = config.clientKey || config.key;
+    return await PteroCache.getCached(
+        `files:${identifier}:${directory || 'root'}`,
+        10, // 10s cache (files change frequently)
+        async () => {
+            const config = await getPteroConfig();
+            const token = config.clientKey || config.key;
 
-    const response: any = await axios.get(
-        `${config.url}/api/client/servers/${identifier}/files/list?directory=${encodeURIComponent(directory)}`,
-        {
-            headers: {
-                Authorization: `Bearer ${token}`,
-                Accept: 'application/vnd.pterodactyl.v1+json'
-            }
+            return await queueRequest(
+                `listFiles:${identifier}`,
+                async () => {
+                    const response: any = await axios.get(
+                        `${config.url}/api/client/servers/${identifier}/files/list?directory=${encodeURIComponent(directory)}`,
+                        {
+                            headers: {
+                                Authorization: `Bearer ${token}`,
+                                Accept: 'application/vnd.pterodactyl.v1+json'
+                            },
+                            timeout: 15000
+                        }
+                    );
+                    return response.data.data;
+                }
+            );
         }
     );
-    return response.data.data;
 };
 
 export const getFileContent = async (identifier: string, file: string) => {
@@ -467,10 +521,6 @@ export const reinstallServer = async (identifier: string) => {
     );
 };
 
-import redis from '../redis';
-
-// ... (existing imports)
-
 export const getPteroServerResources = async (identifier: string) => {
     const CACHE_KEY = `ptero:resources:${identifier}`;
     const cached = await redis.get(CACHE_KEY);
@@ -503,35 +553,65 @@ export const getPteroServerResources = async (identifier: string) => {
 // ==========================================
 
 export const getPteroNodes = async () => {
-    const config = await getPteroConfig();
-    try {
-        const response = await axios.get(`${config.url}/api/application/nodes?include=location`, {
-            headers: {
-                Authorization: `Bearer ${config.key}`,
-                Accept: 'application/vnd.pterodactyl.v1+json'
-            }
-        });
-        return (response.data as any).data.map((item: any) => item.attributes);
-    } catch (error) {
-        console.error('Error fetching nodes:', error);
-        throw error;
-    }
+    return await PteroCache.getCached(
+        'nodes:all',
+        300, // 5min cache (nodes rarely change)
+        async () => {
+            const config = await getPteroConfig();
+            return await queueRequest(
+                'getPteroNodes',
+                async () => {
+                    try {
+                        const response = await axios.get(
+                            `${config.url}/api/application/nodes?include=location`,
+                            {
+                                headers: {
+                                    Authorization: `Bearer ${config.key}`,
+                                    Accept: 'application/vnd.pterodactyl.v1+json'
+                                },
+                                timeout: 15000
+                            }
+                        );
+                        return (response.data as any).data.map((item: any) => item.attributes);
+                    } catch (error) {
+                        console.error('Error fetching nodes:', error);
+                        throw error;
+                    }
+                }
+            );
+        }
+    );
 };
 
 export const getPteroLocations = async () => {
-    const config = await getPteroConfig();
-    try {
-        const response = await axios.get(`${config.url}/api/application/locations`, {
-            headers: {
-                Authorization: `Bearer ${config.key}`,
-                Accept: 'application/vnd.pterodactyl.v1+json'
-            }
-        });
-        return (response.data as any).data.map((item: any) => item.attributes);
-    } catch (error) {
-        console.error('Error fetching locations:', error);
-        throw error;
-    }
+    return await PteroCache.getCached(
+        'locations:all',
+        600, // 10min cache (locations almost never change)
+        async () => {
+            const config = await getPteroConfig();
+            return await queueRequest(
+                'getPteroLocations',
+                async () => {
+                    try {
+                        const response = await axios.get(
+                            `${config.url}/api/application/locations`,
+                            {
+                                headers: {
+                                    Authorization: `Bearer ${config.key}`,
+                                    Accept: 'application/vnd.pterodactyl.v1+json'
+                                },
+                                timeout: 15000
+                            }
+                        );
+                        return (response.data as any).data.map((item: any) => item.attributes);
+                    } catch (error) {
+                        console.error('Error fetching locations:', error);
+                        throw error;
+                    }
+                }
+            );
+        }
+    );
 };
 
 export const createPteroNode = async (data: any) => {

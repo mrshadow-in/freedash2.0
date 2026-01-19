@@ -321,7 +321,7 @@ If you find this project helpful, consider:
 - **Pterodactyl Panel** - Server management backend
 - **Modrinth** & **Spigot** - Plugin APIs
 - **Discord.js** - Bot framework
-- **React Community** - Frontend tools
+- **React Community** - Frontend tool
 
 ---
 

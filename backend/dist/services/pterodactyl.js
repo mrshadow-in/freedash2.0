@@ -7,6 +7,9 @@ exports.uploadFileToPtero = exports.renamePteroFile = exports.updateStartupVaria
 const axios_1 = __importDefault(require("axios"));
 const env_1 = require("../config/env");
 const prisma_1 = require("../prisma");
+const PteroCache_1 = require("./PteroCache");
+const requestQueue_1 = require("../utils/requestQueue");
+const redis_1 = __importDefault(require("../redis"));
 // Get Pterodactyl settings from database or fallback to env
 async function getPteroConfig() {
     try {
@@ -56,13 +59,28 @@ const createPteroUser = async (email, username, password) => {
     catch (error) {
         if (error.response?.status === 422) {
             // User exists, fetch it and update password if provided
-            const users = await axios_1.default.get(`${config.url}/api/application/users?filter[email]=${email}`, {
+            // First try finding by email
+            let users = await axios_1.default.get(`${config.url}/api/application/users?filter[email]=${encodeURIComponent(email)}`, {
                 headers: {
                     Authorization: `Bearer ${config.key}`,
                     Accept: 'application/vnd.pterodactyl.v1+json'
                 }
             });
-            const existingUser = users.data.data[0].attributes;
+            let existingUserData = users.data.data[0];
+            // If not found by email, try finding by username
+            if (!existingUserData) {
+                users = await axios_1.default.get(`${config.url}/api/application/users?filter[username]=${encodeURIComponent(username)}`, {
+                    headers: {
+                        Authorization: `Bearer ${config.key}`,
+                        Accept: 'application/vnd.pterodactyl.v1+json'
+                    }
+                });
+                existingUserData = users.data.data[0];
+            }
+            if (!existingUserData) {
+                throw new Error('User conflict detected but could not find existing user by email or username.');
+            }
+            const existingUser = existingUserData.attributes;
             // Update password for existing user if password is provided
             if (password && existingUser.id) {
                 await (0, exports.updatePteroUserPassword)(existingUser.id, password);
@@ -130,6 +148,8 @@ const createPteroServer = async (name, userId, eggId, nestId, memory, disk, cpu,
             Accept: 'application/vnd.pterodactyl.v1+json'
         }
     });
+    // Invalidate user's server list cache
+    await PteroCache_1.PteroCache.invalidate(`servers:user:${userId}`);
     // Return full response with relationships
     return response.data;
 };
@@ -142,6 +162,9 @@ const deletePteroServer = async (serverId) => {
             Accept: 'application/vnd.pterodactyl.v1+json'
         }
     });
+    // Invalidate server and user server list cache
+    await PteroCache_1.PteroCache.invalidate(`server:${serverId}`);
+    await PteroCache_1.PteroCache.invalidate(`servers:user:*`);
 };
 exports.deletePteroServer = deletePteroServer;
 const suspendPteroServer = async (serverId) => {
@@ -152,6 +175,8 @@ const suspendPteroServer = async (serverId) => {
             Accept: 'application/vnd.pterodactyl.v1+json'
         }
     });
+    // Invalidate server cache
+    await PteroCache_1.PteroCache.invalidate(`server:${serverId}`);
 };
 exports.suspendPteroServer = suspendPteroServer;
 const unsuspendPteroServer = async (serverId) => {
@@ -162,28 +187,42 @@ const unsuspendPteroServer = async (serverId) => {
             Accept: 'application/vnd.pterodactyl.v1+json'
         }
     });
+    // Invalidate server cache
+    await PteroCache_1.PteroCache.invalidate(`server:${serverId}`);
 };
 exports.unsuspendPteroServer = unsuspendPteroServer;
 const getPteroServer = async (serverId) => {
-    const config = await getPteroConfig();
-    const response = await axios_1.default.get(`${config.url}/api/application/servers/${serverId}?include=allocations,node`, {
-        headers: {
-            Authorization: `Bearer ${config.key}`,
-            Accept: 'application/vnd.pterodactyl.v1+json'
-        }
+    return await PteroCache_1.PteroCache.getCached(`server:${serverId}`, 30, // 30s cache
+    async () => {
+        const config = await getPteroConfig();
+        return await (0, requestQueue_1.queueRequest)(`getPteroServer:${serverId}`, async () => {
+            const response = await axios_1.default.get(`${config.url}/api/application/servers/${serverId}?include=allocations,node`, {
+                headers: {
+                    Authorization: `Bearer ${config.key}`,
+                    Accept: 'application/vnd.pterodactyl.v1+json'
+                },
+                timeout: 15000
+            });
+            return response.data.attributes;
+        });
     });
-    return response.data.attributes;
 };
 exports.getPteroServer = getPteroServer;
 const getPteroServersByUserId = async (userId) => {
-    const config = await getPteroConfig();
-    const response = await axios_1.default.get(`${config.url}/api/application/servers?filter[owner_id]=${userId}&include=allocations,node`, {
-        headers: {
-            Authorization: `Bearer ${config.key}`,
-            Accept: 'application/vnd.pterodactyl.v1+json'
-        }
+    return await PteroCache_1.PteroCache.getCached(`servers:user:${userId}`, 20, // 20s cache
+    async () => {
+        const config = await getPteroConfig();
+        return await (0, requestQueue_1.queueRequest)(`getPteroServersByUserId:${userId}`, async () => {
+            const response = await axios_1.default.get(`${config.url}/api/application/servers?filter[owner_id]=${userId}&include=allocations,node`, {
+                headers: {
+                    Authorization: `Bearer ${config.key}`,
+                    Accept: 'application/vnd.pterodactyl.v1+json'
+                },
+                timeout: 15000
+            });
+            return response.data.data.map((item) => item.attributes);
+        });
     });
-    return response.data.data.map((item) => item.attributes);
 };
 exports.getPteroServersByUserId = getPteroServersByUserId;
 const updatePteroServerBuild = async (serverId, memory, disk, cpu, allocation) => {
@@ -206,6 +245,8 @@ const updatePteroServerBuild = async (serverId, memory, disk, cpu, allocation) =
             Accept: 'application/vnd.pterodactyl.v1+json'
         }
     });
+    // Invalidate server cache after build update
+    await PteroCache_1.PteroCache.invalidate(`server:${serverId}`);
     return response.data.attributes;
 };
 exports.updatePteroServerBuild = updatePteroServerBuild;
@@ -242,15 +283,21 @@ const getConsoleDetails = async (identifier) => {
 exports.getConsoleDetails = getConsoleDetails;
 // File Manager Functions
 const listFiles = async (identifier, directory = '') => {
-    const config = await getPteroConfig();
-    const token = config.clientKey || config.key;
-    const response = await axios_1.default.get(`${config.url}/api/client/servers/${identifier}/files/list?directory=${encodeURIComponent(directory)}`, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/vnd.pterodactyl.v1+json'
-        }
+    return await PteroCache_1.PteroCache.getCached(`files:${identifier}:${directory || 'root'}`, 10, // 10s cache (files change frequently)
+    async () => {
+        const config = await getPteroConfig();
+        const token = config.clientKey || config.key;
+        return await (0, requestQueue_1.queueRequest)(`listFiles:${identifier}`, async () => {
+            const response = await axios_1.default.get(`${config.url}/api/client/servers/${identifier}/files/list?directory=${encodeURIComponent(directory)}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: 'application/vnd.pterodactyl.v1+json'
+                },
+                timeout: 15000
+            });
+            return response.data.data;
+        });
     });
-    return response.data.data;
 };
 exports.listFiles = listFiles;
 const getFileContent = async (identifier, file) => {
@@ -338,8 +385,6 @@ const reinstallServer = async (identifier) => {
     });
 };
 exports.reinstallServer = reinstallServer;
-const redis_1 = __importDefault(require("../redis"));
-// ... (existing imports)
 const getPteroServerResources = async (identifier) => {
     const CACHE_KEY = `ptero:resources:${identifier}`;
     const cached = await redis_1.default.get(CACHE_KEY);
@@ -364,37 +409,49 @@ exports.getPteroServerResources = getPteroServerResources;
 // Node Management (Wings)
 // ==========================================
 const getPteroNodes = async () => {
-    const config = await getPteroConfig();
-    try {
-        const response = await axios_1.default.get(`${config.url}/api/application/nodes?include=location`, {
-            headers: {
-                Authorization: `Bearer ${config.key}`,
-                Accept: 'application/vnd.pterodactyl.v1+json'
+    return await PteroCache_1.PteroCache.getCached('nodes:all', 300, // 5min cache (nodes rarely change)
+    async () => {
+        const config = await getPteroConfig();
+        return await (0, requestQueue_1.queueRequest)('getPteroNodes', async () => {
+            try {
+                const response = await axios_1.default.get(`${config.url}/api/application/nodes?include=location`, {
+                    headers: {
+                        Authorization: `Bearer ${config.key}`,
+                        Accept: 'application/vnd.pterodactyl.v1+json'
+                    },
+                    timeout: 15000
+                });
+                return response.data.data.map((item) => item.attributes);
+            }
+            catch (error) {
+                console.error('Error fetching nodes:', error);
+                throw error;
             }
         });
-        return response.data.data.map((item) => item.attributes);
-    }
-    catch (error) {
-        console.error('Error fetching nodes:', error);
-        throw error;
-    }
+    });
 };
 exports.getPteroNodes = getPteroNodes;
 const getPteroLocations = async () => {
-    const config = await getPteroConfig();
-    try {
-        const response = await axios_1.default.get(`${config.url}/api/application/locations`, {
-            headers: {
-                Authorization: `Bearer ${config.key}`,
-                Accept: 'application/vnd.pterodactyl.v1+json'
+    return await PteroCache_1.PteroCache.getCached('locations:all', 600, // 10min cache (locations almost never change)
+    async () => {
+        const config = await getPteroConfig();
+        return await (0, requestQueue_1.queueRequest)('getPteroLocations', async () => {
+            try {
+                const response = await axios_1.default.get(`${config.url}/api/application/locations`, {
+                    headers: {
+                        Authorization: `Bearer ${config.key}`,
+                        Accept: 'application/vnd.pterodactyl.v1+json'
+                    },
+                    timeout: 15000
+                });
+                return response.data.data.map((item) => item.attributes);
+            }
+            catch (error) {
+                console.error('Error fetching locations:', error);
+                throw error;
             }
         });
-        return response.data.data.map((item) => item.attributes);
-    }
-    catch (error) {
-        console.error('Error fetching locations:', error);
-        throw error;
-    }
+    });
 };
 exports.getPteroLocations = getPteroLocations;
 const createPteroNode = async (data) => {

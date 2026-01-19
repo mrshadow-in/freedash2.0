@@ -21,6 +21,7 @@ import adRoutes from './routes/adRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import gameRoutes from './routes/gameRoutes';
 import discordOAuthRoutes from './routes/discordOAuthRoutes';
+import cacheRoutes from './routes/cacheRoutes';
 
 
 const app = express();
@@ -48,6 +49,7 @@ app.use('/api/bot', botRoutes);
 app.use('/api/ads', adRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/games', gameRoutes);
+app.use('/api/cache', cacheRoutes);
 
 // Coins & Tasks
 const coinRouter = express.Router();

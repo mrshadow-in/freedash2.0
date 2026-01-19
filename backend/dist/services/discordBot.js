@@ -72,6 +72,7 @@ async function registerCommands(token, clientId, guildId) {
         new discord_js_1.SlashCommandBuilder().setName('unlink-account').setDescription('Unlink your Discord account from the panel'),
         new discord_js_1.SlashCommandBuilder().setName('daily').setDescription('Claim your daily coin reward'),
         new discord_js_1.SlashCommandBuilder().setName('help').setDescription('How to link account & bot features'),
+        new discord_js_1.SlashCommandBuilder().setName('free-server').setDescription('Learn how to get and keep a free server'),
     ].map(cmd => cmd.toJSON());
     const rest = new discord_js_1.REST({ version: '10' }).setToken(token);
     try {
@@ -256,7 +257,7 @@ async function startDiscordBot() {
                 console.log(`[Bot] Received command: ${interaction.commandName} from ${interaction.user.tag}`);
                 // HELP
                 if (interaction.commandName === 'help') {
-                    await interaction.deferReply({ ephemeral: true });
+                    await interaction.deferReply({ ephemeral: false });
                     const helpMsg = `🤖 **Bot Assistance**\n\n` +
                         `**🔗 How to Connect:**\n` +
                         `1. Go to your **Dashboard > Account** page.\n` +
@@ -271,7 +272,7 @@ async function startDiscordBot() {
                 }
                 // LINK ACCOUNT
                 if (interaction.commandName === 'link-account') {
-                    await interaction.deferReply({ ephemeral: true });
+                    await interaction.deferReply({ ephemeral: true }); // MUST BE PRIVATE (Security)
                     const code = generateCode('LINK');
                     linkCodes.set(code, interaction.user.id);
                     setTimeout(() => linkCodes.delete(code), 300000);
@@ -286,7 +287,7 @@ async function startDiscordBot() {
                 }
                 // UNLINK ACCOUNT
                 if (interaction.commandName === 'unlink-account') {
-                    await interaction.deferReply({ ephemeral: true });
+                    await interaction.deferReply({ ephemeral: false });
                     const user = await prisma_1.prisma.user.findUnique({ where: { discordId: interaction.user.id } });
                     if (!user) {
                         await interaction.editReply('❌ No account found linked to this Discord ID.');
@@ -307,9 +308,9 @@ async function startDiscordBot() {
                             await interaction.editReply('❌ You need to link your account first! Use `/link-account` to get started.');
                             return;
                         }
-                        // Check if user is a server booster
-                        const member = interaction.member;
-                        const isBoosting = member?.premiumSince !== null;
+                        // Check if user is a server booster (Force fetch for fresh status)
+                        const member = await interaction.guild?.members.fetch({ user: interaction.user.id, force: true });
+                        const isBoosting = member ? member.premiumSince !== null : false;
                         // Get or create game stats for cooldown tracking
                         let gameStats = await prisma_1.prisma.discordGameStats.findUnique({
                             where: { discordId: interaction.user.id }
@@ -372,7 +373,7 @@ async function startDiscordBot() {
                 }
                 // MY INVITES
                 if (interaction.commandName === 'my-invites') {
-                    await interaction.deferReply({ ephemeral: true });
+                    await interaction.deferReply({ ephemeral: false });
                     const guild = interaction.guild;
                     if (!guild) {
                         await interaction.editReply('❌ This command must be used in a server.');
@@ -559,8 +560,9 @@ async function startDiscordBot() {
                 if (interaction.commandName === 'boost-reward') {
                     await interaction.deferReply({ ephemeral: true });
                     try {
-                        const member = interaction.member;
-                        if (!member.premiumSince) {
+                        // Force fetch member to ensure fresh boost status
+                        const member = await interaction.guild?.members.fetch({ user: interaction.user.id, force: true });
+                        if (!member || !member.premiumSince) {
                             await interaction.editReply('❌ You need to be a server booster to claim this reward!');
                             return;
                         }
@@ -584,7 +586,8 @@ async function startDiscordBot() {
                             }
                         });
                         if (existingClaim) {
-                            await interaction.editReply('✅ You have already claimed your boost reward!');
+                            await interaction.editReply('✅ **You have already claimed your Booster Reward!**\n\n' +
+                                'Note: This reward is for **becoming a booster**. It can only be claimed once per account, regardless of how many times you boost.');
                             return;
                         }
                         // Create code and save claim
@@ -608,6 +611,38 @@ async function startDiscordBot() {
                     catch (error) {
                         console.error('Error in boost-reward command:', error);
                         await interaction.editReply('❌ An error occurred. Please try again later.');
+                    }
+                    return;
+                }
+                // FREE-SERVER
+                if (interaction.commandName === 'free-server') {
+                    await interaction.deferReply();
+                    try {
+                        const { getSettings } = await Promise.resolve().then(() => __importStar(require('./settingsService')));
+                        const settings = await getSettings();
+                        const discordBot = settings?.discordBot;
+                        const dashboardUrl = discordBot?.dashboardUrl || 'https://your-dashboard-url.com';
+                        const embed = new discord_js_1.EmbedBuilder()
+                            .setColor(0x00ff00)
+                            .setTitle('🚀 How to Get a Free Server')
+                            .setDescription('Follow these steps to start your free server journey!')
+                            .addFields({
+                            name: '📜 Server Rules (RAM Billing)',
+                            value: '• We use a **Pay-As-You-Go** system based on RAM usage.\n• Coins are deducted automatically while your server is running.\n• If you run out of coins, your server will be **suspended** (Data is safe!).\n• Earn more coins to resume your server instantly.'
+                        }, {
+                            name: '💰 How to Earn Coins',
+                            value: '1. **Boost the Server**: Get BIG coin rewards!\n2. **Invite Friends**: Use `/invite-reward-list` to see rewards.\n3. **Daily Rewards**: Use `/daily` every 24h (12h for boosters).\n4. **AFK Page**: Earn coins by keeping the AFK page open on the dashboard.\n5. **Play Games**: Play minigames on the dashboard.'
+                        }, {
+                            name: '🔗 Get Started',
+                            value: `[**Click Here to Visit Dashboard**](${dashboardUrl})\n*Link your Discord account in Settings > Account to sync coins!*`
+                        })
+                            .setFooter({ text: 'Start your free server today!' })
+                            .setTimestamp();
+                        await interaction.editReply({ embeds: [embed] });
+                    }
+                    catch (error) {
+                        console.error('Error in free-server command:', error);
+                        await interaction.editReply('❌ An error occurred.');
                     }
                     return;
                 }

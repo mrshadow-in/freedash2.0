@@ -58,6 +58,8 @@ const botRoutes_1 = __importDefault(require("./routes/botRoutes"));
 const adRoutes_1 = __importDefault(require("./routes/adRoutes"));
 const notificationRoutes_1 = __importDefault(require("./routes/notificationRoutes"));
 const gameRoutes_1 = __importDefault(require("./routes/gameRoutes"));
+const discordOAuthRoutes_1 = __importDefault(require("./routes/discordOAuthRoutes"));
+const cacheRoutes_1 = __importDefault(require("./routes/cacheRoutes"));
 const app = (0, express_1.default)();
 // Middleware
 app.set('trust proxy', 1);
@@ -71,6 +73,7 @@ app.use('/static', express_1.default.static('public'));
 app.use('/api/auth', authRoutes_1.default);
 app.get('/api/auth/discord', discordAuthController_1.discordLogin);
 app.get('/api/auth/discord/callback', discordAuthController_1.discordCallback);
+app.use('/api/auth/oauth', discordOAuthRoutes_1.default); // Discord OAuth routes
 app.use('/api/servers', serverRoutes_1.default);
 app.use('/api/admin', adminRoutes_1.default);
 app.use('/api/afk', afkRoutes_1.default);
@@ -79,6 +82,7 @@ app.use('/api/bot', botRoutes_1.default);
 app.use('/api/ads', adRoutes_1.default);
 app.use('/api/notifications', notificationRoutes_1.default);
 app.use('/api/games', gameRoutes_1.default);
+app.use('/api/cache', cacheRoutes_1.default);
 // Coins & Tasks
 const coinRouter = express_1.default.Router();
 coinRouter.use(auth_1.authenticate);

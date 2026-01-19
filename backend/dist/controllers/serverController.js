@@ -175,9 +175,12 @@ const createServer = async (req, res) => {
             }).catch((err) => console.error('Webhook error:', err));
             // Send email notification
             // ... email logic ...
-            // Send Real-time Notification
+            // Send Real-time Notification (only if user created it themselves)
             const { sendUserNotification } = await Promise.resolve().then(() => __importStar(require('../services/websocket')));
-            sendUserNotification(result.user.id, 'Server Created', `Your server "${name}" has been successfully created!`, 'success');
+            // Only notify user if they created the server themselves (not admin creating for them)
+            if (userId === result.user.id) {
+                sendUserNotification(result.user.id, 'Server Created', `Your server "${name}" has been successfully created!`, 'success');
+            }
             res.status(201).json({ message: 'Server created', server: result.server });
         });
     }
@@ -324,9 +327,12 @@ const deleteServer = async (req, res) => {
             serverName: server.name,
             reason: userRole === 'admin' ? 'Admin Action' : 'User Action'
         }).catch(console.error);
-        // Send Real-time Notification
+        // Send Real-time Notification (only if user deleted it themselves)
         const { sendUserNotification } = await Promise.resolve().then(() => __importStar(require('../services/websocket')));
-        sendUserNotification(userId, 'Server Deleted', `Your server "${server.name}" has been deleted.`, 'info');
+        // Only notify if the user deleted their own server (not admin deleting for them)
+        if (userId === server.ownerId) {
+            sendUserNotification(userId, 'Server Deleted', `Your server "${server.name}" has been deleted.`, 'info');
+        }
         res.json({ message: 'Server deleted successfully' });
     }
     catch (error) {
@@ -352,11 +358,14 @@ const powerServer = async (req, res) => {
     const { id } = req.params;
     const { signal } = req.body;
     try {
-        const server = await prisma_1.prisma.server.findFirst({
-            where: { id: id, ownerId: req.user.userId }
+        const server = await prisma_1.prisma.server.findUnique({
+            where: { id }
         });
         if (!server)
             return res.status(404).json({ message: 'Server not found' });
+        if (server.ownerId !== req.user.userId && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
         if (!server.pteroIdentifier)
             return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
         // EULA will be handled via manual acceptance popup in frontend
@@ -372,12 +381,15 @@ exports.powerServer = powerServer;
 const getServer = async (req, res) => {
     try {
         const { id } = req.params;
-        let server = await prisma_1.prisma.server.findFirst({
-            where: { id: id, ownerId: req.user.userId },
+        let server = await prisma_1.prisma.server.findUnique({
+            where: { id },
             include: { plan: true }
         });
         if (!server) {
             return res.status(404).json({ message: 'Server not found' });
+        }
+        if (server.ownerId !== req.user.userId && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Unauthorized' });
         }
         // Sync with Pterodactyl (Live Status Check)
         if (server.pteroServerId) {
@@ -475,10 +487,12 @@ const upgradeServer = async (req, res) => {
             });
             return server;
         });
-        // Send Real-time Notification
+        // Send Real-time Notification (only if user upgraded it themselves)
         const { sendUserNotification } = await Promise.resolve().then(() => __importStar(require('../services/websocket')));
-        // 'result' contains the server object returned from transaction
-        sendUserNotification(userId, 'Server Upgraded', `Your server "${result.name}" has been upgraded (RAM: ${ramMb}MB, Disk: ${diskMb}MB).`, 'success');
+        // Only notify if the user upgraded their own server (not admin upgrading for them)
+        if (userId === result.ownerId) {
+            sendUserNotification(userId, 'Server Upgraded', `Your server "${result.name}" has been upgraded (RAM: ${ramMb}MB, Disk: ${diskMb}MB).`, 'success');
+        }
         res.json({ message: 'Upgrade successful' });
     }
     catch (error) {
@@ -513,11 +527,14 @@ exports.getServerUsage = getServerUsage;
 const getConsoleCredentials = async (req, res) => {
     const { id } = req.params;
     try {
-        const server = await prisma_1.prisma.server.findFirst({
-            where: { id: id, ownerId: req.user.userId }
+        const server = await prisma_1.prisma.server.findUnique({
+            where: { id }
         });
         if (!server)
             return res.status(404).json({ message: 'Server not found' });
+        if (server.ownerId !== req.user.userId && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
         if (!server.pteroServerId || !server.pteroIdentifier) {
             return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
         }
@@ -547,11 +564,14 @@ const getServerFiles = async (req, res) => {
     const { id } = req.params;
     const { directory } = req.query;
     try {
-        const server = await prisma_1.prisma.server.findFirst({
-            where: { id: id, ownerId: req.user.userId }
+        const server = await prisma_1.prisma.server.findUnique({
+            where: { id }
         });
         if (!server)
             return res.status(404).json({ message: 'Server not found' });
+        if (server.ownerId !== req.user.userId && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
         if (!server.pteroIdentifier)
             return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
         const files = await (0, pterodactyl_1.listFiles)(server.pteroIdentifier, directory);
@@ -566,11 +586,14 @@ const getFile = async (req, res) => {
     const { id } = req.params;
     const { file } = req.query;
     try {
-        const server = await prisma_1.prisma.server.findFirst({
-            where: { id: id, ownerId: req.user.userId }
+        const server = await prisma_1.prisma.server.findUnique({
+            where: { id }
         });
         if (!server)
             return res.status(404).json({ message: 'Server not found' });
+        if (server.ownerId !== req.user.userId && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
         if (!server.pteroIdentifier)
             return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
         const content = await (0, pterodactyl_1.getFileContent)(server.pteroIdentifier, file);
@@ -585,11 +608,14 @@ const writeFile = async (req, res) => {
     const { id } = req.params;
     const { file, content } = req.body;
     try {
-        const server = await prisma_1.prisma.server.findFirst({
-            where: { id: id, ownerId: req.user.userId }
+        const server = await prisma_1.prisma.server.findUnique({
+            where: { id }
         });
         if (!server)
             return res.status(404).json({ message: 'Server not found' });
+        if (server.ownerId !== req.user.userId && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
         if (!server.pteroIdentifier)
             return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
         await (0, pterodactyl_1.writeFileContent)(server.pteroIdentifier, file, content);
@@ -604,11 +630,14 @@ const renameServerFile = async (req, res) => {
     const { id } = req.params;
     const { root, files } = req.body;
     try {
-        const server = await prisma_1.prisma.server.findFirst({
-            where: { id: id, ownerId: req.user.userId }
+        const server = await prisma_1.prisma.server.findUnique({
+            where: { id }
         });
         if (!server)
             return res.status(404).json({ message: 'Server not found' });
+        if (server.ownerId !== req.user.userId && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
         if (!server.pteroIdentifier)
             return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
         await (0, pterodactyl_1.renameFile)(server.pteroIdentifier, root, files);
@@ -623,11 +652,14 @@ const deleteServerFile = async (req, res) => {
     const { id } = req.params;
     const { root, files } = req.body;
     try {
-        const server = await prisma_1.prisma.server.findFirst({
-            where: { id: id, ownerId: req.user.userId }
+        const server = await prisma_1.prisma.server.findUnique({
+            where: { id }
         });
         if (!server)
             return res.status(404).json({ message: 'Server not found' });
+        if (server.ownerId !== req.user.userId && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
         if (!server.pteroIdentifier)
             return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
         await (0, pterodactyl_1.deleteFile)(server.pteroIdentifier, root, files);
@@ -643,11 +675,14 @@ const createServerFolder = async (req, res) => {
     const { id } = req.params;
     const { root, name } = req.body;
     try {
-        const server = await prisma_1.prisma.server.findFirst({
-            where: { id: id, ownerId: req.user.userId }
+        const server = await prisma_1.prisma.server.findUnique({
+            where: { id }
         });
         if (!server)
             return res.status(404).json({ message: 'Server not found' });
+        if (server.ownerId !== req.user.userId && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
         if (!server.pteroIdentifier)
             return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
         const folderRoot = root || '/';
@@ -662,11 +697,14 @@ exports.createServerFolder = createServerFolder;
 const getServerUploadUrl = async (req, res) => {
     const { id } = req.params;
     try {
-        const server = await prisma_1.prisma.server.findFirst({
-            where: { id: id, ownerId: req.user.userId }
+        const server = await prisma_1.prisma.server.findUnique({
+            where: { id }
         });
         if (!server)
             return res.status(404).json({ message: 'Server not found' });
+        if (server.ownerId !== req.user.userId && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
         if (!server.pteroIdentifier)
             return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
         const url = await (0, pterodactyl_1.getUploadUrl)(server.pteroIdentifier);
@@ -680,11 +718,14 @@ exports.getServerUploadUrl = getServerUploadUrl;
 const reinstallServerAction = async (req, res) => {
     const { id } = req.params;
     try {
-        const server = await prisma_1.prisma.server.findFirst({
-            where: { id: id, ownerId: req.user.userId }
+        const server = await prisma_1.prisma.server.findUnique({
+            where: { id }
         });
         if (!server)
             return res.status(404).json({ message: 'Server not found' });
+        if (server.ownerId !== req.user.userId && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
         if (!server.pteroIdentifier)
             return res.status(400).json({ message: 'Server not configured for Pterodactyl' });
         await (0, pterodactyl_1.reinstallServer)(server.pteroIdentifier);

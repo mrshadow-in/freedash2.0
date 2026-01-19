@@ -62,6 +62,9 @@ router.put('/settings/games', adminController.updateGameSettings);
 router.post('/settings/bot/key', adminController.regenerateBotKey);
 router.get('/settings/bot/status', adminController.getBotStatus);
 router.post('/settings/bot/toggle', adminController.toggleBot);
+// Discord OAuth settings
+router.put('/settings/discord-oauth', adminController.updateDiscordOAuth);
+router.get('/settings/discord-oauth', adminController.getDiscordOAuth);
 // Node Management (Wings)
 const nodeController = __importStar(require("../controllers/adminNodeController"));
 router.get('/nodes', nodeController.getNodes);
