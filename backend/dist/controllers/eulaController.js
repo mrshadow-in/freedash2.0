@@ -1,38 +1,27 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.checkEulaStatus = checkEulaStatus;
-const axios_1 = __importDefault(require("axios"));
-const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
+const prisma_1 = require("../prisma");
+const pterodactyl_1 = require("../services/pterodactyl");
 /**
  * Check EULA status by reading eula.txt file
+ * Uses admin panel settings (not .env)
  */
 async function checkEulaStatus(req, res) {
     try {
         const { id } = req.params;
         // Get server from database
-        const server = await prisma.server.findUnique({
+        const server = await prisma_1.prisma.server.findUnique({
             where: { id }
         });
         if (!server) {
             return res.status(404).json({ error: 'Server not found' });
         }
-        // Read eula.txt file from Pterodactyl
+        // Read eula.txt file from Pterodactyl using centralized service
         try {
-            const fileResponse = await axios_1.default.get(`${process.env.PTERODACTYL_URL}/api/client/servers/${server.pteroIdentifier}/files/contents`, {
-                params: { file: '/eula.txt' },
-                headers: {
-                    'Authorization': `Bearer ${process.env.PTERODACTYL_API_KEY}`,
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                }
-            });
-            const eulaContent = String(fileResponse.data || '');
+            const eulaContent = await (0, pterodactyl_1.getFileContent)(server.pteroIdentifier, '/eula.txt');
             // Check if eula=true exists in file
-            const isAccepted = eulaContent.toLowerCase().includes('eula=true');
+            const isAccepted = String(eulaContent || '').toLowerCase().includes('eula=true');
             return res.json({
                 exists: true,
                 accepted: isAccepted,

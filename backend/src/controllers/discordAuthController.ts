@@ -5,15 +5,58 @@ import { prisma } from '../prisma';
 import jwt from 'jsonwebtoken';
 import { ENV } from '../config/env';
 
+// Get Discord OAuth config from database or fallback to ENV
+async function getDiscordOAuthConfig() {
+    try {
+        const settings = await prisma.settings.findFirst();
+        const discordOAuth = settings?.discordOAuth as any;
+        if (discordOAuth?.clientId && discordOAuth?.clientSecret) {
+            return {
+                clientId: discordOAuth.clientId,
+                clientSecret: discordOAuth.clientSecret,
+                callbackUrl: discordOAuth.callbackUrl || ENV.DISCORD_CALLBACK_URL || '',
+                frontendUrl: discordOAuth.frontendUrl || ENV.FRONTEND_URL || 'http://localhost:5176'
+            };
+        }
+    } catch (error) {
+        console.error('[Discord OAuth] Failed to fetch settings from DB');
+    }
+    // Fallback to ENV
+    return {
+        clientId: ENV.DISCORD_CLIENT_ID || '',
+        clientSecret: ENV.DISCORD_CLIENT_SECRET || '',
+        callbackUrl: ENV.DISCORD_CALLBACK_URL || '',
+        frontendUrl: ENV.FRONTEND_URL || 'http://localhost:5176'
+    };
+}
+
+// Initialize Discord OAuth Strategy (uses ENV at startup, but can be refreshed)
+let discordConfig = {
+    clientId: ENV.DISCORD_CLIENT_ID || '',
+    clientSecret: ENV.DISCORD_CLIENT_SECRET || '',
+    callbackUrl: ENV.DISCORD_CALLBACK_URL || '',
+    frontendUrl: ENV.FRONTEND_URL || 'http://localhost:5176'
+};
+
+// Load config from database on startup
+(async () => {
+    discordConfig = await getDiscordOAuthConfig();
+    console.log('[Discord OAuth] Loaded config:', discordConfig.clientId ? 'from database' : 'from ENV');
+})();
+
 // Discord OAuth Strategy
 passport.use(new DiscordStrategy({
-    clientID: ENV.DISCORD_CLIENT_ID || '',
-    clientSecret: ENV.DISCORD_CLIENT_SECRET || '',
-    callbackURL: ENV.DISCORD_CALLBACK_URL || '',
-    scope: ['identify', 'email']
+    clientID: discordConfig.clientId,
+    clientSecret: discordConfig.clientSecret,
+    callbackURL: discordConfig.callbackUrl,
+    scope: ['identify', 'email'],
+    passReqToCallback: true
 },
-    async (accessToken: string, refreshToken: string, profile: any, done: any) => {
+    async (req: any, accessToken: string, refreshToken: string, profile: any, done: any) => {
         try {
+            // Refresh config from database for each login attempt
+            discordConfig = await getDiscordOAuthConfig();
+
             // Check if user exists by Discord ID
             let user = await prisma.user.findUnique({
                 where: { discordId: profile.id }
@@ -54,8 +97,6 @@ passport.use(new DiscordStrategy({
 
             // Send Real-time Notification for New User
             const { sendUserNotification } = await import('../services/websocket');
-            // We use global sender because we might not have WS connection established yet for this user?
-            // Actually, upon login they will connect. So we can persist it now.
             sendUserNotification(user.id, 'Welcome!', 'Welcome to LordCloud! You received 100 starting coins.', 'success');
 
             return done(null, user);
@@ -69,13 +110,15 @@ passport.use(new DiscordStrategy({
 export const discordLogin = passport.authenticate('discord');
 
 // Discord callback
-export const discordCallback = (req: Request, res: Response, next: NextFunction) => {
+export const discordCallback = async (req: Request, res: Response, next: NextFunction) => {
+    // Get fresh config from database
+    const config = await getDiscordOAuthConfig();
+
     passport.authenticate('discord', { session: false }, (err: any, user: any) => {
         if (err || !user) {
-            return res.redirect(`${ENV.FRONTEND_URL}/login?error=discord_auth_failed`);
+            return res.redirect(`${config.frontendUrl}/login?error=discord_auth_failed`);
         }
 
-        // Generate JWT tokens
         // Generate JWT tokens
         const accessToken = jwt.sign(
             { userId: user.id, role: user.role },
@@ -90,7 +133,7 @@ export const discordCallback = (req: Request, res: Response, next: NextFunction)
         );
 
         // Redirect to frontend with tokens
-        res.redirect(`${ENV.FRONTEND_URL}/auth/discord/success?token=${accessToken}&refresh=${refreshToken}`);
+        res.redirect(`${config.frontendUrl}/auth/discord/success?token=${accessToken}&refresh=${refreshToken}`);
     })(req, res, next);
 };
 

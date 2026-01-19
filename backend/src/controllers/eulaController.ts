@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
 import axios from 'axios';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../prisma';
+import { getFileContent } from '../services/pterodactyl';
 
 /**
  * Check EULA status by reading eula.txt file
+ * Uses admin panel settings (not .env)
  */
 export async function checkEulaStatus(req: Request, res: Response) {
     try {
@@ -20,24 +20,12 @@ export async function checkEulaStatus(req: Request, res: Response) {
             return res.status(404).json({ error: 'Server not found' });
         }
 
-        // Read eula.txt file from Pterodactyl
+        // Read eula.txt file from Pterodactyl using centralized service
         try {
-            const fileResponse = await axios.get(
-                `${process.env.PTERODACTYL_URL}/api/client/servers/${server.pteroIdentifier}/files/contents`,
-                {
-                    params: { file: '/eula.txt' },
-                    headers: {
-                        'Authorization': `Bearer ${process.env.PTERODACTYL_API_KEY}`,
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
-
-            const eulaContent = String(fileResponse.data || '');
+            const eulaContent = await getFileContent(server.pteroIdentifier, '/eula.txt');
 
             // Check if eula=true exists in file
-            const isAccepted = eulaContent.toLowerCase().includes('eula=true');
+            const isAccepted = String(eulaContent || '').toLowerCase().includes('eula=true');
 
             return res.json({
                 exists: true,
@@ -64,3 +52,4 @@ export async function checkEulaStatus(req: Request, res: Response) {
         });
     }
 }
+
