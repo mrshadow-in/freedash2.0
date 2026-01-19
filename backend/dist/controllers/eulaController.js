@@ -17,6 +17,9 @@ async function checkEulaStatus(req, res) {
         if (!server) {
             return res.status(404).json({ error: 'Server not found' });
         }
+        if (!server.pteroIdentifier) {
+            return res.status(400).json({ error: 'Server not linked to Pterodactyl' });
+        }
         // Read eula.txt file from Pterodactyl using centralized service
         try {
             const eulaContent = await (0, pterodactyl_1.getFileContent)(server.pteroIdentifier, '/eula.txt');
