@@ -836,7 +836,7 @@ export const updateRedeemCode = async (req: Request, res: Response) => {
 // Plan management
 export const createPlan = async (req: Request, res: Response) => {
     try {
-        const { name, ramMb, diskMb, cpuPercent, cpuCores, slots, priceCoins, pteroEggId, pteroNestId } = req.body;
+        const { name, ramMb, diskMb, cpuPercent, cpuCores, slots, priceCoins, pteroEggId, pteroNestId, isOutOfStock } = req.body;
 
         if (!name || !ramMb || !diskMb || !cpuPercent || !priceCoins || !pteroEggId || !pteroNestId) {
             return res.status(400).json({ message: 'Missing required fields' });
@@ -853,7 +853,8 @@ export const createPlan = async (req: Request, res: Response) => {
                 priceCoins,
                 pteroEggId,
                 pteroNestId,
-                pteroLocationId: req.body.pteroLocationId || 1
+                pteroLocationId: req.body.pteroLocationId || 1,
+                isOutOfStock: isOutOfStock || false
             }
         });
 
@@ -891,11 +892,11 @@ export const deletePlan = async (req: Request, res: Response) => {
 export const updatePlan = async (req: Request, res: Response) => {
     try {
         const { planId } = req.params;
-        const { name, ramMb, diskMb, cpuPercent, cpuCores, priceCoins, pteroEggId, pteroNestId, pteroLocationId, eggImage } = req.body;
+        const { name, ramMb, diskMb, cpuPercent, cpuCores, priceCoins, pteroEggId, pteroNestId, pteroLocationId, eggImage, isOutOfStock } = req.body;
 
         const plan = await prisma.plan.update({
             where: { id: planId },
-            data: { name, ramMb, diskMb, cpuPercent, cpuCores, priceCoins, pteroEggId, pteroNestId, pteroLocationId, eggImage }
+            data: { name, ramMb, diskMb, cpuPercent, cpuCores, priceCoins, pteroEggId, pteroNestId, pteroLocationId, eggImage, isOutOfStock }
         });
 
         res.json(plan);

@@ -59,6 +59,11 @@ export const createServer = async (req: AuthRequest, res: Response) => {
 
             if (!user || !plan) throw new Error('User or Plan not found');
 
+            // Check if plan is out of stock
+            if (plan.isOutOfStock) {
+                throw new Error('This plan is currently out of stock and unavailable');
+            }
+
             // --- DISCORD ENFORCEMENT ---
             if (!user.discordId && user.role !== 'admin') {
                 throw new Error('You must link your Discord account to create a server.');

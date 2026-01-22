@@ -1520,7 +1520,8 @@ function PlansTab({ plans, fetchPlans, loading }: any) {
         pteroEggId: 0,
         pteroNestId: 0,
         pteroLocationId: 1,
-        eggImage: ''
+        eggImage: '',
+        isOutOfStock: false
     });
 
     const createPlan = async () => {
@@ -1537,7 +1538,8 @@ function PlansTab({ plans, fetchPlans, loading }: any) {
                 pteroEggId: 0,
                 pteroNestId: 0,
                 pteroLocationId: 1,
-                eggImage: ''
+                eggImage: '',
+                isOutOfStock: false
             });
             fetchPlans();
         } catch (error: any) {
@@ -1717,7 +1719,14 @@ function PlansTab({ plans, fetchPlans, loading }: any) {
                                     <img src={plan.eggImage} alt="" className="w-10 h-10 rounded-lg object-cover" />
                                 )}
                                 <div>
-                                    <p className="font-bold text-lg">{plan.name}</p>
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-bold text-lg">{plan.name}</p>
+                                        {plan.isOutOfStock && (
+                                            <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs rounded-md border border-red-500/30">
+                                                Out of Stock
+                                            </span>
+                                        )}
+                                    </div>
                                     <p className="text-sm text-gray-400 space-x-2">
                                         <span>{plan.ramMb}MB RAM</span>
                                         <span>•</span>
@@ -1846,6 +1855,18 @@ function PlansTab({ plans, fetchPlans, loading }: any) {
                                 {editingPlan.eggImage && (
                                     <img src={editingPlan.eggImage} alt="Preview" className="mt-2 w-20 h-20 object-cover rounded-lg" />
                                 )}
+                            </div>
+                            <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                                <input
+                                    type="checkbox"
+                                    id="outOfStock"
+                                    checked={editingPlan.isOutOfStock || false}
+                                    onChange={(e) => setEditingPlan({ ...editingPlan, isOutOfStock: e.target.checked })}
+                                    className="w-5 h-5 rounded border-white/10 bg-white/5 text-red-600 focus:ring-red-500"
+                                />
+                                <label htmlFor="outOfStock" className="text-sm font-medium text-red-400">
+                                    Mark as Out of Stock (prevents users from creating servers)
+                                </label>
                             </div>
                         </div>
 

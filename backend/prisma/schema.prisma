@@ -122,6 +122,7 @@ model Plan {
   pteroNestId Int
   pteroLocationId Int @default(1)
   eggImage    String?
+  isOutOfStock Boolean @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   servers     Server[]
