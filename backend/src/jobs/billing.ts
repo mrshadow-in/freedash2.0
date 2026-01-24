@@ -246,22 +246,22 @@ export const processBillingCycle = async () => {
         }
     }
 
-    // Auto-Termination Logic (Servers suspended > 7 days)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    // Auto-Termination Logic (Servers suspended > 3 days)
+    const deletionThreshold = new Date();
+    deletionThreshold.setDate(deletionThreshold.getDate() - 3);
 
     const serversToTerminate = await prisma.server.findMany({
         where: {
             status: 'suspended',
             isSuspended: true,
-            suspendedAt: { lt: sevenDaysAgo }
+            suspendedAt: { lt: deletionThreshold }
         },
         include: { owner: true }
     });
 
     for (const server of serversToTerminate) {
         try {
-            console.log(`[Billing] Auto-terminating server ${server.id} (User: ${server.owner.username}) - Suspended > 7 days`);
+            console.log(`[Billing] Auto-terminating server ${server.id} (User: ${server.owner.username}) - Suspended > 3 days`);
 
             // Delete from Pterodactyl
             if (server.pteroServerId) {
@@ -279,7 +279,7 @@ export const processBillingCycle = async () => {
 
             // Notify User
             const { sendUserNotification } = await import('../services/websocket');
-            sendUserNotification(server.ownerId, 'Server Terminated', `Your server "${server.name}" was terminated because it was suspended for more than 7 days.`, 'error');
+            sendUserNotification(server.ownerId, 'Server Terminated', `Your server "${server.name}" was terminated because it was suspended for more than 3 days.`, 'error');
 
         } catch (error) {
             console.error(`[Billing] Termination Error ${server.id}:`, error);

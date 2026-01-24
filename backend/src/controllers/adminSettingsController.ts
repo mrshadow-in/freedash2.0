@@ -502,16 +502,26 @@ export const getAllUsers = async (req: Request, res: Response) => {
     try {
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 20;
+        const search = (req.query.search as string) || '';
         const skip = (page - 1) * limit;
+
+        const where: any = {};
+        if (search) {
+            where.OR = [
+                { username: { contains: search } }, // Case insensitive by default in some DBs, or use mode: 'insensitive' if Postgres
+                { email: { contains: search } }
+            ];
+        }
 
         const [users, total] = await prisma.$transaction([
             prisma.user.findMany({
+                where,
                 skip,
                 take: limit,
                 orderBy: { createdAt: 'desc' },
                 // select: { ... } // exclude password if desired, but maybe admin needs full view? Assuming full view minus password for safety
             }),
-            prisma.user.count()
+            prisma.user.count({ where })
         ]);
 
         // Clean passwords
@@ -628,11 +638,20 @@ export const getAllServers = async (req: Request, res: Response) => {
     try {
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 20;
+        const search = (req.query.search as string) || '';
         const skip = (page - 1) * limit;
+
+        const where: any = { status: { not: 'deleted' } };
+        if (search) {
+            where.OR = [
+                { name: { contains: search } },
+                { owner: { username: { contains: search } } }
+            ];
+        }
 
         const [servers, total] = await prisma.$transaction([
             prisma.server.findMany({
-                where: { status: { not: 'deleted' } },
+                where,
                 skip,
                 take: limit,
                 orderBy: { createdAt: 'desc' },
@@ -641,7 +660,7 @@ export const getAllServers = async (req: Request, res: Response) => {
                     plan: { select: { name: true } }
                 }
             }),
-            prisma.server.count({ where: { status: { not: 'deleted' } } })
+            prisma.server.count({ where })
         ]);
 
         res.json({ servers, total, page, pages: Math.ceil(total / limit) });

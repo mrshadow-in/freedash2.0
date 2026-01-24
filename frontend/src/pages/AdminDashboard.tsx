@@ -20,10 +20,12 @@ const AdminDashboard = () => {
     const [users, setUsers] = useState<any[]>([]);
     const [userPage, setUserPage] = useState(1);
     const [userTotalPages, setUserTotalPages] = useState(1);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const [servers, setServers] = useState<any[]>([]);
     const [serverPage, setServerPage] = useState(1);
     const [serverTotalPages, setServerTotalPages] = useState(1);
+    const [serverSearchTerm, setServerSearchTerm] = useState('');
     const [codes, setCodes] = useState<any[]>([]);
     const [plans, setPlans] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -39,10 +41,10 @@ const AdminDashboard = () => {
     };
 
     // Fetch users
-    const fetchUsers = async (page = 1) => {
+    const fetchUsers = async (page = 1, search = searchTerm) => {
         setLoading(true);
         try {
-            const { data } = await api.get(`/admin/users?page=${page}&limit=20`);
+            const { data } = await api.get(`/admin/users?page=${page}&limit=20&search=${search}`);
             setUsers(data.users || []);
             setUserPage(data.page || 1);
             setUserTotalPages(data.pages || 1);
@@ -53,10 +55,10 @@ const AdminDashboard = () => {
     };
 
     // Fetch servers
-    const fetchServers = async (page = 1) => {
+    const fetchServers = async (page = 1, search = serverSearchTerm) => {
         setLoading(true);
         try {
-            const { data } = await api.get(`/admin/servers?page=${page}&limit=20`);
+            const { data } = await api.get(`/admin/servers?page=${page}&limit=20&search=${search}`);
             setServers(data.servers || []);
             setServerPage(data.page || 1);
             setServerTotalPages(data.pages || 1);
@@ -92,8 +94,8 @@ const AdminDashboard = () => {
 
     useEffect(() => {
         if (activeTab === 'settings') fetchSettings();
-        if (activeTab === 'users') fetchUsers(userPage);
-        if (activeTab === 'servers') fetchServers(serverPage);
+        if (activeTab === 'users') fetchUsers(userPage, searchTerm);
+        if (activeTab === 'servers') fetchServers(serverPage, serverSearchTerm);
         if (activeTab === 'codes') fetchCodes();
         if (activeTab === 'plans') fetchPlans();
     }, [activeTab]);
@@ -161,8 +163,8 @@ const AdminDashboard = () => {
                     className="bg-theme-card backdrop-blur-xl rounded-2xl border border-theme-border p-6"
                 >
                     {activeTab === 'settings' && <SettingsTab settings={settings} fetchSettings={fetchSettings} refreshTheme={refreshTheme} />}
-                    {activeTab === 'users' && <UsersTab users={users} fetchUsers={fetchUsers} loading={loading} page={userPage} totalPages={userTotalPages} setPage={fetchUsers} />}
-                    {activeTab === 'servers' && <ServersTab servers={servers} fetchServers={fetchServers} loading={loading} page={serverPage} totalPages={serverTotalPages} setPage={fetchServers} />}
+                    {activeTab === 'users' && <UsersTab users={users} fetchUsers={fetchUsers} loading={loading} page={userPage} totalPages={userTotalPages} setPage={fetchUsers} searchTerm={searchTerm} setSearchTerm={setSearchTerm} />}
+                    {activeTab === 'servers' && <ServersTab servers={servers} fetchServers={fetchServers} loading={loading} page={serverPage} totalPages={serverTotalPages} setPage={fetchServers} searchTerm={serverSearchTerm} setSearchTerm={setServerSearchTerm} />}
                     {activeTab === 'wings' && <WingsManager />}
 
                     {activeTab === 'plans' && <PlansTab plans={plans} fetchPlans={fetchPlans} loading={loading} />}
@@ -907,7 +909,7 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
 }
 
 // Users Tab
-function UsersTab({ users, fetchUsers, loading, page, totalPages, setPage }: any) {
+function UsersTab({ users, fetchUsers, loading, page, totalPages, setPage, searchTerm, setSearchTerm }: any) {
     const [showCreateUser, setShowCreateUser] = useState(false);
     const [showGiveCoins, setShowGiveCoins] = useState<string | null>(null);
     const [showEditUser, setShowEditUser] = useState(false);
@@ -1020,13 +1022,14 @@ function UsersTab({ users, fetchUsers, loading, page, totalPages, setPage }: any
         }
     };
 
-    const [searchTerm, setSearchTerm] = useState('');
+    // Debounced search
+    useEffect(() => {
+        const delayDebounceFn = setTimeout(() => {
+            fetchUsers(1, searchTerm);
+        }, 500);
 
-    // Filter users
-    const filteredUsers = users.filter((user: any) =>
-        user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchTerm]);
 
     return (
         <div>
@@ -1179,7 +1182,7 @@ function UsersTab({ users, fetchUsers, loading, page, totalPages, setPage }: any
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredUsers.map((user: any) => (
+                            {users.map((user: any) => (
                                 <tr key={user.id} className="border-b border-white/5">
                                     <td className="p-3">{user.username}</td>
                                     <td className="p-3">{user.email}</td>
@@ -1362,7 +1365,7 @@ function UsersTab({ users, fetchUsers, loading, page, totalPages, setPage }: any
 }
 
 // Servers Tab
-function ServersTab({ servers, fetchServers, loading, page, totalPages, setPage }: any) {
+function ServersTab({ servers, fetchServers, loading, page, totalPages, setPage, searchTerm, setSearchTerm }: any) {
     const navigate = useNavigate();
     const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; serverId: string; serverName: string }>({ show: false, serverId: '', serverName: '' });
 
@@ -1396,6 +1399,15 @@ function ServersTab({ servers, fetchServers, loading, page, totalPages, setPage 
             toast.error('Failed to delete server');
         }
     };
+
+    // Debounced search
+    useEffect(() => {
+        const delayDebounceFn = setTimeout(() => {
+            fetchServers(1, searchTerm);
+        }, 500);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchTerm]);
 
     // Separate servers into active and suspended
     // Separate servers into active and suspended
@@ -1492,6 +1504,17 @@ function ServersTab({ servers, fetchServers, loading, page, totalPages, setPage 
 
     return (
         <div className="space-y-8">
+            <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold">Server Management</h3>
+                <input
+                    type="text"
+                    placeholder="Search servers..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 w-64"
+                />
+            </div>
+
             <div>
                 <div className="flex items-center gap-3 mb-4">
                     <div className="w-2 h-8 bg-gradient-to-b from-green-500 to-green-600 rounded"></div>
