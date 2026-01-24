@@ -18,7 +18,12 @@ const AdminDashboard = () => {
     const [activeTab, setActiveTab] = useState('settings');
     const [settings, setSettings] = useState<any>(null);
     const [users, setUsers] = useState<any[]>([]);
+    const [userPage, setUserPage] = useState(1);
+    const [userTotalPages, setUserTotalPages] = useState(1);
+
     const [servers, setServers] = useState<any[]>([]);
+    const [serverPage, setServerPage] = useState(1);
+    const [serverTotalPages, setServerTotalPages] = useState(1);
     const [codes, setCodes] = useState<any[]>([]);
     const [plans, setPlans] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -34,11 +39,13 @@ const AdminDashboard = () => {
     };
 
     // Fetch users
-    const fetchUsers = async () => {
+    const fetchUsers = async (page = 1) => {
         setLoading(true);
         try {
-            const { data } = await api.get('/admin/users');
+            const { data } = await api.get(`/admin/users?page=${page}&limit=20`);
             setUsers(data.users || []);
+            setUserPage(data.page || 1);
+            setUserTotalPages(data.pages || 1);
         } catch (error) {
             toast.error('Failed to fetch users');
         }
@@ -46,11 +53,13 @@ const AdminDashboard = () => {
     };
 
     // Fetch servers
-    const fetchServers = async () => {
+    const fetchServers = async (page = 1) => {
         setLoading(true);
         try {
-            const { data } = await api.get('/admin/servers');
+            const { data } = await api.get(`/admin/servers?page=${page}&limit=20`);
             setServers(data.servers || []);
+            setServerPage(data.page || 1);
+            setServerTotalPages(data.pages || 1);
         } catch (error) {
             toast.error('Failed to fetch servers');
         }
@@ -83,8 +92,8 @@ const AdminDashboard = () => {
 
     useEffect(() => {
         if (activeTab === 'settings') fetchSettings();
-        if (activeTab === 'users') fetchUsers();
-        if (activeTab === 'servers') fetchServers();
+        if (activeTab === 'users') fetchUsers(userPage);
+        if (activeTab === 'servers') fetchServers(serverPage);
         if (activeTab === 'codes') fetchCodes();
         if (activeTab === 'plans') fetchPlans();
     }, [activeTab]);
@@ -152,8 +161,8 @@ const AdminDashboard = () => {
                     className="bg-theme-card backdrop-blur-xl rounded-2xl border border-theme-border p-6"
                 >
                     {activeTab === 'settings' && <SettingsTab settings={settings} fetchSettings={fetchSettings} refreshTheme={refreshTheme} />}
-                    {activeTab === 'users' && <UsersTab users={users} fetchUsers={fetchUsers} loading={loading} />}
-                    {activeTab === 'servers' && <ServersTab servers={servers} fetchServers={fetchServers} loading={loading} />}
+                    {activeTab === 'users' && <UsersTab users={users} fetchUsers={fetchUsers} loading={loading} page={userPage} totalPages={userTotalPages} setPage={fetchUsers} />}
+                    {activeTab === 'servers' && <ServersTab servers={servers} fetchServers={fetchServers} loading={loading} page={serverPage} totalPages={serverTotalPages} setPage={fetchServers} />}
                     {activeTab === 'wings' && <WingsManager />}
 
                     {activeTab === 'plans' && <PlansTab plans={plans} fetchPlans={fetchPlans} loading={loading} />}
@@ -898,7 +907,7 @@ function SettingsTab({ settings, fetchSettings, refreshTheme }: any) {
 }
 
 // Users Tab
-function UsersTab({ users, fetchUsers, loading }: any) {
+function UsersTab({ users, fetchUsers, loading, page, totalPages, setPage }: any) {
     const [showCreateUser, setShowCreateUser] = useState(false);
     const [showGiveCoins, setShowGiveCoins] = useState<string | null>(null);
     const [showEditUser, setShowEditUser] = useState(false);
@@ -1248,6 +1257,29 @@ function UsersTab({ users, fetchUsers, loading }: any) {
                 </div>
             )}
 
+            {/* Pagination Controls */}
+            {!loading && (
+                <div className="flex justify-between items-center mt-4 bg-white/5 p-4 rounded-lg border border-white/10">
+                    <button
+                        onClick={() => setPage(page - 1)}
+                        disabled={page <= 1}
+                        className="px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition"
+                    >
+                        Previous
+                    </button>
+                    <span className="text-gray-400 font-mono">
+                        Page {page} of {totalPages}
+                    </span>
+                    <button
+                        onClick={() => setPage(page + 1)}
+                        disabled={page >= totalPages}
+                        className="px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition"
+                    >
+                        Next
+                    </button>
+                </div>
+            )}
+
             {/* Edit User Modal */}
             {showEditUser && editingUser && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
@@ -1330,7 +1362,7 @@ function UsersTab({ users, fetchUsers, loading }: any) {
 }
 
 // Servers Tab
-function ServersTab({ servers, fetchServers, loading }: any) {
+function ServersTab({ servers, fetchServers, loading, page, totalPages, setPage }: any) {
     const navigate = useNavigate();
     const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; serverId: string; serverName: string }>({ show: false, serverId: '', serverName: '' });
 
@@ -1489,6 +1521,29 @@ function ServersTab({ servers, fetchServers, loading }: any) {
                     <ServerTable servers={suspendedServers} />
                 )}
             </div>
+
+            {/* Pagination Controls */}
+            {!loading && (
+                <div className="flex justify-between items-center mt-6 bg-white/5 p-4 rounded-lg border border-white/10">
+                    <button
+                        onClick={() => setPage(page - 1)}
+                        disabled={page <= 1}
+                        className="px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition"
+                    >
+                        Previous
+                    </button>
+                    <span className="text-gray-400 font-mono">
+                        Page {page} of {totalPages}
+                    </span>
+                    <button
+                        onClick={() => setPage(page + 1)}
+                        disabled={page >= totalPages}
+                        className="px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition"
+                    >
+                        Next
+                    </button>
+                </div>
+            )}
 
             {/* Delete Confirmation Dialog */}
             <ConfirmDialog
