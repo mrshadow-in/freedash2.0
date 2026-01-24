@@ -373,58 +373,67 @@ const Dashboard = () => {
                                         placeholder="My Awesome Server..."
                                     />
                                     <div className="space-y-3">
-                                        {plans && plans.length > 0 ? plans.map((plan: any, index: number) => (
-                                            <motion.div
-                                                key={plan.id}
-                                                whileHover={{ scale: 1.02, x: 5 }}
-                                                whileTap={{ scale: 0.98 }}
-                                                onClick={() => setSelectedPlanId(plan.id)}
-                                                className={`border-4 p-4 rounded-lg flex justify-between items-center cursor-pointer relative overflow-hidden transition ${selectedPlanId === plan.id
-                                                    ? 'border-theme-primary bg-theme-primary/20 shadow-lg'
-                                                    : 'border-theme-border bg-theme-card hover:border-theme-primary/50'
-                                                    }`}
-                                            >
-                                                {/* Pickaxe Icon for selected */}
-                                                {selectedPlanId === plan.id && (
-                                                    <motion.div
-                                                        initial={{ scale: 0, rotate: -45 }}
-                                                        animate={{ scale: 1, rotate: 0 }}
-                                                        className="absolute top-1 left-1 text-3xl"
-                                                    >
-                                                        ⛏️
-                                                    </motion.div>
-                                                )}
+                                        {plans && plans.length > 0 ? plans.map((plan: any, index: number) => {
+                                            const isOutOfStock = plan.isOutOfStock;
+                                            return (
+                                                <motion.div
+                                                    key={plan.id}
+                                                    whileHover={!isOutOfStock ? { scale: 1.02, x: 5 } : {}}
+                                                    whileTap={!isOutOfStock ? { scale: 0.98 } : {}}
+                                                    onClick={() => !isOutOfStock && setSelectedPlanId(plan.id)}
+                                                    className={`border-4 p-4 rounded-lg flex justify-between items-center cursor-pointer relative overflow-hidden transition ${selectedPlanId === plan.id
+                                                        ? 'border-theme-primary bg-theme-primary/20 shadow-lg'
+                                                        : isOutOfStock
+                                                            ? 'border-gray-700 bg-gray-900/50 opacity-60 cursor-not-allowed grayscale'
+                                                            : 'border-theme-border bg-theme-card hover:border-theme-primary/50'
+                                                        }`}
+                                                >
+                                                    {/* Pickaxe Icon for selected */}
+                                                    {selectedPlanId === plan.id && (
+                                                        <motion.div
+                                                            initial={{ scale: 0, rotate: -45 }}
+                                                            animate={{ scale: 1, rotate: 0 }}
+                                                            className="absolute top-1 left-1 text-3xl"
+                                                        >
+                                                            ⛏️
+                                                        </motion.div>
+                                                    )}
 
-                                                <div className="relative flex items-center gap-3">
-                                                    <div className="text-2xl">{index === 0 ? '🏆' : '⚔️'}</div>
-                                                    <div>
-                                                        <div className="font-bold text-white flex items-center gap-2" style={{ textShadow: '1px 1px 0 black' }}>
-                                                            {plan.name}
-                                                            {index === 0 && (
-                                                                <span className="bg-gradient-to-r from-yellow-500 to-amber-500 text-[10px] px-2 py-0.5 rounded-full text-black font-extrabold border-2 border-yellow-600 shadow-lg">
-                                                                    POPULAR
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <div className="text-xs text-green-300 mt-1 font-semibold flex items-center gap-2">
-                                                            <span>💾 {plan.ramMb / 1024}GB</span>
-                                                            <span>•</span>
-                                                            <span>📦 {plan.diskMb / 1024}GB</span>
+                                                    <div className="relative flex items-center gap-3">
+                                                        <div className="text-2xl">{index === 0 ? '🏆' : '⚔️'}</div>
+                                                        <div>
+                                                            <div className="font-bold text-white flex items-center gap-2" style={{ textShadow: '1px 1px 0 black' }}>
+                                                                {plan.name}
+                                                                {isOutOfStock ? (
+                                                                    <span className="bg-red-500/20 text-red-500 text-[10px] px-2 py-0.5 rounded-full font-extrabold border border-red-500/50">
+                                                                        Out of Stock
+                                                                    </span>
+                                                                ) : index === 0 && (
+                                                                    <span className="bg-gradient-to-r from-yellow-500 to-amber-500 text-[10px] px-2 py-0.5 rounded-full text-black font-extrabold border-2 border-yellow-600 shadow-lg">
+                                                                        POPULAR
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div className="text-xs text-green-300 mt-1 font-semibold flex items-center gap-2">
+                                                                <span>💾 {plan.ramMb / 1024}GB</span>
+                                                                <span>•</span>
+                                                                <span>📦 {plan.diskMb / 1024}GB</span>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
 
-                                                <div className="text-right relative flex flex-col items-end">
-                                                    <div className="flex items-center gap-1">
-                                                        <span className="text-yellow-400 text-xl">🪙</span>
-                                                        <span className={`font-extrabold text-2xl ${selectedPlanId === plan.id ? 'text-theme-primary' : 'text-theme-primary/80'}`} style={{ textShadow: '2px 2px 0 rgba(0,0,0,0.5)' }}>
-                                                            {plan.priceCoins}
-                                                        </span>
+                                                    <div className="text-right relative flex flex-col items-end">
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="text-yellow-400 text-xl">🪙</span>
+                                                            <span className={`font-extrabold text-2xl ${selectedPlanId === plan.id ? 'text-theme-primary' : 'text-theme-primary/80'}`} style={{ textShadow: '2px 2px 0 rgba(0,0,0,0.5)' }}>
+                                                                {plan.priceCoins}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-[10px] text-gray-400 font-bold">COINS</div>
                                                     </div>
-                                                    <div className="text-[10px] text-gray-400 font-bold">COINS</div>
-                                                </div>
-                                            </motion.div>
-                                        )) : (
+                                                </motion.div>
+                                            );
+                                        }) : (
                                             <div className="text-center text-gray-400 py-4 bg-black/30 rounded-lg border-2 border-gray-700">
                                                 No plans available
                                             </div>
