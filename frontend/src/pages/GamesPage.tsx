@@ -1,14 +1,50 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import { toast } from 'react-hot-toast';
-import { Dices, Coins, Gift, Trophy } from 'lucide-react';
+import { Dices, Coins, Gift, Trophy, Timer } from 'lucide-react';
 import Header from '../components/Header';
 
 const GamesPage = () => {
     const queryClient = useQueryClient();
     const [selectedGame, setSelectedGame] = useState<'dice' | 'flip' | 'slots' | null>(null);
+    const [cooldown, setCooldown] = useState(0);
+
+    // Cooldown Timer
+    useEffect(() => {
+        let interval: any;
+        if (cooldown > 0) {
+            interval = setInterval(() => {
+                setCooldown((prev) => prev - 1);
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [cooldown]);
+
+    const handleGameComplete = (data: any) => {
+        queryClient.invalidateQueries({ queryKey: ['user'] });
+        if (data.won) toast.success(data.message || 'You won!');
+        else toast.error(data.message || 'You lost.');
+        setCooldown(60); // Start 60s cooldown
+    };
+
+    const handleGameError = (err: any) => {
+        const msg = err.response?.data?.message || 'Game failed';
+        toast.error(msg);
+
+        // If it's a rate limit error (429), parse the seconds if possible, or just default to remaining time
+        if (err.response?.status === 429) {
+            // Extract seconds from message "Please wait Xs..." if needed, or just set a safe default like 60
+            // The backend sends: "Please wait 45s before playing again."
+            const match = msg.match(/wait (\d+)s/);
+            if (match && match[1]) {
+                setCooldown(parseInt(match[1]));
+            } else {
+                setCooldown(60);
+            }
+        }
+    };
 
     // --- Components ---
 
@@ -24,18 +60,17 @@ const GamesPage = () => {
                 return res.data;
             },
             onSuccess: (data) => {
-                queryClient.invalidateQueries({ queryKey: ['user'] });
-                if (data.won) toast.success(data.message);
-                else toast.error(data.message);
+                handleGameComplete(data);
                 setIsRolling(false);
             },
             onError: (err: any) => {
-                toast.error(err.response?.data?.message || 'Game failed');
+                handleGameError(err);
                 setIsRolling(false);
             }
         });
 
         const handlePlay = () => {
+            if (cooldown > 0) return;
             setIsRolling(true);
             mutation.mutate();
         };
@@ -72,10 +107,14 @@ const GamesPage = () => {
                 </div>
                 <button
                     onClick={handlePlay}
-                    disabled={isRolling || mutation.isPending}
-                    className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl font-bold text-lg hover:shadow-lg hover:shadow-purple-500/20 transition disabled:opacity-50"
+                    disabled={isRolling || mutation.isPending || cooldown > 0}
+                    className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl font-bold text-lg hover:shadow-lg hover:shadow-purple-500/20 transition disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                    {isRolling ? 'Rolling...' : 'Roll Dice (5x Payout)'}
+                    {cooldown > 0 ? (
+                        <>
+                            <Timer className="animate-pulse" /> Wait {cooldown}s
+                        </>
+                    ) : isRolling ? 'Rolling...' : 'Roll Dice (5x Payout)'}
                 </button>
             </div>
         );
@@ -93,18 +132,17 @@ const GamesPage = () => {
                 return res.data;
             },
             onSuccess: (data) => {
-                queryClient.invalidateQueries({ queryKey: ['user'] });
-                if (data.won) toast.success(data.message);
-                else toast.error(data.message);
+                handleGameComplete(data);
                 setIsFlipping(false);
             },
             onError: (err: any) => {
-                toast.error(err.response?.data?.message || 'Game failed');
+                handleGameError(err);
                 setIsFlipping(false);
             }
         });
 
         const handlePlay = () => {
+            if (cooldown > 0) return;
             setIsFlipping(true);
             mutation.mutate();
         };
@@ -150,10 +188,14 @@ const GamesPage = () => {
                 </div>
                 <button
                     onClick={handlePlay}
-                    disabled={isFlipping || mutation.isPending}
-                    className="w-full py-4 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl font-bold text-lg text-black hover:shadow-lg hover:shadow-orange-500/20 transition disabled:opacity-50"
+                    disabled={isFlipping || mutation.isPending || cooldown > 0}
+                    className="w-full py-4 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl font-bold text-lg text-black hover:shadow-lg hover:shadow-orange-500/20 transition disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                    {isFlipping ? 'Flipping...' : 'Flip Coin (1.9x Payout)'}
+                    {cooldown > 0 ? (
+                        <>
+                            <Timer className="animate-pulse" /> Wait {cooldown}s
+                        </>
+                    ) : isFlipping ? 'Flipping...' : 'Flip Coin (1.9x Payout)'}
                 </button>
             </div>
         );
@@ -171,19 +213,18 @@ const GamesPage = () => {
                 return res.data;
             },
             onSuccess: (data) => {
-                queryClient.invalidateQueries({ queryKey: ['user'] });
+                handleGameComplete(data);
                 setReels(data.reels);
-                if (data.won) toast.success(`Jackpot! Won ${data.winnings} coins!`);
-                else toast.error('No match.');
                 setIsSpinning(false);
             },
             onError: (err: any) => {
-                toast.error(err.response?.data?.message || 'Game failed');
+                handleGameError(err);
                 setIsSpinning(false);
             }
         });
 
         const handlePlay = () => {
+            if (cooldown > 0) return;
             setIsSpinning(true);
             setReels(['❓', '❓', '❓']);
             mutation.mutate();
@@ -217,10 +258,14 @@ const GamesPage = () => {
 
                 <button
                     onClick={handlePlay}
-                    disabled={isSpinning || mutation.isPending}
-                    className="w-full py-4 bg-gradient-to-r from-red-600 to-pink-600 rounded-xl font-bold text-lg hover:shadow-lg hover:shadow-red-500/20 transition disabled:opacity-50"
+                    disabled={isSpinning || mutation.isPending || cooldown > 0}
+                    className="w-full py-4 bg-gradient-to-r from-red-600 to-pink-600 rounded-xl font-bold text-lg hover:shadow-lg hover:shadow-red-500/20 transition disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                    {isSpinning ? 'Spinning...' : 'Spin Slots (Max 50x)'}
+                    {cooldown > 0 ? (
+                        <>
+                            <Timer className="animate-pulse" /> Wait {cooldown}s
+                        </>
+                    ) : isSpinning ? 'Spinning...' : 'Spin Slots (Max 50x)'}
                 </button>
             </div>
         );
@@ -299,7 +344,15 @@ const GamesPage = () => {
                             <div className="relative z-10">
                                 <div className="flex justify-between items-center mb-6">
                                     <h2 className="text-2xl font-bold capitalize">{selectedGame === 'flip' ? 'Coin Flip' : selectedGame === 'dice' ? 'Dice Roll' : 'Slot Machine'}</h2>
-                                    <button onClick={() => setSelectedGame(null)} className="text-gray-400 hover:text-white">Close</button>
+                                    <div className="flex items-center gap-4">
+                                        {cooldown > 0 && (
+                                            <span className="text-yellow-400 text-sm font-mono flex items-center gap-2">
+                                                <Timer size={16} />
+                                                Cooldown: {cooldown}s
+                                            </span>
+                                        )}
+                                        <button onClick={() => setSelectedGame(null)} className="text-gray-400 hover:text-white">Close</button>
+                                    </div>
                                 </div>
 
                                 {selectedGame === 'dice' && <DiceGame />}
